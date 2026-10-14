@@ -1,4 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+// The backend jar is built by "mvn package" in ../builder-backend. Its data (H2, Git working
+// copy) goes to a fresh temp folder so every run starts empty.
+const backendJar = process.env.ECHO_BACKEND_JAR ?? '../builder-backend/target/echo-builder-backend-0.1.0-SNAPSHOT.jar';
+const dataDir = process.env.ECHO_E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'echo-e2e-'));
 
 export default defineConfig({
   testDir: './e2e',
@@ -12,10 +20,18 @@ export default defineConfig({
     viewport: { width: 1400, height: 900 },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 } } }],
-  webServer: {
-    command: 'pnpm exec vite --port 5173 --strictPort',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: `java -jar ${backendJar} --server.port=8080 --echo.data-dir=${dataDir}`,
+      url: 'http://localhost:8080/actuator/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: 'pnpm exec vite --port 5173 --strictPort',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
 });

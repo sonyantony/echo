@@ -34,6 +34,14 @@ jobs:
           node-version: '22'
           cache: pnpm
           cache-dependency-path: builder-ui/pnpm-lock.yaml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build backend jar for end-to-end tests
+        working-directory: builder-backend
+        run: mvn -B -q package -DskipTests
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
