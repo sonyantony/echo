@@ -157,6 +157,33 @@ Each milestone is small enough for a few Claude Code sessions, ends with somethi
 
 ---
 
+## 4a. Testing plan
+
+Testing is automated from M0 onwards so Claude Code can check its own work. Every PR into `Version1` must pass the fast suites; the slower suites run on each merge.
+
+| Level | What it covers | Tools | When it runs |
+|---|---|---|---|
+| Backend unit | Services, validation rules, flow-name rules, config binding, `GitPublisher` logic | JUnit 5, AssertJ, Mockito | Every commit and PR |
+| Backend integration | REST API with real H2 and Flyway, security (login, 401, CSRF), publish to a local bare Git repo created with JGit in a temp folder | Spring Boot Test, MockMvc | Every PR |
+| Flow validation | Sample flows (valid, malformed YAML, disallowed component, bad expression) through the validate endpoint | JUnit 5 with fixture files in `src/test/resources/flows/` | Every PR |
+| Route behaviour | The sample flows actually run: HTTP request in, mapped JSON sent downstream (mocked), mapped response back. Covers DataMapper/XSLT or JSONata output | `camel-test-spring-junit5`, WireMock for downstream services | Every PR |
+| UI unit | Shell components: login form, flow list, publish button states, error display | Vitest, React Testing Library | Every PR |
+| End to end (Builder) | Log in, create a flow, edit on the Kaoto canvas, save, reload, validate, publish; checks the commit in a test Git repo | Playwright against the Builder started with a test `application.yaml` | Every merge to `Version1` |
+| Pipeline and image | Run the export/build script on the sample flow, start the image, `curl` it, check the mapped response and health endpoint | Shell script + Docker in CI | Every merge that touches `pipeline/` or `runtime-template/` |
+| Packaging | `docker compose up` from a clean state, Builder health check passes, login works | Shell smoke test | Before each demo build |
+| Manual demo check | The M10 walkthrough against a real Git host and registry | README checklist | Before each demo |
+
+Rules:
+
+- **Golden flows.** A small set of sample flows (at least the "orders" HTTP-to-HTTP mapping flow) is kept in the repo and used by the validation, route, pipeline and end-to-end tests, so every layer is tested against the same input.
+- **No external services in automated tests.** Git is a local bare repo, downstream HTTP is WireMock, the registry is skipped or local. Tests run offline and repeatably.
+- **Each milestone's "done when" check becomes an automated test** in the suite above and stays there as a regression test.
+- **Version pinning is tested.** A test checks that the Camel version in `runtime-template/` matches the one Kaoto's catalog and Camel JBang use.
+- **Coverage target:** no hard percentage for the demo; every API endpoint and every validation rule has at least one passing and one failing test.
+- **Not in V1:** load testing (about 10 users), security penetration testing, and cross-browser testing beyond Chromium. These come before any production use.
+
+---
+
 ## 5. Configuration (`application.yaml` sketch)
 
 ```yaml
