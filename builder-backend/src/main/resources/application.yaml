@@ -2,6 +2,22 @@ spring:
   application:
     name: echo-builder
 
+echo:
+  security:
+    # Version 1: Builder users live here. Passwords are Spring-encoded (bcrypt).
+    # Demo user: designer / designer. Replace before any real use.
+    users:
+      - username: designer
+        password: "{bcrypt}$2a$10$CpoTFsLB8DIRLsxvK3yozekVXxg0.BnR9vwzVMUqXpTlmUPvf8/.a"
+        roles: [DESIGNER]
+
+server:
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        same-site: lax
+
 management:
   endpoints:
     web:
