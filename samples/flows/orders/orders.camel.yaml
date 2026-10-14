@@ -1,0 +1,47 @@
+- route:
+    id: orders
+    from:
+      id: from-orders
+      uri: platform-http:/orders
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - step:
+            id: kaoto-datamapper-order-request
+            steps:
+              - to:
+                  id: kaoto-datamapper-xslt-order-request
+                  uri: xslt-saxon:kaoto-datamapper-order-request.xsl
+                  parameters:
+                    useJsonBody: true
+        - removeHeaders:
+            id: remove-inbound-headers
+            pattern: "*"
+        - setHeader:
+            id: set-method
+            name: CamelHttpMethod
+            constant: POST
+        - setHeader:
+            id: set-content-type
+            name: Content-Type
+            constant: application/json
+        - to:
+            id: to-fulfilment
+            uri: "{{fulfilment.url}}"
+            parameters:
+              bridgeEndpoint: true
+        - step:
+            id: kaoto-datamapper-order-response
+            steps:
+              - to:
+                  id: kaoto-datamapper-xslt-order-response
+                  uri: xslt-saxon:kaoto-datamapper-order-response.xsl
+                  parameters:
+                    useJsonBody: true
+        - removeHeaders:
+            id: remove-downstream-headers
+            pattern: "*"
+        - setHeader:
+            id: set-response-content-type
+            name: Content-Type
+            constant: application/json
