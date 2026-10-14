@@ -21,6 +21,9 @@ Version 1 decisions
 - Secrets are kept in application.yaml in Version 1.
 - The Builder will store its own data in an H2 database running in file mode (embedded), while the flows themselves are stored in Git.
 - Expected load is low, about 10 concurrent Builder users.
+- The buyer's pipeline builds a Docker image and pushes it to the buyer's container registry, such as JFrog Artifactory.
+- In Version 1, the Builder commits directly to a branch.
+- In Version 1, all flows go into one repository.
 
 VERSION 2
 
@@ -29,5 +32,7 @@ In a later version, I would like to add a schema editor to the Builder, as follo
 - An OpenAPI-based schema editor that can be used in the browser.
 - The Runtime will be enhanced to provide a Swagger UI that shows the format of incoming and outgoing messages.
 - The Runtime will validate each incoming request against its schema and reject any message that fails validation.
+- The Builder will commit to a branch and require a pull request and approval.
+- The user will be able to choose the repository for flows.
 
 What software technologies and libraries would you recommend to build this?
