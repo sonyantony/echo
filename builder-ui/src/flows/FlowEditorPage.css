@@ -1,0 +1,18 @@
+.echo-flow-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.echo-flow-editor__header {
+  padding: 8px 16px;
+  flex: none;
+}
+.echo-flow-editor__message {
+  margin-top: 8px;
+}
+.echo-flow-editor__canvas {
+  flex: 1;
+  min-height: 500px;
+  position: relative;
+}

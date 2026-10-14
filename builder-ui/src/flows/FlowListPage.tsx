@@ -1,17 +1,167 @@
-import { EmptyState, EmptyStateBody, PageSection, Title } from '@patternfly/react-core';
+import {
+  Alert,
+  Button,
+  EmptyState,
+  EmptyStateActions,
+  EmptyStateBody,
+  EmptyStateFooter,
+  Label,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  PageSection,
+  Spinner,
+  Title,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+} from '@patternfly/react-core';
+import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { flowsApi, type FlowSummary } from '../api/flows';
+import { FlowFormModal } from './FlowFormModal';
 
-/** Flow list. CRUD arrives in M4. */
+export const FLOWS_KEY = ['flows'];
+
+export function StatusLabel({ status }: { status: FlowSummary['status'] }) {
+  return status === 'PUBLISHED' ? <Label color="green">Published</Label> : <Label color="blue">Draft</Label>;
+}
+
 export function FlowListPage() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const flows = useQuery({ queryKey: FLOWS_KEY, queryFn: flowsApi.list });
+  const [creating, setCreating] = useState(false);
+  const [renaming, setRenaming] = useState<FlowSummary>();
+  const [deleting, setDeleting] = useState<FlowSummary>();
+  const refresh = () => queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
+
+  const remove = useMutation({
+    mutationFn: (id: number) => flowsApi.remove(id),
+    onSuccess: () => {
+      setDeleting(undefined);
+      refresh();
+    },
+  });
+
+  const newButton = (
+    <Button variant="primary" onClick={() => setCreating(true)}>
+      New flow
+    </Button>
+  );
+
   return (
     <>
       <PageSection>
         <Title headingLevel="h1">Flows</Title>
       </PageSection>
       <PageSection isFilled>
-        <EmptyState titleText="No flows yet" headingLevel="h2">
-          <EmptyStateBody>Flows you create will be listed here.</EmptyStateBody>
-        </EmptyState>
+        {flows.isPending && <Spinner aria-label="Loading flows" />}
+        {flows.isError && <Alert variant="danger" isInline title="Could not load flows" />}
+        {flows.data && flows.data.length === 0 && (
+          <EmptyState titleText="No flows yet" headingLevel="h2">
+            <EmptyStateBody>Create a flow to start designing an integration.</EmptyStateBody>
+            <EmptyStateFooter>
+              <EmptyStateActions>{newButton}</EmptyStateActions>
+            </EmptyStateFooter>
+          </EmptyState>
+        )}
+        {flows.data && flows.data.length > 0 && (
+          <>
+            <Toolbar>
+              <ToolbarContent>
+                <ToolbarItem>{newButton}</ToolbarItem>
+              </ToolbarContent>
+            </Toolbar>
+            <Table aria-label="Flows" variant="compact">
+              <Thead>
+                <Tr>
+                  <Th>Name</Th>
+                  <Th>Description</Th>
+                  <Th>Status</Th>
+                  <Th>Last changed</Th>
+                  <Th screenReaderText="Actions" />
+                </Tr>
+              </Thead>
+              <Tbody>
+                {flows.data.map((flow) => (
+                  <Tr key={flow.id}>
+                    <Td dataLabel="Name">
+                      <Link to={`/flows/${flow.id}`}>{flow.name}</Link>
+                    </Td>
+                    <Td dataLabel="Description">{flow.description}</Td>
+                    <Td dataLabel="Status">
+                      <StatusLabel status={flow.status} />
+                    </Td>
+                    <Td dataLabel="Last changed">
+                      {new Date(flow.updatedAt).toLocaleString()} by {flow.updatedBy}
+                    </Td>
+                    <Td
+                      isActionCell
+                      actions={{
+                        items: [
+                          { title: 'Open', onClick: () => navigate(`/flows/${flow.id}`) },
+                          { title: 'Rename', onClick: () => setRenaming(flow) },
+                          { isSeparator: true },
+                          { title: 'Delete', onClick: () => setDeleting(flow) },
+                        ],
+                      }}
+                    />
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </>
+        )}
       </PageSection>
+
+      {creating && (
+        <FlowFormModal
+          title="New flow"
+          submitLabel="Create"
+          onClose={() => setCreating(false)}
+          onSubmit={async (name, description) => {
+            const flow = await flowsApi.create(name, description);
+            setCreating(false);
+            await refresh();
+            navigate(`/flows/${flow.id}`);
+          }}
+        />
+      )}
+      {renaming && (
+        <FlowFormModal
+          title="Rename flow"
+          submitLabel="Save"
+          initialName={renaming.name}
+          initialDescription={renaming.description}
+          onClose={() => setRenaming(undefined)}
+          onSubmit={async (name, description) => {
+            await flowsApi.update(renaming.id, name, description);
+            setRenaming(undefined);
+            await refresh();
+          }}
+        />
+      )}
+      {deleting && (
+        <Modal isOpen variant="small" onClose={() => setDeleting(undefined)} aria-labelledby="delete-title">
+          <ModalHeader title={`Delete ${deleting.name}?`} titleIconVariant="warning" labelId="delete-title" />
+          <ModalBody>
+            This deletes the draft from the Builder. Anything already published stays in Git.
+            {remove.isError && <Alert variant="danger" isInline isPlain title={(remove.error as Error).message} />}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="danger" isLoading={remove.isPending} onClick={() => remove.mutate(deleting.id)}>
+              Delete
+            </Button>
+            <Button variant="link" onClick={() => setDeleting(undefined)}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
     </>
   );
 }
