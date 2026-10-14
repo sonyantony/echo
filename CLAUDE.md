@@ -49,6 +49,9 @@ ECHO_E2E_BUNDLED=1 pnpm e2e   # against the packaged jar (after pnpm build + mvn
 # Flow images (needs Java, Maven; Docker only for --local-image and the smoke test)
 pipeline/build-flow.sh samples/flows/orders --local-image
 pipeline/smoke-test-orders.sh
+
+# Builder image (UI + backend in one jar); config/application.yaml is mounted at /config
+docker compose up -d --build
 ```
 
 Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar ...`) and pass

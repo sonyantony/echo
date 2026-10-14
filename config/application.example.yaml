@@ -1,0 +1,20 @@
+# ECHO Builder settings for this install. Copy to application.yaml (same folder) and edit.
+# Anything here overrides the defaults built into the image.
+
+echo:
+  security:
+    # Builder users. Generate a bcrypt hash with e.g.:
+    #   htpasswd -bnBC 10 "" 'your-password' | tr -d ':\n' | sed 's/$2y/$2a/'
+    users:
+      - username: designer
+        password: "{bcrypt}$2a$10$CpoTFsLB8DIRLsxvK3yozekVXxg0.BnR9vwzVMUqXpTlmUPvf8/.a"   # "designer"
+        roles: [DESIGNER]
+
+  git:
+    # The flow repository the Builder publishes to (any Git server, HTTPS).
+    url: https://git.example.com/acme/echo-flows.git
+    branch: main
+    username: echo-bot
+    token: ${ECHO_GIT_TOKEN:changeme}   # better: set ECHO_GIT_TOKEN in the environment
+    committer-name: ECHO Builder
+    committer-email: echo-builder@example.com

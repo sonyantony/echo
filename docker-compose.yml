@@ -1,0 +1,19 @@
+# ECHO Builder for a single install (about 10 users).
+#   1. Copy config/application.example.yaml to config/application.yaml and edit users and Git.
+#   2. docker compose up -d   ->  http://localhost:8080
+services:
+  echo-builder:
+    build: .
+    image: echo-builder:latest
+    ports:
+      - "8080:8080"
+    environment:
+      # Secrets can come from the environment instead of application.yaml.
+      ECHO_GIT_TOKEN: ${ECHO_GIT_TOKEN:-}
+    volumes:
+      - echo-data:/data          # H2 database and the Git working copy
+      - ./config:/config:ro      # application.yaml with users and the flow repository
+    restart: unless-stopped
+
+volumes:
+  echo-data:

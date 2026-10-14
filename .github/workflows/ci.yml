@@ -73,3 +73,18 @@ jobs:
         run: pipeline/build-flow.sh samples/flows/orders --local-image
       - name: Smoke test the image
         run: pipeline/smoke-test-orders.sh
+
+  image:
+    # Builds the Builder's own Docker image and checks it starts healthy and serves the UI.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Builder image
+        run: docker build -t echo-builder:ci .
+      - name: Start it and check health and the UI
+        run: |
+          docker run -d --name echo-builder -p 8080:8080 echo-builder:ci
+          for i in $(seq 1 60); do curl -fsS localhost:8080/actuator/health && break; sleep 2; done
+          curl -fsS localhost:8080/login | grep -q '<div id="root">'
+      - if: failure()
+        run: docker logs echo-builder || true
