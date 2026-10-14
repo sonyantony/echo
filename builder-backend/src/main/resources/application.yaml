@@ -23,6 +23,15 @@ echo:
       - username: designer
         password: "{bcrypt}$2a$10$CpoTFsLB8DIRLsxvK3yozekVXxg0.BnR9vwzVMUqXpTlmUPvf8/.a"
         roles: [DESIGNER]
+  git:
+    # The flow repository (any Git server). Publishing is off until url is set.
+    url: ${ECHO_GIT_URL:}
+    branch: ${ECHO_GIT_BRANCH:main}
+    username: ${ECHO_GIT_USERNAME:}
+    token: ${ECHO_GIT_TOKEN:}
+    committer-name: ECHO Builder
+    committer-email: echo-builder@example.com
+    # workdir: defaults to <data-dir>/git
   validation:
     # Version 1 scope: HTTP + JSON, plus the DataMapper's XSLT.
     allowed-components: [platform-http, http, https, xslt-saxon, log, direct]

@@ -20,6 +20,8 @@ import { flowsApi, validateFlow, type ValidationResult } from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { FLOWS_KEY, StatusLabel } from './FlowListPage';
+import { HistoryModal } from './HistoryModal';
+import { PublishModal } from './PublishModal';
 import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
 
@@ -43,6 +45,8 @@ export function FlowEditorPage() {
   const [message, setMessage] = useState<{ variant: 'success' | 'danger'; text: string }>();
   const [validation, setValidation] = useState<ValidationResult>();
   const [validating, setValidating] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (route.data !== undefined) savedYaml.current = route.data;
@@ -135,8 +139,14 @@ export function FlowEditorPage() {
               <Button variant="secondary" onClick={validate} isLoading={validating} isDisabled={validating || saving}>
                 Validate
               </Button>
-              <Button variant="primary" onClick={save} isLoading={saving} isDisabled={saving}>
+              <Button variant="secondary" onClick={() => save()} isLoading={saving} isDisabled={saving}>
                 Save
+              </Button>
+              <Button variant="primary" onClick={() => setPublishing(true)} isDisabled={saving || validating}>
+                Publish
+              </Button>
+              <Button variant="link" onClick={() => setShowHistory(true)}>
+                History
               </Button>
             </Flex>
           </FlexItem>
@@ -167,6 +177,35 @@ export function FlowEditorPage() {
           onChange={onChange}
         />
       </div>
+
+      {publishing && (
+        <PublishModal
+          flowId={id}
+          flowName={flow.data.name}
+          beforePublish={async () => (dirty ? save() : true)}
+          onClose={() => setPublishing(false)}
+          onInvalid={(result) => {
+            setPublishing(false);
+            setMessage(undefined);
+            setValidation(result);
+          }}
+          onPublished={async (result) => {
+            setPublishing(false);
+            setValidation(undefined);
+            setMessage({
+              variant: 'success',
+              text: result.changed
+                ? `Published to ${result.branch} as ${result.commitSha.slice(0, 8)}.`
+                : `Nothing changed since the last publish (${result.commitSha.slice(0, 8)}).`,
+            });
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['flow', id] }),
+              queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
+            ]);
+          }}
+        />
+      )}
+      {showHistory && <HistoryModal flowId={id} onClose={() => setShowHistory(false)} />}
 
       {blocker.state === 'blocked' && (
         <Modal isOpen variant="small" onClose={() => blocker.reset()} aria-labelledby="unsaved-title">

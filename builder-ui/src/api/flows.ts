@@ -56,3 +56,17 @@ export interface ValidationResult {
 }
 
 export const validateFlow = (id: number) => api<ValidationResult>(`/api/flows/${id}/validate`, { method: 'POST' });
+
+export interface PublishedFlow {
+  commitSha: string;
+  branch: string;
+  publishedBy: string;
+  publishedAt: string;
+  message: string;
+  changed: boolean;
+}
+
+export const publishFlow = (id: number, message: string) =>
+  api<PublishedFlow>(`/api/flows/${id}/publish`, { method: 'POST', json: { message } });
+
+export const flowHistory = (id: number) => api<PublishedFlow[]>(`/api/flows/${id}/history`);
