@@ -43,3 +43,16 @@ export const flowsApi = {
     api<void>(filePath(id, path), { method: 'PUT', body: content, headers: { 'Content-Type': 'text/plain' } }),
   deleteFile: (id: number, path: string) => api<void>(filePath(id, path), { method: 'DELETE' }),
 };
+
+export interface ValidationProblem {
+  file: string;
+  line?: number | null;
+  message: string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  problems: ValidationProblem[];
+}
+
+export const validateFlow = (id: number) => api<ValidationResult>(`/api/flows/${id}/validate`, { method: 'POST' });

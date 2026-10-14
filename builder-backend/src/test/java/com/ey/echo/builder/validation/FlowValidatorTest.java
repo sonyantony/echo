@@ -1,0 +1,129 @@
+package com.ey.echo.builder.validation;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.ey.echo.builder.validation.ValidationResult.Problem;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
+
+class FlowValidatorTest {
+
+    private static final Path FIXTURES = Path.of("src/test/resources/flows");
+    /** The golden flow shared by all test levels. */
+    private static final Path ORDERS = Path.of("../samples/flows/orders");
+
+    private final FlowValidator validator = new FlowValidator(new ValidationProperties(null, null));
+
+    private static Map<String, String> folder(Path dir) {
+        try (Stream<Path> files = Files.list(dir)) {
+            var result = new HashMap<String, String>();
+            files.filter(Files::isRegularFile).forEach(f -> result.put(f.getFileName().toString(), read(f)));
+            return result;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static String read(Path f) {
+        try {
+            return Files.readString(f);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private ValidationResult validateFixture(String name) {
+        return validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", read(FIXTURES.resolve(name))));
+    }
+
+    @Test
+    void goldenOrdersFlowIsValid() {
+        var result = validator.validate("orders.camel.yaml", folder(ORDERS));
+        assertThat(result.problems()).isEmpty();
+        assertThat(result.valid()).isTrue();
+    }
+
+    @Test
+    void malformedYamlIsReportedWithItsLine() {
+        var result = validateFixture("malformed.camel.yaml");
+        assertThat(result.valid()).isFalse();
+        assertThat(result.problems()).singleElement().satisfies(p -> {
+            assertThat(p.message()).startsWith("Malformed YAML");
+            assertThat(p.line()).isEqualTo(7);
+        });
+    }
+
+    @Test
+    void unknownStepIsReportedByCamel() {
+        var result = validateFixture("unknown-step.camel.yaml");
+        assertThat(result.problems()).singleElement().satisfies(p -> {
+            assertThat(p.message()).contains("setBodyy");
+            assertThat(p.line()).isEqualTo(5);
+        });
+    }
+
+    @Test
+    void componentsOutsideVersion1ScopeAreRejected() {
+        var result = validateFixture("disallowed-component.camel.yaml");
+        assertThat(result.problems()).extracting(Problem::message)
+                .containsExactly("The 'kafka' component is not available in Version 1 "
+                        + "(allowed: platform-http, http, https, xslt-saxon, log, direct).");
+        assertThat(result.problems().getFirst().line()).isEqualTo(6);
+    }
+
+    @Test
+    void languagesOutsideVersion1ScopeAreRejected() {
+        var result = validateFixture("disallowed-language.camel.yaml");
+        assertThat(result.problems()).extracting(Problem::message)
+                .singleElement().asString().startsWith("The 'jq' expression language is not available");
+    }
+
+    @Test
+    void badSimpleExpressionIsRejected() {
+        var result = validateFixture("bad-expression.camel.yaml");
+        assertThat(result.problems()).singleElement().satisfies(p -> {
+            assertThat(p.message()).contains("${noSuchFunction}").contains("Unknown function");
+            assertThat(p.line()).isEqualTo(6);
+        });
+    }
+
+    @Test
+    void missingMappingFileAndPropertyAreReported() {
+        var result = validateFixture("missing-mapping.camel.yaml");
+        assertThat(result.problems()).extracting(Problem::message).containsExactly(
+                "The mapping file 'kaoto-datamapper-missing.xsl' is missing from the flow.",
+                "Property 'downstream.url' is not set in application.properties.");
+    }
+
+    @Test
+    void placeholdersResolveFromTheFlowProperties() {
+        var files = Map.of(
+                "flow.camel.yaml", read(FIXTURES.resolve("missing-mapping.camel.yaml")),
+                "kaoto-datamapper-missing.xsl", "<xsl:stylesheet/>",
+                "application.properties", "downstream.url=kafka:topic");
+        // The placeholder resolves, and the resolved component is then checked against the scope.
+        assertThat(validator.validate("flow.camel.yaml", files).problems()).extracting(Problem::message)
+                .singleElement().asString().startsWith("The 'kafka' component");
+    }
+
+    @Test
+    void emptyRouteFileIsInvalid() {
+        assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", "  ")).problems())
+                .extracting(Problem::message).containsExactly("The route file is empty.");
+        assertThat(validator.validate("flow.camel.yaml", Map.of()).valid()).isFalse();
+    }
+
+    @Test
+    void scopeIsConfigurable() {
+        var kafkaAllowed = new FlowValidator(new ValidationProperties(List.of("platform-http", "kafka"), null));
+        var files = Map.of("flow.camel.yaml", read(FIXTURES.resolve("disallowed-component.camel.yaml")));
+        assertThat(kafkaAllowed.validate("flow.camel.yaml", files).valid()).isTrue();
+    }
+}

@@ -39,6 +39,14 @@ public class FlowService {
         return FlowDtos.FlowDetail.of(get(id));
     }
 
+    /** All files of a flow, path to content. */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, String> files(long id) {
+        var result = new java.util.TreeMap<String, String>();
+        get(id).getFiles().forEach(f -> result.put(f.getPath(), f.getContent()));
+        return result;
+    }
+
     public Flow create(String name, String description, String user) {
         checkName(name);
         if (flows.existsByNameIgnoreCase(name)) {

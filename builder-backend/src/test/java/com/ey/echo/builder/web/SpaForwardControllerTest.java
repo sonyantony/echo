@@ -24,6 +24,11 @@ class SpaForwardControllerTest {
     }
 
     @Test
+    void staticAssetsAreNotForwarded() throws Exception {
+        mvc.perform(get("/assets/index-123.js")).andExpect(status().isNotFound());
+    }
+
+    @Test
     void apiPathsAreNotForwarded() throws Exception {
         mvc.perform(get("/api/unknown")).andExpect(status().isUnauthorized());
     }

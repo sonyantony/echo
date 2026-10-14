@@ -4,13 +4,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * Serves the UI's index.html for client-side routes (e.g. /login, /flows/12) so a browser
- * refresh works. Paths with a dot are static files; /api and /actuator are never forwarded.
+ * Serves the UI's index.html for the UI's client-side routes so a browser refresh works.
+ * Keep in step with the routes in builder-ui/src/App.tsx.
  */
 @Controller
 public class SpaForwardController {
 
-    @GetMapping({"/", "/{path:^(?!api$|actuator$)[^.]*}", "/{path:^(?!api$|actuator$)[^.]*}/**"})
+    @GetMapping({"/", "/login", "/flows", "/flows/{id}", "/playground"})
     public String forward() {
         return "forward:/index.html";
     }

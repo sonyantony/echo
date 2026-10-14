@@ -54,3 +54,14 @@ test('warns before leaving with unsaved changes', async ({ page }) => {
   await page.getByRole('button', { name: 'Stay' }).click();
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 });
+
+// M6: validation runs from the editor and saves unsaved edits first.
+test('validates a flow from the editor', async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('valid'));
+  await addStep(page, 1, 'setBody');
+
+  await page.getByRole('button', { name: 'Validate' }).click();
+  await expect(page.getByTestId('validation-result')).toContainText('The flow is valid.');
+  await expect(page.getByTestId('unsaved')).toHaveCount(0);
+});

@@ -153,6 +153,24 @@ class FlowControllerTest {
     }
 
     @Test
+    void validatesAFlow() throws Exception {
+        long id = create("orders");
+        mvc.perform(as(post("/api/flows/{id}/validate", id)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.valid").value(true))
+                .andExpect(jsonPath("$.problems", hasSize(0)));
+
+        mvc.perform(as(put("/api/flows/{id}/files/orders.camel.yaml", id)).contentType(MediaType.TEXT_PLAIN)
+                        .content("- route:\n    from:\n      uri: kafka:in\n      steps: []\n"))
+                .andExpect(status().isNoContent());
+        mvc.perform(as(post("/api/flows/{id}/validate", id)))
+                .andExpect(jsonPath("$.valid").value(false))
+                .andExpect(jsonPath("$.problems[0].file").value("orders.camel.yaml"))
+                .andExpect(jsonPath("$.problems[0].line").value(3))
+                .andExpect(jsonPath("$.problems[0].message", containsString("'kafka' component")));
+    }
+
+    @Test
     void requiresLogin() throws Exception {
         mvc.perform(get("/api/flows")).andExpect(status().isUnauthorized());
     }

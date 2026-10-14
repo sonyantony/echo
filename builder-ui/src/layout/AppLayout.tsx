@@ -11,13 +11,12 @@ import {
   ToolbarGroup,
   ToolbarItem,
 } from '@patternfly/react-core';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import './AppLayout.css';
 
 export function AppLayout() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   const masthead = (
     <Masthead>
@@ -41,7 +40,8 @@ export function AppLayout() {
                   size="sm"
                   onClick={async () => {
                     await logout();
-                    navigate('/login');
+                    // A full page load drops every cached query of the previous session.
+                    window.location.assign('/login');
                   }}
                 >
                   Log out

@@ -16,10 +16,11 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useParams } from 'react-router-dom';
-import { flowsApi } from '../api/flows';
+import { flowsApi, validateFlow, type ValidationResult } from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { FLOWS_KEY, StatusLabel } from './FlowListPage';
+import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
 
 export function FlowEditorPage() {
@@ -40,6 +41,8 @@ export function FlowEditorPage() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ variant: 'success' | 'danger'; text: string }>();
+  const [validation, setValidation] = useState<ValidationResult>();
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     if (route.data !== undefined) savedYaml.current = route.data;
@@ -47,8 +50,8 @@ export function FlowEditorPage() {
 
   const onChange = useCallback((yaml: string) => setDirty(yaml !== savedYaml.current), []);
 
-  const save = useCallback(async () => {
-    if (!editor.current || !routeFile) return;
+  const save = useCallback(async (): Promise<boolean> => {
+    if (!editor.current || !routeFile) return false;
     setSaving(true);
     setMessage(undefined);
     try {
@@ -61,12 +64,29 @@ export function FlowEditorPage() {
         queryClient.invalidateQueries({ queryKey: ['flow', id], exact: true }),
         queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
       ]);
+      return true;
     } catch (e) {
       setMessage({ variant: 'danger', text: `Could not save: ${(e as Error).message}` });
+      return false;
     } finally {
       setSaving(false);
     }
   }, [id, routeFile, queryClient]);
+
+  /** Validates what is on screen: unsaved edits are saved first. */
+  const validate = useCallback(async () => {
+    setValidating(true);
+    setValidation(undefined);
+    try {
+      if (dirty && !(await save())) return;
+      setMessage(undefined);
+      setValidation(await validateFlow(id));
+    } catch (e) {
+      setMessage({ variant: 'danger', text: `Could not validate: ${(e as Error).message}` });
+    } finally {
+      setValidating(false);
+    }
+  }, [dirty, id, save]);
 
   // Warn before leaving with unsaved changes, inside the app and when closing the tab.
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
@@ -111,9 +131,14 @@ export function FlowEditorPage() {
           </FlexItem>
           {dirty && <FlexItem data-testid="unsaved">Unsaved changes</FlexItem>}
           <FlexItem align={{ default: 'alignRight' }}>
-            <Button variant="primary" onClick={save} isLoading={saving} isDisabled={saving}>
-              Save
-            </Button>
+            <Flex gap={{ default: 'gapSm' }}>
+              <Button variant="secondary" onClick={validate} isLoading={validating} isDisabled={validating || saving}>
+                Validate
+              </Button>
+              <Button variant="primary" onClick={save} isLoading={saving} isDisabled={saving}>
+                Save
+              </Button>
+            </Flex>
           </FlexItem>
         </Flex>
         {message && (
@@ -125,6 +150,11 @@ export function FlowEditorPage() {
             title={message.text}
             actionClose={<AlertActionCloseButton onClose={() => setMessage(undefined)} />}
           />
+        )}
+        {validation && (
+          <div className="echo-flow-editor__message">
+            <ValidationPanel result={validation} onClose={() => setValidation(undefined)} />
+          </div>
         )}
       </PageSection>
       <div className="echo-flow-editor__canvas">

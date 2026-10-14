@@ -23,6 +23,10 @@ echo:
       - username: designer
         password: "{bcrypt}$2a$10$CpoTFsLB8DIRLsxvK3yozekVXxg0.BnR9vwzVMUqXpTlmUPvf8/.a"
         roles: [DESIGNER]
+  validation:
+    # Version 1 scope: HTTP + JSON, plus the DataMapper's XSLT.
+    allowed-components: [platform-http, http, https, xslt-saxon, log, direct]
+    allowed-languages: [simple, constant, header, exchangeProperty, variable]
 
 server:
   servlet:

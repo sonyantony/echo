@@ -39,17 +39,19 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Build backend jar for end-to-end tests
-        working-directory: builder-backend
-        run: mvn -B -q package -DskipTests
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Package the Builder (backend jar serving the built UI)
+        working-directory: builder-backend
+        run: mvn -B -q -Pwith-ui package -DskipTests
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
-      - name: End-to-end tests
+      - name: End-to-end tests against the packaged Builder
         run: pnpm e2e
+        env:
+          ECHO_E2E_BUNDLED: '1'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
