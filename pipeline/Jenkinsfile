@@ -1,0 +1,68 @@
+// Sample Jenkins pipeline for an ECHO flow repository.
+// Copy pipeline/ and runtime-template/ from the ECHO repository into the root of the flow
+// repository and point a Jenkins (multibranch) pipeline job at pipeline/Jenkinsfile.
+//
+// It builds an image for every flow folder changed since the last successful build and pushes it
+// to your registry. Promotion between environments stays with your own release process.
+//
+// Agent needs: Java 21, Maven, curl, git. No Docker daemon needed (Jib pushes directly).
+pipeline {
+  agent any
+
+  parameters {
+    string(name: 'REGISTRY_URL', defaultValue: 'registry.example.com/echo',
+           description: 'Registry and namespace, e.g. mycompany.jfrog.io/echo-docker')
+    string(name: 'REGISTRY_CREDENTIALS_ID', defaultValue: 'echo-registry',
+           description: 'Jenkins username/password credentials for the registry')
+    booleanParam(name: 'BUILD_ALL', defaultValue: false, description: 'Build every flow, not only changed ones')
+  }
+
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+
+  stages {
+    stage('Find changed flows') {
+      steps {
+        script {
+          def base = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
+          def folders
+          if (params.BUILD_ALL || !base) {
+            folders = sh(returnStdout: true, script: 'ls -d flows/*/ 2>/dev/null | xargs -n1 basename || true')
+          } else {
+            folders = sh(returnStdout: true, script: """
+              git diff --name-only ${base} HEAD -- flows/ | cut -d/ -f2 | sort -u
+            """)
+          }
+          // Skip deleted flows: only folders that still have a route file.
+          env.FLOWS = folders.split('\n').findAll { it && fileExists("flows/${it}/${it}.camel.yaml") }.join(' ')
+          echo "Flows to build: ${env.FLOWS ?: '(none)'}"
+        }
+      }
+    }
+
+    stage('Build and push images') {
+      when { expression { env.FLOWS?.trim() } }
+      steps {
+        withCredentials([usernamePassword(credentialsId: params.REGISTRY_CREDENTIALS_ID,
+                                          usernameVariable: 'REGISTRY_USERNAME',
+                                          passwordVariable: 'REGISTRY_PASSWORD')]) {
+          script {
+            for (flow in env.FLOWS.split(' ')) {
+              stage("Flow ${flow}") {
+                sh "pipeline/build-flow.sh flows/${flow} --registry '${params.REGISTRY_URL}'"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'build/*/image.txt', allowEmptyArchive: true
+    }
+  }
+}

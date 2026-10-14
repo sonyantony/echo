@@ -18,7 +18,8 @@ app and built into an image by the buyer's pipeline).
 | `builder-backend/` | Spring Boot 3.5, Java 21, Maven |
 | `builder-ui/` | React 19 + TypeScript, Vite, PatternFly 6, Kaoto 2.13 embedded; pnpm |
 | `samples/` | Golden flows used by tests at every level (`flows/orders`) |
-| `runtime-template/`, `pipeline/` | Flow image build settings and sample pipeline (M8) |
+| `runtime-template/` | Versions and runtime defaults every flow image is built with |
+| `pipeline/` | `build-flow.sh` (export → jar → Jib image), sample `Jenkinsfile`, smoke test |
 
 ## Pinned versions (change together)
 
@@ -26,7 +27,7 @@ app and built into an image by the buyer's pipeline).
 |---|---|---|
 | Java | 21 | `builder-backend/pom.xml`, CI |
 | Node / pnpm | 22 / 10.28 | `builder-ui/package.json`, CI |
-| Camel | 4.22.1 | `builder-backend/pom.xml` (`camel.version`), `builder-ui/scripts/copy-camel-catalog.mjs`, `builder-ui/src/editor/kaotoEnvelope.ts` |
+| Camel | 4.22.1 | `builder-backend/pom.xml` (`camel.version`), `builder-ui/scripts/copy-camel-catalog.mjs`, `builder-ui/src/editor/kaotoEnvelope.ts`, `runtime-template/versions.properties` (checked by `VersionAlignmentTest`) |
 | Kaoto | 2.13.0 (`@kaoto/camel-catalog` 0.10.6) | `builder-ui/package.json` |
 | Spring Boot (Builder) | 3.5.16 | `builder-backend/pom.xml` |
 
@@ -43,6 +44,11 @@ pnpm dev          # http://localhost:5173, proxies /api to :8080
 pnpm typecheck && pnpm test   # Vitest
 pnpm e2e          # Playwright (starts Vite itself)
 pnpm build        # production bundle in dist/
+ECHO_E2E_BUNDLED=1 pnpm e2e   # against the packaged jar (after pnpm build + mvn -Pwith-ui package)
+
+# Flow images (needs Java, Maven; Docker only for --local-image and the smoke test)
+pipeline/build-flow.sh samples/flows/orders --local-image
+pipeline/smoke-test-orders.sh
 ```
 
 Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar ...`) and pass

@@ -58,3 +58,18 @@ jobs:
           name: playwright-report
           path: builder-ui/playwright-report
           retention-days: 7
+
+  pipeline:
+    # Builds the golden orders flow into an image with the sample pipeline script and checks it answers.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build the orders flow image
+        run: pipeline/build-flow.sh samples/flows/orders --local-image
+      - name: Smoke test the image
+        run: pipeline/smoke-test-orders.sh
