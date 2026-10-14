@@ -52,5 +52,6 @@ if [[ "$RESPONSE" != "$EXPECTED" ]]; then
 fi
 grep -q '"lines":\[{"product":"SKU-1","quantity":2}' "$LOGS/mock.log" || {
   echo "The downstream request was not mapped as expected" >&2; tail -20 "$LOGS/mock.log"; exit 1; }
-docker logs echo-smoke-orders 2>&1 | grep -q '"@timestamp"' || { echo "Logs are not JSON" >&2; exit 1; }
+docker logs echo-smoke-orders >"$LOGS/flow.log" 2>&1
+grep -q '"@timestamp"' "$LOGS/flow.log" || { echo "Logs are not JSON" >&2; tail -20 "$LOGS/flow.log"; exit 1; }
 echo "Smoke test passed"
