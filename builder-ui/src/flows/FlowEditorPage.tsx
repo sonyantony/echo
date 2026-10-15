@@ -134,7 +134,7 @@ export function FlowEditorPage() {
             <StatusLabel status={flow.data.status} />
           </FlexItem>
           {dirty && <FlexItem data-testid="unsaved">Unsaved changes</FlexItem>}
-          <FlexItem align={{ default: 'alignRight' }}>
+          <FlexItem className="echo-no-print" align={{ default: 'alignRight' }}>
             <Flex gap={{ default: 'gapSm' }}>
               <Button variant="secondary" onClick={validate} isLoading={validating} isDisabled={validating || saving}>
                 Validate

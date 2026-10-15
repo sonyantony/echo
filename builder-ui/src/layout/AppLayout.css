@@ -3,3 +3,23 @@
   font-size: 1.25rem;
   color: inherit;
 }
+
+/* The app is laid out as a fixed-height window with inner scroll areas. For printing, let the
+   page grow to its content so everything prints, not just what is on screen. */
+@media print {
+  html,
+  body,
+  #root,
+  .pf-v6-c-page,
+  .pf-v6-c-page__main-container,
+  .pf-v6-c-page__main {
+    display: block;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .pf-v6-c-masthead .pf-v6-c-toolbar,
+  .echo-no-print {
+    display: none !important;
+  }
+}

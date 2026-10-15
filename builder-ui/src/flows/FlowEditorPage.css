@@ -16,3 +16,13 @@
   min-height: 500px;
   position: relative;
 }
+
+@media print {
+  .echo-flow-editor {
+    display: block;
+    height: auto;
+  }
+  .echo-flow-editor__canvas {
+    min-height: 0;
+  }
+}
