@@ -4,6 +4,9 @@ import { expect, test } from '@playwright/test';
 test('logs in and sees the flow list', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
+  // Default branding from application.yaml.
+  await expect(page).toHaveTitle('ECHO Builder');
+  await expect(page.getByRole('heading', { name: 'Log in to ECHO Builder' })).toBeVisible();
 
   await page.getByLabel('Username').fill('designer');
   await page.getByLabel('Password').fill('wrong');
@@ -14,6 +17,7 @@ test('logs in and sees the flow list', async ({ page }) => {
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByRole('heading', { name: 'Flows', exact: true })).toBeVisible();
   await expect(page.getByTestId('current-user')).toHaveText('designer');
+  await expect(page.getByRole('banner').getByAltText('EY')).toBeVisible();
 
   // The session survives a reload; logging out returns to the login page.
   await page.reload();

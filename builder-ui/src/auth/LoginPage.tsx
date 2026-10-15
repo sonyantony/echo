@@ -12,11 +12,14 @@ import {
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { ApiError } from '../api/client';
+import { BrandLogo } from '../branding/BrandLogo';
+import { useBranding } from '../branding/BrandingContext';
 import { useAuth } from './AuthContext';
 import './LoginPage.css';
 
 export function LoginPage() {
   const { user, login } = useAuth();
+  const { productName } = useBranding();
   const location = useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -44,7 +47,12 @@ export function LoginPage() {
   return (
     <div className="echo-login">
       <Card className="echo-login__card">
-        <CardTitle component="h1">ECHO Builder</CardTitle>
+        <div className="echo-login__header" aria-hidden="true">
+          <BrandLogo />
+        </div>
+        <CardTitle component="h1" className="echo-login__title">
+          Log in to {productName}
+        </CardTitle>
         <CardBody>
           <Form onSubmit={onSubmit} aria-label="Log in">
             {error && <Alert variant="danger" isInline isPlain title={error} />}

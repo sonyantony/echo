@@ -1,0 +1,14 @@
+.echo-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+}
+.echo-brand__logo {
+  height: 36px;
+  width: auto;
+}
+.echo-brand__name {
+  font-weight: 600;
+  font-size: 1.25rem;
+}

@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import { LoginPage } from './auth/LoginPage';
 import { RequireAuth } from './auth/RequireAuth';
+import { BrandingProvider } from './branding/BrandingContext';
 import { FlowListPage } from './flows/FlowListPage';
 import { AppLayout } from './layout/AppLayout';
 
@@ -33,9 +34,11 @@ export function App({ queryClient = createQueryClient() }: { queryClient?: Query
   const router = useMemo(createRouter, []);
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <BrandingProvider>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </BrandingProvider>
     </QueryClientProvider>
   );
 }

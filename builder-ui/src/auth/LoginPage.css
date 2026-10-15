@@ -9,4 +9,13 @@
 .echo-login__card {
   width: 100%;
   max-width: 400px;
+  overflow: hidden;
+}
+.echo-login__header {
+  padding: 20px 24px;
+  background: var(--echo-masthead-background, var(--pf-t--global--background--color--secondary--default));
+  color: var(--echo-masthead-text, inherit);
+}
+.echo-login__title {
+  padding-top: 24px;
 }

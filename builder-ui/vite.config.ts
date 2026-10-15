@@ -23,6 +23,7 @@ export default defineConfig({
     proxy: {
       '/api': backend,
       '/actuator': backend,
+      '/branding': backend,
     },
   },
   build: {

@@ -32,6 +32,23 @@ echo:
     committer-name: ECHO Builder
     committer-email: echo-builder@example.com
     # workdir: defaults to <data-dir>/git
+  branding:
+    # The Builder's look. Override any of these in /config/application.yaml; no rebuild needed.
+    product-name: ECHO Builder
+    # URLs the browser loads. /branding/<file> is served from asset-dir first, then from the
+    # defaults built into the image (builder-backend/src/main/resources/branding/).
+    logo: /branding/logo.svg
+    logo-alt: EY
+    favicon: /branding/favicon.svg
+    asset-dir: ${ECHO_BRANDING_DIR:./config/branding}
+    # CSS colours (EY: yellow #FFE600, grey #2E2E38). Leave one out to keep the PatternFly default.
+    colors:
+      primary: "#FFE600"            # primary buttons, selected items
+      primary-hover: "#E6CF00"
+      on-primary: "#2E2E38"         # text on primary buttons
+      accent-text: "#2E2E38"        # text drawn in the brand colour (tabs, toggles)
+      masthead-background: "#2E2E38"
+      masthead-text: "#FFFFFF"
   validation:
     # Version 1 scope: HTTP + JSON, plus the DataMapper's XSLT.
     allowed-components: [platform-http, http, https, xslt-saxon, log, direct]
