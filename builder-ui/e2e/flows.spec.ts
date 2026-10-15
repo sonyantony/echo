@@ -65,3 +65,29 @@ test('validates a flow from the editor', async ({ page }) => {
   await expect(page.getByTestId('validation-result')).toContainText('The flow is valid.');
   await expect(page.getByTestId('unsaved')).toHaveCount(0);
 });
+
+// Download a flow as a zip, then upload it again as a new flow.
+test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
+  await login(page);
+  const name = uniqueName('zip');
+  await createFlow(page, name);
+  await addStep(page, 1, 'setBody');
+
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download' }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe(`${name}.zip`);
+  await expect(page.getByTestId('unsaved')).toHaveCount(0); // saved first
+  const zip = testInfo.outputPath(`${name}.zip`);
+  await download.saveAs(zip);
+
+  await page.getByRole('link', { name: 'Flows' }).click();
+  await page.getByRole('button', { name: 'Upload flow' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/Flow file/).setInputFiles(zip);
+  await dialog.getByLabel('Name').fill(`${name}-copy`);
+  await dialog.getByRole('button', { name: 'Upload' }).click();
+
+  await expect(page.getByRole('heading', { name: `${name}-copy` })).toBeVisible();
+  await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
+});

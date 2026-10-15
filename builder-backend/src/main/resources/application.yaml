@@ -12,6 +12,11 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  servlet:
+    multipart:
+      # Flow uploads (zip of a flow folder); FlowArchive also caps the unpacked size.
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 echo:
   # Folder for the Builder's own data: H2 database and the Git working copy.

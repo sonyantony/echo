@@ -21,8 +21,9 @@ import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { flowsApi, type FlowSummary } from '../api/flows';
+import { downloadFlow, flowsApi, type FlowSummary } from '../api/flows';
 import { FlowFormModal } from './FlowFormModal';
+import { UploadFlowModal } from './UploadFlowModal';
 
 export const FLOWS_KEY = ['flows'];
 
@@ -35,6 +36,7 @@ export function FlowListPage() {
   const navigate = useNavigate();
   const flows = useQuery({ queryKey: FLOWS_KEY, queryFn: flowsApi.list });
   const [creating, setCreating] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [renaming, setRenaming] = useState<FlowSummary>();
   const [deleting, setDeleting] = useState<FlowSummary>();
   const refresh = () => queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
@@ -52,6 +54,11 @@ export function FlowListPage() {
       New flow
     </Button>
   );
+  const uploadButton = (
+    <Button variant="secondary" onClick={() => setUploading(true)}>
+      Upload flow
+    </Button>
+  );
 
   return (
     <>
@@ -63,9 +70,12 @@ export function FlowListPage() {
         {flows.isError && <Alert variant="danger" isInline title="Could not load flows" />}
         {flows.data && flows.data.length === 0 && (
           <EmptyState titleText="No flows yet" headingLevel="h2">
-            <EmptyStateBody>Create a flow to start designing an integration.</EmptyStateBody>
+            <EmptyStateBody>Create a flow to start designing an integration, or upload one you saved.</EmptyStateBody>
             <EmptyStateFooter>
-              <EmptyStateActions>{newButton}</EmptyStateActions>
+              <EmptyStateActions>
+                {newButton}
+                {uploadButton}
+              </EmptyStateActions>
             </EmptyStateFooter>
           </EmptyState>
         )}
@@ -74,6 +84,7 @@ export function FlowListPage() {
             <Toolbar>
               <ToolbarContent>
                 <ToolbarItem>{newButton}</ToolbarItem>
+                <ToolbarItem>{uploadButton}</ToolbarItem>
               </ToolbarContent>
             </Toolbar>
             <Table aria-label="Flows" variant="compact">
@@ -104,6 +115,7 @@ export function FlowListPage() {
                       actions={{
                         items: [
                           { title: 'Open', onClick: () => navigate(`/flows/${flow.id}`) },
+                          { title: 'Download', onClick: () => downloadFlow(flow.id) },
                           { title: 'Rename', onClick: () => setRenaming(flow) },
                           { isSeparator: true },
                           { title: 'Delete', onClick: () => setDeleting(flow) },
@@ -126,6 +138,16 @@ export function FlowListPage() {
           onSubmit={async (name, description) => {
             const flow = await flowsApi.create(name, description);
             setCreating(false);
+            await refresh();
+            navigate(`/flows/${flow.id}`);
+          }}
+        />
+      )}
+      {uploading && (
+        <UploadFlowModal
+          onClose={() => setUploading(false)}
+          onUploaded={async (flow) => {
+            setUploading(false);
             await refresh();
             navigate(`/flows/${flow.id}`);
           }}

@@ -42,7 +42,27 @@ export const flowsApi = {
   writeFile: (id: number, path: string, content: string) =>
     api<void>(filePath(id, path), { method: 'PUT', body: content, headers: { 'Content-Type': 'text/plain' } }),
   deleteFile: (id: number, path: string) => api<void>(filePath(id, path), { method: 'DELETE' }),
+
+  /** Creates a flow from a zip made by download. Name and description are optional overrides. */
+  upload: (file: File, name?: string, description?: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (name) form.append('name', name);
+    if (description) form.append('description', description);
+    return api<FlowDetail>('/api/flows/upload', { method: 'POST', body: form });
+  },
+  downloadUrl: (id: number) => `/api/flows/${id}/download`,
 };
+
+/** Saves the flow's draft to the user's computer as <name>.zip (the browser's download). */
+export function downloadFlow(id: number) {
+  const link = document.createElement('a');
+  link.href = flowsApi.downloadUrl(id);
+  link.download = '';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
 
 export interface ValidationProblem {
   file: string;
