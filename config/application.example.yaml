@@ -18,3 +18,18 @@ echo:
     token: ${ECHO_GIT_TOKEN:changeme}   # better: set ECHO_GIT_TOKEN in the environment
     committer-name: ECHO Builder
     committer-email: echo-builder@example.com
+
+  branding:
+    # The Builder's look for this install (see docs/branding.md). Put logo files in
+    # config/branding/ and refer to them as /branding/<file>. Leave a setting out to keep the default.
+    product-name: ECHO Builder
+    logo: /branding/logo.svg
+    logo-alt: EY
+    # favicon: /branding/favicon.svg
+    # colors:
+    #   primary: "#FFE600"
+    #   primary-hover: "#E6CF00"
+    #   on-primary: "#2E2E38"
+    #   accent-text: "#2E2E38"
+    #   masthead-background: "#2E2E38"
+    #   masthead-text: "#FFFFFF"

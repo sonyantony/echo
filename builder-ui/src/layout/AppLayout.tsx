@@ -13,17 +13,18 @@ import {
 } from '@patternfly/react-core';
 import { Link, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { BrandLogo } from '../branding/BrandLogo';
 import './AppLayout.css';
 
 export function AppLayout() {
   const { user, logout } = useAuth();
 
   const masthead = (
-    <Masthead>
+    <Masthead className="echo-masthead">
       <MastheadMain>
         <MastheadBrand>
           <MastheadLogo component={(props) => <Link {...props} to="/" />}>
-            <span className="echo-brand">ECHO Builder</span>
+            <BrandLogo />
           </MastheadLogo>
         </MastheadBrand>
       </MastheadMain>

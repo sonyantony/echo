@@ -6,6 +6,7 @@ app and built into an image by the buyer's pipeline).
 
 - Requirements: `docs/Initial Requirements.md`. Build plan and milestones: `docs/ECHO Builder Plan.md`.
 - Decisions: `docs/decisions/` (one short note per significant choice).
+- Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
 - Version 1 is a demo prototype: prefer simple over production-hardened, but keep the seams
   (auth, Git provider, CI, secrets, database) swappable. No cloud SDKs, no provider-specific
   Git APIs, no hard-wired CI or IdP.

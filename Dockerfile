@@ -27,6 +27,8 @@ RUN useradd --system --uid 10001 --home-dir /data echo \
 COPY --from=backend /src/builder-backend/target/echo-builder-backend-*.jar /app/echo-builder.jar
 USER echo
 ENV ECHO_DATA_DIR=/data
+# Logo, favicon and other branding files for this install (see docs/branding.md).
+ENV ECHO_BRANDING_DIR=/config/branding
 VOLUME /data
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
