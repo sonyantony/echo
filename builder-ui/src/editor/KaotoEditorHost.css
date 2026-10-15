@@ -9,6 +9,33 @@
   min-height: 0;
   position: relative;
 }
+/* Kaoto sizes its shell to the whole window (100vw x 100vh); fit it to the host instead,
+   otherwise it is wider than the page and its own scroll bars sit off screen. */
 .echo-kaoto-host__editor > .shell {
   height: 100%;
+  width: 100%;
+}
+
+@media print {
+  .echo-kaoto-host,
+  .echo-kaoto-host__editor,
+  .echo-kaoto-host__editor > .shell {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+  /* The tab bar is navigation; print only the open tab. */
+  .echo-kaoto-host__editor > .shell > div[role='region'] {
+    display: none;
+  }
+  /* Scrollable tabs (DataMapper, Beans, Rest, About) print in full, across pages. */
+  .echo-kaoto-host__editor .shell__tab-content--scrollable {
+    overflow: visible;
+    height: auto;
+  }
+  /* The Design canvas has no natural height; print the visible view on one page. */
+  .echo-kaoto-host__editor .shell__tab-content:not(.shell__tab-content--scrollable) {
+    height: 170mm;
+    break-inside: avoid;
+  }
 }
