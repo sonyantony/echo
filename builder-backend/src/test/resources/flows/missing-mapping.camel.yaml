@@ -1,0 +1,8 @@
+- route:
+    from:
+      uri: platform-http:/x
+      steps:
+        - to:
+            uri: xslt-saxon:kaoto-datamapper-missing.xsl
+        - to:
+            uri: "{{downstream.url}}"

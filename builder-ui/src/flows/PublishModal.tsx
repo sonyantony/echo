@@ -1,0 +1,79 @@
+import {
+  Alert,
+  Button,
+  Form,
+  FormGroup,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  TextArea,
+} from '@patternfly/react-core';
+import { useState } from 'react';
+import { ApiError } from '../api/client';
+import { publishFlow, type PublishedFlow, type ValidationResult } from '../api/flows';
+
+interface Props {
+  flowId: number;
+  flowName: string;
+  /** Saves pending editor changes; resolves false if saving failed. */
+  beforePublish(): Promise<boolean>;
+  onPublished(result: PublishedFlow): void;
+  onInvalid(result: ValidationResult): void;
+  onClose(): void;
+}
+
+export function PublishModal({ flowId, flowName, beforePublish, onPublished, onInvalid, onClose }: Props) {
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState<string>();
+  const [publishing, setPublishing] = useState(false);
+
+  const publish = async () => {
+    setPublishing(true);
+    setError(undefined);
+    try {
+      if (!(await beforePublish())) {
+        setError('Could not save the flow before publishing.');
+        return;
+      }
+      onPublished(await publishFlow(flowId, message));
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 422) {
+        onInvalid(e.details as ValidationResult);
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  return (
+    <Modal isOpen variant="small" onClose={onClose} aria-labelledby="publish-title">
+      <ModalHeader title={`Publish ${flowName}`} labelId="publish-title" />
+      <ModalBody>
+        <Form onSubmit={(e) => e.preventDefault()}>
+          <p>The flow is validated, then committed to the flow repository. Your pipeline builds it from there.</p>
+          {error && <Alert variant="danger" isInline isPlain title={error} />}
+          <FormGroup label="What changed?" fieldId="publish-message">
+            <TextArea
+              id="publish-message"
+              value={message}
+              onChange={(_e, v) => setMessage(v)}
+              placeholder={`Publish flow ${flowName}`}
+              rows={3}
+            />
+          </FormGroup>
+        </Form>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="primary" onClick={publish} isLoading={publishing} isDisabled={publishing}>
+          Publish
+        </Button>
+        <Button variant="link" onClick={onClose}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
+  );
+}

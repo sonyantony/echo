@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Fulfilment request (downstream)",
+  "type": "object",
+  "properties": {
+    "reference": { "type": "string" },
+    "customerName": { "type": "string" },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product": { "type": "string" },
+          "quantity": { "type": "number" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "echo-builder-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "typecheck": "tsc -b --noEmit",
+    "catalog": "node scripts/copy-camel-catalog.mjs",
+    "postinstall": "node scripts/copy-camel-catalog.mjs"
+  },
+  "dependencies": {
+    "@kaoto/camel-catalog": "0.10.6",
+    "@kaoto/kaoto": "2.13.0",
+    "@patternfly/patternfly": "^6.6.1",
+    "@patternfly/react-core": "6.6.1",
+    "@patternfly/react-icons": "^6.6.1",
+    "@patternfly/react-table": "6.6.1",
+    "@tanstack/react-query": "^5.104.2",
+    "monaco-editor": "^0.55.1",
+    "monaco-yaml": "^5.5.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "~1.56.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "^30.1.2",
+    "sass": "^1.105.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^3.2.7"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  }
+}

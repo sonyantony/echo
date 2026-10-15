@@ -1,0 +1,13 @@
+# Mock fulfilment service for local demos. Echoes the reference back as the id.
+- route:
+    id: fulfilment-mock
+    from:
+      uri: platform-http:/fulfilment
+      steps:
+        - log:
+            message: "fulfilment-mock received: ${body}"
+        - setBody:
+            simple: '{"id":"FUL-${jq(.reference)}","reference":"${jq(.reference)}","state":"ACCEPTED","lineCount":${jq(.lines | length)}}'
+        - setHeader:
+            name: Content-Type
+            constant: application/json

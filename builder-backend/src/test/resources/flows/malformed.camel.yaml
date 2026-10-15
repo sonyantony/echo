@@ -1,0 +1,6 @@
+- route:
+    from:
+      uri: platform-http:/x
+      steps:
+        - setBody:
+            simple: "unclosed

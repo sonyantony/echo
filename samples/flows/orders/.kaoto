@@ -1,0 +1,24 @@
+{
+  "kaoto-datamapper-order-request": {
+    "sourceBody": { "type": "JSON Schema", "filePath": ["order-request.schema.json"] },
+    "sourceParameters": {},
+    "targetBody": { "type": "JSON Schema", "filePath": ["fulfilment-request.schema.json"] },
+    "xsltPath": "kaoto-datamapper-order-request.xsl",
+    "namespaceMap": {
+      "xs": "http://www.w3.org/2001/XMLSchema",
+      "fn": "http://www.w3.org/2005/xpath-functions",
+      "xsl": "http://www.w3.org/1999/XSL/Transform"
+    }
+  },
+  "kaoto-datamapper-order-response": {
+    "sourceBody": { "type": "JSON Schema", "filePath": ["fulfilment-response.schema.json"] },
+    "sourceParameters": {},
+    "targetBody": { "type": "JSON Schema", "filePath": ["order-response.schema.json"] },
+    "xsltPath": "kaoto-datamapper-order-response.xsl",
+    "namespaceMap": {
+      "xs": "http://www.w3.org/2001/XMLSchema",
+      "fn": "http://www.w3.org/2005/xpath-functions",
+      "xsl": "http://www.w3.org/1999/XSL/Transform"
+    }
+  }
+}

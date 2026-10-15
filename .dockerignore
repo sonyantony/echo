@@ -1,0 +1,9 @@
+**/node_modules
+**/target
+**/dist
+**/test-results
+**/playwright-report
+builder-ui/public/camel-catalog
+data
+build
+.git

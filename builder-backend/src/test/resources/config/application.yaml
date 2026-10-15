@@ -1,0 +1,4 @@
+# Tests use an in-memory database unless a test points echo.data-dir somewhere itself.
+spring:
+  datasource:
+    url: jdbc:h2:mem:echo-test;DB_CLOSE_DELAY=-1
