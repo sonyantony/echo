@@ -147,6 +147,64 @@ export const flowHistory = (id: number) => api<PublishedFlow[]>(`/api/flows/${id
 export interface EditorSettings {
   /** Seconds between autosaves of unsaved changes; 0 means off. */
   autosaveSeconds: number;
+  /** Whether this install lets users run drafts inside the Builder (the Run button). */
+  runEnabled?: boolean;
 }
 
 export const editorSettings = () => api<EditorSettings>('/api/editor/settings');
+
+/** A platform-http endpoint of a running flow; methods is empty when any method is accepted. */
+export interface RunEndpoint {
+  path: string;
+  methods: string[];
+  /** The full URL to call it from your own tools. */
+  url: string;
+}
+
+/** A draft running inside the Builder (the Run button). */
+export interface RunInfo {
+  flowId: number;
+  flowName: string;
+  port: number;
+  url: string;
+  endpoints: RunEndpoint[];
+  startedBy: string;
+  startedAt: string;
+  /** The run stops after this many minutes without requests. */
+  idleMinutes: number;
+}
+
+export interface RunLogLine {
+  seq: number;
+  at: string;
+  level: string;
+  message: string;
+}
+
+export interface TestRequest {
+  method: string;
+  path: string;
+  contentType?: string;
+  body?: string;
+}
+
+export interface TestResponse {
+  status: number;
+  contentType?: string | null;
+  body: string;
+  durationMs: number;
+}
+
+const runPath = (id: number) => `/api/flows/${id}/run`;
+
+export const runApi = {
+  /** The flow's current run, or null when it is not running. */
+  status: async (id: number) => (await api<RunInfo | undefined>(runPath(id))) ?? null,
+  /** Validates the saved draft and starts it. A 422 ApiError carries the ValidationResult as details. */
+  start: (id: number) => api<RunInfo>(runPath(id), { method: 'POST' }),
+  stop: (id: number) => api<void>(runPath(id), { method: 'DELETE' }),
+  log: (id: number, after: number) => api<RunLogLine[]>(`${runPath(id)}/log?after=${after}`),
+  /** Sends a request to the running flow through the Builder. */
+  send: (id: number, request: TestRequest) =>
+    api<TestResponse>(`${runPath(id)}/request`, { method: 'POST', json: request }),
+};
