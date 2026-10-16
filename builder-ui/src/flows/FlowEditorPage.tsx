@@ -13,10 +13,10 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { DownloadIcon, ImageIcon, PlayIcon } from '@patternfly/react-icons';
+import { CodeIcon, DownloadIcon, ImageIcon, PlayIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useBlocker, useParams } from 'react-router-dom';
+import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import {
   downloadFlow,
@@ -40,6 +40,7 @@ import './FlowEditorPage.css';
 export function FlowEditorPage() {
   const id = Number(useParams().id);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const flow = useQuery({ queryKey: ['flow', id], queryFn: () => flowsApi.get(id) });
   const routeFile = flow.data?.routeFile;
   const route = useQuery({
@@ -277,6 +278,15 @@ export function FlowEditorPage() {
                 title="Save a picture of the whole flow diagram to your computer"
               >
                 Download diagram (.png)
+              </Button>
+              <Button
+                variant="secondary"
+                icon={<CodeIcon />}
+                onClick={() => navigate(`/flows/${id}/api`)}
+                isDisabled={saving}
+                title="Design the REST API this flow offers, as an OpenAPI spec"
+              >
+                API spec
               </Button>
               <Button variant="primary" onClick={() => setPublishing(true)} isDisabled={saving || validating}>
                 Publish

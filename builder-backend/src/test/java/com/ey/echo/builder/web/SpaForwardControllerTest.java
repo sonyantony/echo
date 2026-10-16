@@ -2,6 +2,7 @@ package com.ey.echo.builder.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,13 @@ class SpaForwardControllerTest {
     void clientRoutesServeTheUi() throws Exception {
         mvc.perform(get("/login")).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
         mvc.perform(get("/flows/12")).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
+        mvc.perform(get("/flows/12/api")).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
+    }
+
+    @Test
+    void pagesMayBeFramedBySameOriginOnly() throws Exception {
+        // The API spec page shows Apicurio's editor, served by the Builder, in a frame.
+        mvc.perform(get("/login")).andExpect(header().string("X-Frame-Options", "SAMEORIGIN"));
     }
 
     @Test

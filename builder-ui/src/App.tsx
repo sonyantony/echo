@@ -24,6 +24,7 @@ function createRouter() {
       children: [
         { index: true, element: <FlowListPage /> },
         // Loaded on demand: the editor bundles Kaoto, which is large.
+        { path: 'flows/:id/api', lazy: async () => ({ Component: (await import('./apispec/ApiSpecPage')).ApiSpecPage }) },
         { path: 'flows/:id', lazy: async () => ({ Component: (await import('./flows/FlowEditorPage')).FlowEditorPage }) },
       ],
     },

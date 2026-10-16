@@ -36,6 +36,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/**", "/actuator/**").authenticated()
                         // Everything else is the UI bundle (and Kaoto's catalog files).
                         .anyRequest().permitAll())
+                // The API spec page shows Apicurio's editor (static files from this server) in a frame.
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .securityContext(context -> context.securityContextRepository(contextRepository))
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())

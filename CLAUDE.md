@@ -8,10 +8,11 @@ app and built into an image by the buyer's pipeline).
 - Decisions: `docs/decisions/` (one short note per significant choice).
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
 - Publish targets (Git, S3; each with `enabled`) are per install config: `docs/publishing.md`.
+- A flow's OpenAPI spec (`openapi.json`, edited in the vendored Apicurio editor): `docs/api-spec.md`.
 - Version 1 is a demo prototype: prefer simple over production-hardened, but keep the seams
   (auth, Git provider, CI, secrets, database) swappable. No cloud SDKs, no provider-specific
   Git APIs, no hard-wired CI or IdP.
-- Work on the `Version1` branch line; PRs target `Version1`.
+- Work on the `Version2` branch line; PRs target `Version2`.
 
 ## Layout
 
@@ -64,7 +65,10 @@ Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar 
 - Kaoto stays unmodified; Builder code wraps it (`builder-ui/src/editor/`). Kaoto is rendered
   in its own React root because it brings its own router.
 - A flow is a folder: `<name>.camel.yaml` plus side files next to it (DataMapper
-  `kaoto-datamapper-*.xsl`, `*.schema.json`, `.kaoto` metadata, `application.properties`).
+  `kaoto-datamapper-*.xsl`, `*.schema.json`, `.kaoto` metadata, `application.properties`,
+  `openapi.json`).
+- `builder-ui/public/apicurio-editor/` is Apicurio's prebuilt editor, vendored unmodified; refresh it
+  with `builder-ui/scripts/update-apicurio-editor.sh`, don't edit it.
 - Every milestone's "done when" check becomes an automated test. Tests run offline: Git is a
   local bare repo, S3 is an in-memory fake (`FakeS3`), downstream HTTP is mocked.
 - Run the relevant tests before every commit.
