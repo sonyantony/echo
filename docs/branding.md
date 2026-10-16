@@ -1,18 +1,18 @@
 # Branding the Builder
 
-Each install of EY ECHO Builder can carry its own logo, product name, favicon and colours. They are
-read from `echo.branding` in the Builder's `application.yaml`, so a buyer rebrands an install by
-editing `config/application.yaml` and restarting; the image is not rebuilt.
+The product name, **EY ECHO Builder** (with "EY" in EY yellow), is fixed. What each install can
+change is the buyer's **company logo**, shown left of the product name, plus the favicon and
+colours. These are read from `echo.branding` in the Builder's `application.yaml`, so a buyer
+brands an install by editing `config/application.yaml` and restarting; the image is not rebuilt.
 
-The default look is EY's: product name "EY ECHO Builder", EY yellow (`#FFE600`) and grey (`#2E2E38`).
+The default colours are EY's: yellow (`#FFE600`) and grey (`#2E2E38`).
 
 ## Settings
 
 | Setting | What it changes | Default |
 |---|---|---|
-| `product-name` | Masthead, login page, browser tab title | `EY ECHO Builder` |
-| `logo` | Image left of the product name (masthead and login page). Shown on the masthead background, so use a version made for that colour. | `/branding/logo.svg` |
-| `logo-alt` | Alt text of the logo | `EY` |
+| `logo` | The buyer's company logo, left of the product name (masthead and login page). Shown on the masthead background, so use a version made for that colour. | `/branding/logo.svg` |
+| `logo-alt` | Alt text of the logo | `Company logo` |
 | `favicon` | Browser tab icon | `/branding/favicon.svg` (falls back to `logo`) |
 | `asset-dir` | Folder whose files are served at `/branding/<file>` | `/config/branding` in the image, `./config/branding` otherwise |
 | `colors.primary` / `primary-hover` | Primary buttons, selected items | `#FFE600` / `#E6CF00` |
@@ -32,7 +32,6 @@ Leave a colour out to keep the PatternFly default for it. Colours map to Pattern
    ```yaml
    echo:
      branding:
-       product-name: Acme Integration Builder
        logo: /branding/acme.svg
        logo-alt: Acme
    ```
@@ -43,9 +42,7 @@ A file in `config/branding/` with the same name as a built-in one (`logo.svg`, `
 replaces it, so dropping in `config/branding/logo.svg` is enough. `logo` can also be a full URL.
 If the logo file is missing, the Builder shows just the product name, not a broken image.
 
-## The default EY logo
+## The default logo
 
 `builder-backend/src/main/resources/branding/logo.svg` is a **placeholder** (a dashed box saying
-"LOGO"): the official EY logo could not be downloaded from an EY source when this was built.
-Replace that file with the official EY logo (SVG, the version for dark backgrounds) and rebuild
-to make it the default for every install.
+"LOGO") shown until an install sets its company logo.
