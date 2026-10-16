@@ -1,4 +1,4 @@
-# ECHO Builder settings for this install. Copy to application.yaml (same folder) and edit.
+# EY ECHO Builder settings for this install. Copy to application.yaml (same folder) and edit.
 # Anything here overrides the defaults built into the image.
 
 echo:
@@ -18,7 +18,7 @@ echo:
     branch: main
     username: echo-bot
     token: ${ECHO_GIT_TOKEN:changeme}   # better: set ECHO_GIT_TOKEN in the environment
-    committer-name: ECHO Builder
+    committer-name: EY ECHO Builder
     committer-email: echo-builder@example.com
 
   s3:
@@ -38,7 +38,7 @@ echo:
   branding:
     # The Builder's look for this install (see docs/branding.md). Put logo files in
     # config/branding/ and refer to them as /branding/<file>. Leave a setting out to keep the default.
-    product-name: ECHO Builder
+    product-name: EY ECHO Builder
     logo: /branding/logo.svg
     logo-alt: EY
     # favicon: /branding/favicon.svg

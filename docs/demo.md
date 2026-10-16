@@ -1,4 +1,4 @@
-# ECHO Version 1 demo
+# EY ECHO Version 1 demo
 
 This walkthrough goes from an empty Builder to a running flow image. The flow is the golden
 `orders` flow in `samples/flows/orders/`. It receives `POST /orders`, maps the request with
@@ -72,7 +72,7 @@ lists earlier publishes with their commit ids.
 
 ## 5. Build the image (the buyer's pipeline)
 
-The buyer's pipeline does this step, not ECHO. `pipeline/Jenkinsfile` is a sample.
+The buyer's pipeline does this step, not EY ECHO. `pipeline/Jenkinsfile` is a sample.
 Locally:
 
 ```bash

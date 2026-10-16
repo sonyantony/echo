@@ -1,6 +1,6 @@
 # Sample pipeline
 
-Turns a published flow folder into a container image. ECHO's job ends at a runnable image;
+Turns a published flow folder into a container image. EY ECHO's job ends at a runnable image;
 where it runs and how it is promoted is up to you.
 
 | File | What |

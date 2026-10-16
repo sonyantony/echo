@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds one ECHO flow folder into a runnable Spring Boot app and container image.
+# Builds one EY ECHO flow folder into a runnable Spring Boot app and container image.
 #
 #   pipeline/build-flow.sh <flow-folder> [options]
 #

@@ -1,16 +1,16 @@
 # Branding the Builder
 
-Each install of ECHO Builder can carry its own logo, product name, favicon and colours. They are
+Each install of EY ECHO Builder can carry its own logo, product name, favicon and colours. They are
 read from `echo.branding` in the Builder's `application.yaml`, so a buyer rebrands an install by
 editing `config/application.yaml` and restarting; the image is not rebuilt.
 
-The default look is EY's: product name "ECHO Builder", EY yellow (`#FFE600`) and grey (`#2E2E38`).
+The default look is EY's: product name "EY ECHO Builder", EY yellow (`#FFE600`) and grey (`#2E2E38`).
 
 ## Settings
 
 | Setting | What it changes | Default |
 |---|---|---|
-| `product-name` | Masthead, login page, browser tab title | `ECHO Builder` |
+| `product-name` | Masthead, login page, browser tab title | `EY ECHO Builder` |
 | `logo` | Image left of the product name (masthead and login page). Shown on the masthead background, so use a version made for that colour. | `/branding/logo.svg` |
 | `logo-alt` | Alt text of the logo | `EY` |
 | `favicon` | Browser tab icon | `/branding/favicon.svg` (falls back to `logo`) |
@@ -41,6 +41,7 @@ Leave a colour out to keep the PatternFly default for it. Colours map to Pattern
 
 A file in `config/branding/` with the same name as a built-in one (`logo.svg`, `favicon.svg`)
 replaces it, so dropping in `config/branding/logo.svg` is enough. `logo` can also be a full URL.
+If the logo file is missing, the Builder shows just the product name, not a broken image.
 
 ## The default EY logo
 

@@ -38,7 +38,7 @@ class JGitPublisherTest {
         assertThat(head.getName()).isEqualTo(result.revision());
         assertThat(head.getFullMessage()).isEqualTo("Publish orders");
         assertThat(head.getAuthorIdent().getName()).isEqualTo("alice");
-        assertThat(head.getCommitterIdent().getName()).isEqualTo("ECHO Builder");
+        assertThat(head.getCommitterIdent().getName()).isEqualTo("EY ECHO Builder");
         assertThat(remote.files("main"))
                 .containsExactlyInAnyOrder("flows/orders/orders.camel.yaml", "flows/orders/application.properties");
         assertThat(remote.read("main", "flows/orders/orders.camel.yaml")).isEqualTo("- route: {}\n");

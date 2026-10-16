@@ -5,8 +5,8 @@ test('logs in and sees the flow list', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
   // Default branding from application.yaml.
-  await expect(page).toHaveTitle('ECHO Builder');
-  await expect(page.getByRole('heading', { name: 'Log in to ECHO Builder' })).toBeVisible();
+  await expect(page).toHaveTitle('EY ECHO Builder');
+  await expect(page.getByRole('heading', { name: 'Log in to EY ECHO Builder' })).toBeVisible();
 
   await page.getByLabel('Username').fill('designer');
   await page.getByLabel('Password').fill('wrong');
