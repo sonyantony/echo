@@ -134,7 +134,9 @@ class FlowRunnerTest {
                               - to:
                                   uri: "%s"
                               - to:
-                                  uri: "%s"
+                                  uri: http
+                                  parameters:
+                                    httpUri: "%s"
                 """.formatted(downstreamUrl("/one"), downstreamUrl("/two"));
         var run = runner.start(2, "firsttestflow", "firsttestflow.camel.yaml",
                 Map.of("firsttestflow.camel.yaml", yaml), "designer");
