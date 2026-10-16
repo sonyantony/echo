@@ -10,14 +10,26 @@ echo:
         password: "{bcrypt}$2a$10$CpoTFsLB8DIRLsxvK3yozekVXxg0.BnR9vwzVMUqXpTlmUPvf8/.a"   # "designer"
         roles: [DESIGNER]
 
+  # Publish targets: Publish sends a flow to every enabled one (see docs/publishing.md).
   git:
     # The flow repository the Builder publishes to (any Git server, HTTPS).
+    enabled: true
     url: https://git.example.com/acme/echo-flows.git
     branch: main
     username: echo-bot
     token: ${ECHO_GIT_TOKEN:changeme}   # better: set ECHO_GIT_TOKEN in the environment
     committer-name: ECHO Builder
     committer-email: echo-builder@example.com
+
+  s3:
+    # Also publish to a bucket on Amazon S3 or an S3-compatible store.
+    enabled: false
+    bucket: acme-echo-flows
+    prefix: flows
+    region: eu-west-1
+    # endpoint: http://minio:9000        # only for S3-compatible stores
+    access-key: ${ECHO_S3_ACCESS_KEY:changeme}   # better: set these in the environment
+    secret-key: ${ECHO_S3_SECRET_KEY:changeme}
 
   editor:
     # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.

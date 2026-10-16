@@ -21,6 +21,8 @@ spring:
 echo:
   # Folder for the Builder's own data: H2 database and the Git working copy.
   data-dir: ./data
+  # Publish targets. Publish sends a flow to every enabled target; Delete removes it from all of
+  # them. The Flows page lists published flows from the first enabled one (Git, else S3).
   security:
     # Version 1: Builder users live here. Passwords are Spring-encoded (bcrypt).
     # Demo user: designer / designer. Replace before any real use.
@@ -29,7 +31,8 @@ echo:
         password: "{bcrypt}$2a$10$CpoTFsLB8DIRLsxvK3yozekVXxg0.BnR9vwzVMUqXpTlmUPvf8/.a"
         roles: [DESIGNER]
   git:
-    # The flow repository (any Git server). Publishing is off until url is set.
+    # The flow repository (any Git server). This target is off until url is set.
+    enabled: ${ECHO_GIT_ENABLED:true}
     url: ${ECHO_GIT_URL:}
     branch: ${ECHO_GIT_BRANCH:main}
     username: ${ECHO_GIT_USERNAME:}
@@ -37,6 +40,16 @@ echo:
     committer-name: ECHO Builder
     committer-email: echo-builder@example.com
     # workdir: defaults to <data-dir>/git
+  s3:
+    # A bucket on Amazon S3 or an S3-compatible store (MinIO, Ceph, ...). Off by default.
+    enabled: ${ECHO_S3_ENABLED:false}
+    bucket: ${ECHO_S3_BUCKET:}
+    prefix: flows                 # flows go to <prefix>/<flow>/<file>
+    region: ${ECHO_S3_REGION:us-east-1}
+    endpoint: ${ECHO_S3_ENDPOINT:}  # e.g. http://minio:9000; empty means Amazon S3
+    access-key: ${ECHO_S3_ACCESS_KEY:${AWS_ACCESS_KEY_ID:}}
+    secret-key: ${ECHO_S3_SECRET_KEY:${AWS_SECRET_ACCESS_KEY:}}
+    session-token: ${AWS_SESSION_TOKEN:}
   branding:
     # The Builder's look. Override any of these in /config/application.yaml; no rebuild needed.
     product-name: ECHO Builder

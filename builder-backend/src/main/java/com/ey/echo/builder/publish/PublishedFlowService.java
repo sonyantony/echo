@@ -18,28 +18,26 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Flows as they are in the publish target (Git), next to the Builder drafts. A published flow is
- * linked to the Builder flow that last published it, or else to the Builder flow with its name.
+ * Flows as they are in the primary publish target (the first enabled one: Git, else S3), next to
+ * the Builder drafts. A published flow is linked to the Builder flow that last published it, or
+ * else to the Builder flow with its name. Deleting removes it from every enabled target.
  */
 @Service
 public class PublishedFlowService {
 
     private final FlowService flows;
-    private final GitPublisher publisher;
-    private final GitProperties git;
+    private final PublishTargets targets;
     private final PublishEventRepository events;
     private final ObjectMapper json = new ObjectMapper();
 
-    public PublishedFlowService(FlowService flows, GitPublisher publisher, GitProperties git,
-            PublishEventRepository events) {
+    public PublishedFlowService(FlowService flows, PublishTargets targets, PublishEventRepository events) {
         this.flows = flows;
-        this.publisher = publisher;
-        this.git = git;
+        this.targets = targets;
         this.events = events;
     }
 
     /**
-     * @param flowId the linked Builder flow, or null if the flow is only in Git
+     * @param flowId the linked Builder flow, or null if the flow is only in the publish target
      * @param draftChanged true if the linked Builder flow has changes that are not published
      */
     public record PublishedFlow(
@@ -48,11 +46,12 @@ public class PublishedFlowService {
 
     @Transactional(readOnly = true)
     public List<PublishedFlow> list() {
-        if (!git.configured()) {
+        var primary = targets.primary();
+        if (primary.isEmpty()) {
             return List.of();
         }
         var linked = linkedFlows();
-        return publisher.list().stream().map(folder -> {
+        return primary.get().list().stream().map(folder -> {
             var meta = metadata(folder.files());
             var flow = linked.get(folder.name());
             if (flow == null) {
@@ -67,8 +66,7 @@ public class PublishedFlowService {
 
     /** The published files of a flow, without ECHO's metadata file (publishing writes it again). */
     public Map<String, String> files(String name) {
-        checkConfigured();
-        var files = new LinkedHashMap<>(publisher.read(name).orElseThrow(() -> notFound(name)));
+        var files = new LinkedHashMap<>(primary().read(name).orElseThrow(() -> notFound(name)));
         files.remove(PublishService.METADATA_FILE);
         return files;
     }
@@ -76,8 +74,7 @@ public class PublishedFlowService {
     /** Copies a published flow into the Builder as a new draft, to edit and publish again. */
     @Transactional
     public Flow createDraft(String name, String user) {
-        checkConfigured();
-        var all = publisher.read(name).orElseThrow(() -> notFound(name));
+        var all = primary().read(name).orElseThrow(() -> notFound(name));
         if (!all.containsKey(FlowNames.routeFile(name))) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "The published flow '%s' has no %s.".formatted(name, FlowNames.routeFile(name)));
@@ -88,18 +85,20 @@ public class PublishedFlowService {
         return flows.importArchive(new FlowArchive.Contents(name, files), name, text(meta, "description"), user);
     }
 
-    /** Removes a published flow from Git and, if it is linked to a Builder flow, that flow too. */
+    /**
+     * Removes a published flow from every enabled target and, if it is linked to a Builder flow,
+     * that flow too (only once every target has removed it).
+     */
     @Transactional
     public void delete(String name, String user) {
-        checkConfigured();
-        if (publisher.read(name).isEmpty()) {
+        if (primary().read(name).isEmpty()) {
             throw notFound(name);
         }
         var flow = linkedFlows().get(name);
         if (flow == null) {
             flow = flows.findByName(name).orElse(null);
         }
-        publisher.remove(name, user, "Delete flow %s".formatted(name));
+        targets.removeEverywhere(name, user, "Delete flow %s".formatted(name));
         if (flow != null) {
             flows.delete(flow.getId());
         }
@@ -146,10 +145,8 @@ public class PublishedFlowService {
         }
     }
 
-    private void checkConfigured() {
-        if (!git.configured()) {
-            throw new PublishException("Publishing is not configured: set echo.git.url in application.yaml.");
-        }
+    private FlowPublisher primary() {
+        return targets.require().get(0);
     }
 
     private static ResponseStatusException notFound(String name) {

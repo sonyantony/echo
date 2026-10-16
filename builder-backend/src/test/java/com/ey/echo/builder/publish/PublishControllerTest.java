@@ -79,11 +79,14 @@ class PublishControllerTest {
         var body = mvc.perform(as(post("/api/flows/{id}/publish", id)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"message\":\"First version of orders\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.branch").value("main"))
+                .andExpect(jsonPath("$.targets", hasSize(1)))
+                .andExpect(jsonPath("$.targets[0].target").value("git"))
+                .andExpect(jsonPath("$.targets[0].name").value("Git"))
+                .andExpect(jsonPath("$.targets[0].location").value("main"))
                 .andExpect(jsonPath("$.publishedBy").value("designer"))
                 .andExpect(jsonPath("$.changed").value(true))
                 .andReturn().getResponse().getContentAsString();
-        String sha = JsonPath.read(body, "$.commitSha");
+        String sha = JsonPath.read(body, "$.targets[0].revision");
 
         var head = REMOTE.head("main");
         assertThat(head.getName()).isEqualTo(sha);
@@ -96,7 +99,7 @@ class PublishControllerTest {
         mvc.perform(as(get("/api/flows/{id}", id))).andExpect(jsonPath("$.status").value("PUBLISHED"));
         mvc.perform(as(get("/api/flows/{id}/history", id)))
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].commitSha").value(sha))
+                .andExpect(jsonPath("$[0].targets[0].revision").value(sha))
                 .andExpect(jsonPath("$[0].message").value("First version of orders"));
     }
 

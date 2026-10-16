@@ -2,6 +2,7 @@ import { Alert, EmptyState, Modal, ModalBody, ModalHeader, Spinner } from '@patt
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { flowHistory } from '../api/flows';
+import { targetLabel } from './publishSummary';
 
 export function HistoryModal({ flowId, onClose }: { flowId: number; onClose(): void }) {
   const history = useQuery({ queryKey: ['flow', flowId, 'history'], queryFn: () => flowHistory(flowId) });
@@ -18,17 +19,19 @@ export function HistoryModal({ flowId, onClose }: { flowId: number; onClose(): v
               <Tr>
                 <Th>When</Th>
                 <Th>Who</Th>
-                <Th>Commit</Th>
+                <Th>Where</Th>
                 <Th>Message</Th>
               </Tr>
             </Thead>
             <Tbody>
               {history.data.map((h) => (
-                <Tr key={h.commitSha + h.publishedAt}>
+                <Tr key={h.publishedAt + h.message}>
                   <Td dataLabel="When">{new Date(h.publishedAt).toLocaleString()}</Td>
                   <Td dataLabel="Who">{h.publishedBy}</Td>
-                  <Td dataLabel="Commit">
-                    <code>{h.commitSha.slice(0, 8)}</code> on {h.branch}
+                  <Td dataLabel="Where">
+                    {h.targets.map((t) => (
+                      <div key={t.target}>{t.error ? `${t.name} failed: ${t.error}` : targetLabel(t)}</div>
+                    ))}
                   </Td>
                   <Td dataLabel="Message">{h.message}</Td>
                 </Tr>

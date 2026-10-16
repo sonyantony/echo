@@ -9,9 +9,9 @@ import {
   ModalHeader,
   TextArea,
 } from '@patternfly/react-core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
-import { publishFlow, type PublishedFlow, type ValidationResult } from '../api/flows';
+import { publishFlow, publishTargets, type PublishedFlow, type PublishTarget, type ValidationResult } from '../api/flows';
 
 interface Props {
   flowId: number;
@@ -27,6 +27,11 @@ export function PublishModal({ flowId, flowName, beforePublish, onPublished, onI
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string>();
   const [publishing, setPublishing] = useState(false);
+  const [targets, setTargets] = useState<PublishTarget[]>();
+
+  useEffect(() => {
+    publishTargets().then(setTargets, () => setTargets(undefined)); // only informative
+  }, []);
 
   const publish = async () => {
     setPublishing(true);
@@ -53,7 +58,19 @@ export function PublishModal({ flowId, flowName, beforePublish, onPublished, onI
       <ModalHeader title={`Publish ${flowName}`} labelId="publish-title" />
       <ModalBody>
         <Form onSubmit={(e) => e.preventDefault()}>
-          <p>The flow is validated, then committed to the flow repository. Your pipeline builds it from there.</p>
+          <p>The flow is validated, then published to every enabled target. Your pipeline builds it from there.</p>
+          {targets && targets.length > 0 && (
+            <ul aria-label="Publish targets">
+              {targets.map((t) => (
+                <li key={t.id}>
+                  <strong>{t.name}</strong>: {t.location}
+                </li>
+              ))}
+            </ul>
+          )}
+          {targets?.length === 0 && (
+            <Alert variant="warning" isInline isPlain title="No publish target is enabled in application.yaml." />
+          )}
           {error && <Alert variant="danger" isInline isPlain title={error} />}
           <FormGroup label="What changed?" fieldId="publish-message">
             <TextArea

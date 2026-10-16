@@ -68,7 +68,7 @@ class PublishedFlowControllerTest {
     }
 
     @Autowired
-    private GitPublisher publisher;
+    private JGitPublisher publisher;
 
     private static MockHttpServletRequestBuilder as(MockHttpServletRequestBuilder request) {
         return request.with(user("designer").roles("DESIGNER")).with(csrf());
