@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { App, createQueryClient } from '../App';
 import { mockFetch } from '../test/fetchMock';
 import { applyBranding } from './applyBranding';
@@ -28,10 +28,21 @@ describe('Branding', () => {
     expect(document.documentElement.style.getPropertyValue('--pf-t--global--color--brand--default')).toBe('#123456');
   });
 
-  it('falls back to the ECHO Builder defaults when branding cannot be loaded', async () => {
+  it('falls back to the EY ECHO Builder defaults when branding cannot be loaded', async () => {
     mockFetch({ 'GET /api/auth/me': { status: 401 } });
     render(<App queryClient={createQueryClient()} />);
-    expect(await screen.findByRole('heading', { name: 'Log in to ECHO Builder' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Log in to EY ECHO Builder' })).toBeInTheDocument();
+  });
+
+  it('hides a logo that fails to load', async () => {
+    mockFetch({
+      'GET /api/branding': { status: 200, body: { productName: 'Acme Flows', logo: '/branding/missing.png', logoAlt: 'Acme' } },
+      'GET /api/auth/me': { status: 401 },
+    });
+    render(<App queryClient={createQueryClient()} />);
+    fireEvent.error(await screen.findByAltText('Acme'));
+    expect(screen.queryByAltText('Acme')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Log in to Acme Flows' })).toBeInTheDocument();
   });
 
   it('puts every configured colour on its PatternFly token and clears unset ones', () => {

@@ -1,4 +1,4 @@
-# ECHO Builder: Version 1 Build Plan
+# EY ECHO Builder: Version 1 Build Plan
 
 Version 1 is a demo prototype. This plan favours simplicity over production hardening, while keeping the seams (auth, Git, CI, secrets, database) that later versions will need.
 
@@ -47,7 +47,7 @@ Buyer's Git repo (one repo, one folder per flow, fixed branch)
             ▼
 Buyer's CI (sample Jenkinsfile): camel export → mvn package → image → registry (e.g. JFrog)
             ▼
-Buyer runs the image wherever they like (ECHO's responsibility ends here)
+Buyer runs the image wherever they like (EY ECHO's responsibility ends here)
 ```
 
 ### Flow repository layout
@@ -59,7 +59,7 @@ flows/
     mappings/*.xsl              # DataMapper output, if used
     schemas/*.json              # JSON Schemas used by DataMapper, if used
     application.properties      # non-secret flow settings (ports, downstream URLs)
-    echo-flow.json              # ECHO metadata: name, description, version, author
+    echo-flow.json              # EY ECHO metadata: name, description, version, author
 Jenkinsfile                     # sample pipeline (builds changed flows)
 ```
 
@@ -211,7 +211,7 @@ spring:
 
 - One milestone per branch/PR into `Version1`, each with its own tests; ask Claude Code to run the tests before every commit.
 - Keep `CLAUDE.md` current: pinned versions, commands, and the decisions from M1.
-- Keep Kaoto unmodified; ECHO code wraps it, so Kaoto upgrades stay easy.
+- Keep Kaoto unmodified; EY ECHO code wraps it, so Kaoto upgrades stay easy.
 - Record each significant choice as a short decision note in `docs/decisions/`.
 
 ## 7. Out of scope for Version 1 (kept possible by the design)

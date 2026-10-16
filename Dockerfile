@@ -1,4 +1,4 @@
-# ECHO Builder: one image with the backend serving the built UI.
+# EY ECHO Builder: one image with the backend serving the built UI.
 #   docker build -t echo-builder .
 #   docker compose up        (see docker-compose.yml)
 

@@ -1,4 +1,4 @@
-# ECHO Builder for a single install (about 10 users).
+# EY ECHO Builder for a single install (about 10 users).
 #   1. Copy config/application.example.yaml to config/application.yaml and edit users and Git.
 #   2. docker compose up -d   ->  http://localhost:8080
 services:

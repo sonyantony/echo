@@ -17,7 +17,7 @@ export interface Branding {
 }
 
 /** Used when the backend cannot be reached; matches the built-in defaults minus the colours. */
-export const DEFAULT_BRANDING: Branding = { productName: 'ECHO Builder', logo: null, favicon: null, colors: null };
+export const DEFAULT_BRANDING: Branding = { productName: 'EY ECHO Builder', logo: null, favicon: null, colors: null };
 
 /** Which PatternFly tokens (or ECHO's own variables) each configured colour sets. */
 const TOKENS: Record<keyof BrandingColors, string[]> = {

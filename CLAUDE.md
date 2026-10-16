@@ -1,6 +1,6 @@
-# ECHO
+# EY ECHO
 
-ECHO has two parts: the **Builder** (web drag-and-drop designer for Camel YAML DSL flows,
+EY ECHO has two parts: the **Builder** (web drag-and-drop designer for Camel YAML DSL flows,
 publishes them to Git and/or S3) and the **Runtime** (each flow exported by Camel JBang to a Spring Boot
 app and built into an image by the buyer's pipeline).
 

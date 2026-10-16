@@ -31,7 +31,7 @@ public record GitProperties(
 
     public GitProperties {
         branch = blank(branch) ? "main" : branch;
-        committerName = blank(committerName) ? "ECHO Builder" : committerName;
+        committerName = blank(committerName) ? "EY ECHO Builder" : committerName;
         committerEmail = blank(committerEmail) ? "echo-builder@localhost" : committerEmail;
         flowsFolder = blank(flowsFolder) ? "flows" : flowsFolder;
         enabled = enabled == null || enabled;

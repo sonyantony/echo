@@ -37,7 +37,7 @@ echo:
     branch: ${ECHO_GIT_BRANCH:main}
     username: ${ECHO_GIT_USERNAME:}
     token: ${ECHO_GIT_TOKEN:}
-    committer-name: ECHO Builder
+    committer-name: EY ECHO Builder
     committer-email: echo-builder@example.com
     # workdir: defaults to <data-dir>/git
   s3:
@@ -52,7 +52,7 @@ echo:
     session-token: ${AWS_SESSION_TOKEN:}
   branding:
     # The Builder's look. Override any of these in /config/application.yaml; no rebuild needed.
-    product-name: ECHO Builder
+    product-name: EY ECHO Builder
     # URLs the browser loads. /branding/<file> is served from asset-dir first, then from the
     # defaults built into the image (builder-backend/src/main/resources/branding/).
     logo: /branding/logo.svg

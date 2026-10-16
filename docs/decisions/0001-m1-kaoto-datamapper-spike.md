@@ -5,7 +5,7 @@ Status: Accepted (GO, no fallback needed)
 
 ## Question
 
-Can the ECHO Builder embed Kaoto in its own React app, and can Kaoto's DataMapper map an
+Can the EY ECHO Builder embed Kaoto in its own React app, and can Kaoto's DataMapper map an
 incoming HTTP JSON request to a different downstream JSON request (and the response back),
 in a flow that runs with Camel JBang and as an exported Spring Boot app?
 

@@ -1,5 +1,5 @@
-// Sample Jenkins pipeline for an ECHO flow repository.
-// Copy pipeline/ and runtime-template/ from the ECHO repository into the root of the flow
+// Sample Jenkins pipeline for an EY ECHO flow repository.
+// Copy pipeline/ and runtime-template/ from the EY ECHO repository into the root of the flow
 // repository and point a Jenkins (multibranch) pipeline job at pipeline/Jenkinsfile.
 //
 // It builds an image for every flow folder changed since the last successful build and pushes it
