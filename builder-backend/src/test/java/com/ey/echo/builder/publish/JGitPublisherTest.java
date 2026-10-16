@@ -103,6 +103,20 @@ class JGitPublisherTest {
     }
 
     @Test
+    void listsAndReadsTheFlowsInTheRepository() throws Exception {
+        assertThat(publisher.list()).isEmpty(); // the branch does not exist yet
+        publisher.publish("orders", null, orders("v1"), "alice", "one");
+        remote.pushFromElsewhere(tmp.resolve("other"), "flows/refunds/refunds.camel.yaml", "r1");
+
+        assertThat(publisher.list()).extracting(GitPublisher.PublishedFolder::name)
+                .containsExactly("orders", "refunds");
+        assertThat(publisher.list().get(1).files()).containsEntry("refunds.camel.yaml", "r1");
+        assertThat(publisher.read("orders")).contains(orders("v1"));
+        assertThat(publisher.read("missing")).isEmpty();
+        assertThatThrownBy(() -> publisher.read("..")).isInstanceOf(PublishException.class);
+    }
+
+    @Test
     void otherFlowsAndFilesInTheRepositoryAreKept() throws Exception {
         publisher.publish("orders", null, orders("v1"), "alice", "one");
         remote.pushFromElsewhere(tmp.resolve("other-clone"), "Jenkinsfile", "pipeline {}");

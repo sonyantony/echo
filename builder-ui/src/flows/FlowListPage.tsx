@@ -22,11 +22,37 @@ import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { downloadFlow, flowsApi, type FlowSummary } from '../api/flows';
+import {
+  downloadFlow,
+  downloadPublishedFlow,
+  flowsApi,
+  publishedFlowsApi,
+  type FlowSummary,
+  type PublishedFlowSummary,
+} from '../api/flows';
 import { FlowFormModal } from './FlowFormModal';
 import { UploadFlowModal } from './UploadFlowModal';
 
 export const FLOWS_KEY = ['flows'];
+/** Under FLOWS_KEY, so refreshing the flows also refreshes what is published. */
+const PUBLISHED_KEY = [...FLOWS_KEY, 'published'];
+
+/** One row of the list: a Builder flow, or a flow as it is in Git. */
+type Row = { kind: 'draft'; flow: FlowSummary } | { kind: 'published'; published: PublishedFlowSummary };
+
+/**
+ * Every published flow gets a row. A Builder flow gets its own row unless it is exactly what is
+ * published (then the Published row stands for both).
+ */
+function listRows(flows: FlowSummary[], published: PublishedFlowSummary[]): Row[] {
+  const sameAsPublished = new Set(published.filter((p) => p.flowId != null && !p.draftChanged).map((p) => p.flowId));
+  const rows: Row[] = [
+    ...published.map((p): Row => ({ kind: 'published', published: p })),
+    ...flows.filter((f) => !sameAsPublished.has(f.id)).map((f): Row => ({ kind: 'draft', flow: f })),
+  ];
+  const name = (r: Row) => (r.kind === 'draft' ? r.flow.name : r.published.name);
+  return rows.sort((a, b) => name(a).localeCompare(name(b)) || (a.kind === 'published' ? -1 : 1));
+}
 
 export function StatusLabel({ status }: { status: FlowSummary['status'] }) {
   return status === 'PUBLISHED' ? <Label color="green">Published</Label> : <Label color="blue">Draft</Label>;
@@ -36,19 +62,46 @@ export function FlowListPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const flows = useQuery({ queryKey: FLOWS_KEY, queryFn: flowsApi.list });
+  const published = useQuery({ queryKey: PUBLISHED_KEY, queryFn: publishedFlowsApi.list, retry: false });
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [renaming, setRenaming] = useState<FlowSummary>();
-  const [deleting, setDeleting] = useState<FlowSummary>();
+  const [deleting, setDeleting] = useState<Row>();
   const refresh = () => queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
 
   const remove = useMutation({
-    mutationFn: (id: number) => flowsApi.remove(id),
+    mutationFn: (row: Row) =>
+      row.kind === 'draft' ? flowsApi.remove(row.flow.id) : publishedFlowsApi.remove(row.published.name),
     onSuccess: () => {
       setDeleting(undefined);
       refresh();
     },
   });
+  const openPublished = useMutation({
+    mutationFn: async (p: PublishedFlowSummary) => p.flowId ?? (await publishedFlowsApi.createDraft(p.name)).id,
+    onSuccess: async (id) => {
+      await refresh();
+      navigate(`/flows/${id}`);
+    },
+  });
+
+  const rows = flows.data ? listRows(flows.data, published.data ?? []) : undefined;
+  const publishedFor = (flowId: number) => published.data?.find((p) => p.flowId === flowId);
+  const deleteButton = (row: Row, name: string) => (
+    <Button
+      variant="secondary"
+      isDanger
+      size="sm"
+      icon={<TrashIcon />}
+      aria-label={`Delete ${name}`}
+      onClick={() => {
+        remove.reset();
+        setDeleting(row);
+      }}
+    >
+      Delete
+    </Button>
+  );
 
   const newButton = (
     <Button variant="primary" onClick={() => setCreating(true)}>
@@ -69,7 +122,15 @@ export function FlowListPage() {
       <PageSection isFilled>
         {flows.isPending && <Spinner aria-label="Loading flows" />}
         {flows.isError && <Alert variant="danger" isInline title="Could not load flows" />}
-        {flows.data && flows.data.length === 0 && (
+        {published.isError && (
+          <Alert variant="warning" isInline title="Could not read the published flows from Git">
+            {(published.error as Error).message} Only the drafts in the Builder are shown.
+          </Alert>
+        )}
+        {openPublished.isError && (
+          <Alert variant="danger" isInline title={(openPublished.error as Error).message} />
+        )}
+        {rows && rows.length === 0 && (
           <EmptyState titleText="No flows yet" headingLevel="h2">
             <EmptyStateBody>Create a flow to start designing an integration, or upload one you saved.</EmptyStateBody>
             <EmptyStateFooter>
@@ -80,7 +141,7 @@ export function FlowListPage() {
             </EmptyStateFooter>
           </EmptyState>
         )}
-        {flows.data && flows.data.length > 0 && (
+        {rows && rows.length > 0 && (
           <>
             <Toolbar>
               <ToolbarContent>
@@ -100,45 +161,71 @@ export function FlowListPage() {
                 </Tr>
               </Thead>
               <Tbody>
-                {flows.data.map((flow) => (
-                  <Tr key={flow.id}>
-                    <Td dataLabel="Name">
-                      <Link to={`/flows/${flow.id}`}>{flow.name}</Link>
-                    </Td>
-                    <Td dataLabel="Description">{flow.description}</Td>
-                    <Td dataLabel="Status">
-                      <StatusLabel status={flow.status} />
-                    </Td>
-                    <Td dataLabel="Last changed">
-                      {new Date(flow.updatedAt).toLocaleString()} by {flow.updatedBy}
-                    </Td>
-                    <Td isActionCell>
-                      <Button
-                        variant="secondary"
-                        isDanger
-                        size="sm"
-                        icon={<TrashIcon />}
-                        aria-label={`Delete ${flow.name}`}
-                        onClick={() => {
-                          remove.reset();
-                          setDeleting(flow);
+                {rows.map((row) =>
+                  row.kind === 'draft' ? (
+                    <Tr key={`draft-${row.flow.id}`}>
+                      <Td dataLabel="Name">
+                        <Link to={`/flows/${row.flow.id}`}>{row.flow.name}</Link>
+                      </Td>
+                      <Td dataLabel="Description">{row.flow.description}</Td>
+                      <Td dataLabel="Status">
+                        <StatusLabel status={row.flow.status} />
+                      </Td>
+                      <Td dataLabel="Last changed">
+                        {new Date(row.flow.updatedAt).toLocaleString()} by {row.flow.updatedBy}
+                      </Td>
+                      <Td isActionCell>{deleteButton(row, row.flow.name)}</Td>
+                      <Td
+                        isActionCell
+                        actions={{
+                          items: [
+                            { title: 'Open', onClick: () => navigate(`/flows/${row.flow.id}`) },
+                            { title: 'Download', onClick: () => downloadFlow(row.flow.id) },
+                            { title: 'Rename', onClick: () => setRenaming(row.flow) },
+                          ],
                         }}
-                      >
-                        Delete
-                      </Button>
-                    </Td>
-                    <Td
-                      isActionCell
-                      actions={{
-                        items: [
-                          { title: 'Open', onClick: () => navigate(`/flows/${flow.id}`) },
-                          { title: 'Download', onClick: () => downloadFlow(flow.id) },
-                          { title: 'Rename', onClick: () => setRenaming(flow) },
-                        ],
-                      }}
-                    />
-                  </Tr>
-                ))}
+                      />
+                    </Tr>
+                  ) : (
+                    <Tr key={`published-${row.published.name}`}>
+                      <Td dataLabel="Name">
+                        {row.published.flowId != null && !row.published.draftChanged ? (
+                          <Link to={`/flows/${row.published.flowId}`}>{row.published.name}</Link>
+                        ) : (
+                          row.published.name
+                        )}
+                      </Td>
+                      <Td dataLabel="Description">{row.published.description}</Td>
+                      <Td dataLabel="Status">
+                        <Label color="green">
+                          Published{row.published.version != null && ` v${row.published.version}`}
+                        </Label>
+                      </Td>
+                      <Td dataLabel="Last changed">
+                        {row.published.publishedAt
+                          ? `${new Date(row.published.publishedAt).toLocaleString()} by ${row.published.publishedBy ?? 'unknown'}`
+                          : 'Added in Git'}
+                      </Td>
+                      <Td isActionCell>{deleteButton(row, row.published.name)}</Td>
+                      <Td
+                        isActionCell
+                        actions={{
+                          items: [
+                            ...(row.published.draftChanged
+                              ? []
+                              : [
+                                  {
+                                    title: row.published.flowId != null ? 'Open' : 'Edit as draft',
+                                    onClick: () => openPublished.mutate(row.published),
+                                  },
+                                ]),
+                            { title: 'Download', onClick: () => downloadPublishedFlow(row.published.name) },
+                          ],
+                        }}
+                      />
+                    </Tr>
+                  ),
+                )}
               </Tbody>
             </Table>
           </>
@@ -184,14 +271,17 @@ export function FlowListPage() {
       )}
       {deleting && (
         <Modal isOpen variant="small" onClose={() => setDeleting(undefined)} aria-labelledby="delete-title">
-          <ModalHeader title={`Delete ${deleting.name}?`} titleIconVariant="warning" labelId="delete-title" />
+          <ModalHeader
+            title={`Delete ${deleting.kind === 'draft' ? deleting.flow.name : deleting.published.name}?`}
+            titleIconVariant="warning"
+            labelId="delete-title"
+          />
           <ModalBody>
-            This deletes the flow from the Builder. If it was published, its folder is also removed from Git with a
-            commit, so the pipeline stops building it (the old version stays in Git history).
+            {deleteMessage(deleting, deleting.kind === 'draft' ? publishedFor(deleting.flow.id) : undefined)}
             {remove.isError && <Alert variant="danger" isInline isPlain title={(remove.error as Error).message} />}
           </ModalBody>
           <ModalFooter>
-            <Button variant="danger" isLoading={remove.isPending} onClick={() => remove.mutate(deleting.id)}>
+            <Button variant="danger" isLoading={remove.isPending} onClick={() => remove.mutate(deleting)}>
               Delete
             </Button>
             <Button variant="link" onClick={() => setDeleting(undefined)}>
@@ -202,4 +292,18 @@ export function FlowListPage() {
       )}
     </>
   );
+}
+
+const FROM_GIT =
+  'is removed from Git with a commit, so the pipeline stops building it (the old version stays in Git history).';
+
+function deleteMessage(row: Row, publishedVersion: PublishedFlowSummary | undefined) {
+  if (row.kind === 'published') {
+    return row.published.flowId != null
+      ? `The flow ${FROM_GIT} Its draft in the Builder is deleted too.`
+      : `The flow ${FROM_GIT}`;
+  }
+  return publishedVersion
+    ? `This deletes the draft from the Builder, and the published version ${FROM_GIT}`
+    : 'This deletes the draft from the Builder. It was never published, so Git is not changed.';
 }

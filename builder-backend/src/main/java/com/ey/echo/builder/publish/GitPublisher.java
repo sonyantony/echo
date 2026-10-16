@@ -1,6 +1,8 @@
 package com.ey.echo.builder.publish;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Writes a flow into the flow repository. Version 1 commits straight to a branch; Version 2
@@ -25,6 +27,15 @@ public interface GitPublisher {
      * @return changed is false when the folder was not in the repository
      */
     PublishResult remove(String flowName, String author, String message);
+
+    /** Flows currently in the repository, one per flow folder, sorted by name. */
+    List<PublishedFolder> list();
+
+    /** Files of one published flow, path to content; empty if the repository has no such flow. */
+    Optional<Map<String, String>> read(String flowName);
+
+    /** A flow folder in the repository with its files, path to content. */
+    record PublishedFolder(String name, Map<String, String> files) {}
 
     /**
      * @param commitSha the new commit, or the current head when nothing changed

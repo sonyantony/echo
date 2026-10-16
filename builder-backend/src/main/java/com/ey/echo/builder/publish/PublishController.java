@@ -4,11 +4,8 @@ import jakarta.validation.constraints.Size;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,12 +55,5 @@ public class PublishController {
     @GetMapping("/history")
     public List<PublishedFlow> history(@PathVariable long id) {
         return service.history(id).stream().map(e -> PublishedFlow.of(e, true)).toList();
-    }
-
-    @ExceptionHandler(PublishException.class)
-    ResponseEntity<ProblemDetail> publishFailed(PublishException e) {
-        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, e.getMessage());
-        problem.setTitle("Publish failed");
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(problem);
     }
 }

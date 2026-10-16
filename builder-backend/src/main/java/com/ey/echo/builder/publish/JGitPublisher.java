@@ -4,8 +4,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 import org.eclipse.jgit.api.Git;
@@ -49,6 +53,61 @@ public class JGitPublisher implements GitPublisher {
     @Override
     public PublishResult remove(String flowName, String author, String message) {
         return commit(flowName, author, message, git -> removeFlow(git, flowName));
+    }
+
+    @Override
+    public List<PublishedFolder> list() {
+        return onRemoteHead(git -> {
+            Path flows = git.getRepository().getWorkTree().toPath().resolve(props.flowsFolder());
+            var result = new ArrayList<PublishedFolder>();
+            if (Files.isDirectory(flows)) {
+                try (Stream<Path> dirs = Files.list(flows)) {
+                    for (Path dir : dirs.filter(Files::isDirectory).sorted().toList()) {
+                        result.add(new PublishedFolder(dir.getFileName().toString(), readFolder(dir)));
+                    }
+                }
+            }
+            return result;
+        });
+    }
+
+    @Override
+    public Optional<Map<String, String>> read(String flowName) {
+        return onRemoteHead(git -> {
+            Path folder = flowFolder(git, flowName);
+            return Files.isDirectory(folder) ? Optional.of(readFolder(folder)) : Optional.empty();
+        });
+    }
+
+    private interface Reader<T> {
+        T read(Git git) throws GitAPIException, IOException;
+    }
+
+    /** Reads the working copy after making it match the remote branch. */
+    private <T> T onRemoteHead(Reader<T> reader) {
+        lock.lock();
+        try (Git git = openWorkingCopy()) {
+            syncWithRemote(git);
+            return reader.read(git);
+        } catch (GitAPIException | IOException e) {
+            throw new PublishException("Git error: " + e.getMessage(), e);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private static Map<String, String> readFolder(Path folder) throws IOException {
+        var files = new TreeMap<String, String>();
+        try (Stream<Path> walk = Files.walk(folder)) {
+            for (Path file : walk.filter(Files::isRegularFile).toList()) {
+                try {
+                    files.put(folder.relativize(file).toString().replace('\\', '/'), Files.readString(file));
+                } catch (java.nio.charset.CharacterCodingException e) {
+                    log.warn("Skipping non-text file {}", file); // flows are text; nothing else is editable
+                }
+            }
+        }
+        return files;
     }
 
     /** Changes the working copy; returns false if nothing changed. */
