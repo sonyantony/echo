@@ -126,4 +126,97 @@ class FlowValidatorTest {
         var files = Map.of("flow.camel.yaml", read(FIXTURES.resolve("disallowed-component.camel.yaml")));
         assertThat(kafkaAllowed.validate("flow.camel.yaml", files).valid()).isTrue();
     }
+
+    private static String multicastTo(String to) {
+        return """
+                - route:
+                    from:
+                      uri: platform-http:/firsttestflow
+                      steps:
+                        - removeHeaders:
+                            pattern: "*"
+                        - multicast:
+                            steps:
+                              - to:
+                %s
+                """.formatted(to.indent(20).stripTrailing());
+    }
+
+    @Test
+    void anHttpStepWithoutAUrlIsReported() {
+        // What Kaoto writes for an http step dropped on the canvas and not filled in.
+        for (String to : List.of("uri: http", "uri: https\nparameters: {}", "uri: \"http:\"")) {
+            var result = validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", multicastTo(to)));
+            assertThat(result.problems()).as(to).singleElement().satisfies(p -> {
+                assertThat(p.line()).isEqualTo(10);
+                assertThat(p.message()).contains("step has no URL").contains("Http Uri");
+            });
+        }
+    }
+
+    @Test
+    void anHttpUrlInTheUriOrInHttpUriIsFine() {
+        for (String to : List.of("uri: http://localhost:9090/one",
+                "uri: http\nparameters:\n  httpUri: localhost:9090/one",
+                "uri: https\nparameters:\n  httpUri: \"https://example.com/two\"")) {
+            var result = validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", multicastTo(to)));
+            assertThat(result.problems()).as(to).isEmpty();
+        }
+    }
+
+    private static String httpAfter(String before, String to) {
+        return """
+                - route:
+                    from:
+                      uri: platform-http:/firsttestflow
+                      steps:
+                %s
+                        - to:
+                %s
+                        - to:
+                            uri: http://localhost:9090/two
+                """.formatted(before.indent(8).stripTrailing(), to.indent(12).stripTrailing());
+    }
+
+    @Test
+    void incomingHeadersBeforeAnHttpCallAreReportedOncePerRoute() {
+        var result = validator.validate("flow.camel.yaml",
+                Map.of("flow.camel.yaml", httpAfter("- log: hi", "uri: http://localhost:9090/one")));
+        assertThat(result.problems()).singleElement().satisfies(p -> {
+            assertThat(p.line()).isEqualTo(7);
+            assertThat(p.message()).contains("incoming request's headers").contains("Remove Headers");
+        });
+    }
+
+    @Test
+    void removingTheHeadersOrBridgingTheEndpointIsFine() {
+        for (String[] c : List.of(
+                new String[] {"- removeHeaders:\n    pattern: \"*\"", "uri: http://localhost:9090/one"},
+                new String[] {"- removeHeaders:\n    pattern: \"CamelHttp*\"", "uri: http://localhost:9090/one"},
+                new String[] {"- removeHeaders: \"*\"", "uri: http://localhost:9090/one"})) {
+            var result = validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", httpAfter(c[0], c[1])));
+            assertThat(result.problems()).as(c[0]).isEmpty();
+        }
+        // Bridge Endpoint on every http step (the second one in httpAfter has none, so drop it).
+        var bridged = """
+                - route:
+                    from:
+                      uri: platform-http:/firsttestflow
+                      steps:
+                        - to:
+                            uri: http
+                            parameters:
+                              httpUri: localhost:9090/one
+                              bridgeEndpoint: true
+                """;
+        assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", bridged)).problems()).isEmpty();
+    }
+
+    @Test
+    void removingOtherHeadersDoesNotCount() {
+        var result = validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml",
+                httpAfter("- removeHeaders:\n    pattern: \"X-*\"", "uri: http://localhost:9090/one")));
+        assertThat(result.problems()).extracting(Problem::message).singleElement().asString()
+                .contains("incoming request's headers");
+    }
 }

@@ -10,7 +10,9 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.camel.Exchange;
 import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.camel.support.PatternHelper;
 import org.apache.camel.support.PluginHelper;
 import org.apache.camel.support.ResourceHelper;
 import org.springframework.stereotype.Component;
@@ -44,6 +46,8 @@ public class FlowValidator {
             "python", "ognl", "mvel", "spel", "datasonnet", "jsonata", "csimple", "joor", "java", "wasm");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([^}:]+)(?::([^}]*))?}}");
     private static final Set<String> XSLT_COMPONENTS = Set.of("xslt-saxon", "xslt");
+    /** An http or https uri: group 2 is the URL after the scheme, without options. */
+    private static final Pattern HTTP_URI = Pattern.compile("^(https?)(?::/*([^?]*))?(?:\\?.*)?$");
 
     private final ValidationProperties properties;
 
@@ -114,6 +118,11 @@ public class FlowValidator {
         private final Properties flowProperties;
         private final List<Problem> problems;
         private final org.apache.camel.CamelContext camel = new DefaultCamelContext(false);
+        // Per route, in document order: does it start with platform-http, and have the incoming
+        // request's headers been removed yet?
+        private boolean fromPlatformHttp;
+        private boolean headersRemoved;
+        private boolean headersReported;
 
         ScopeChecker(String routeFile, Map<String, String> files, Properties flowProperties, List<Problem> problems) {
             this.routeFile = routeFile;
@@ -131,6 +140,7 @@ public class FlowValidator {
         void walk(Node node, String key) {
             switch (node) {
                 case MappingNode map -> {
+                    checkHttpUrl(map);
                     for (NodeTuple tuple : map.getValue()) {
                         if (tuple.getKeyNode() instanceof ScalarNode k) {
                             check(k.getValue(), tuple.getValueNode());
@@ -147,6 +157,18 @@ public class FlowValidator {
 
         private void check(String key, Node value) {
             int line = value.getStartMark().getLine() + 1;
+            if (key.equals("from") && value instanceof MappingNode from) {
+                fromPlatformHttp = scalar(from, "uri").map(u -> u.startsWith("platform-http:")).orElse(false);
+                headersRemoved = false;
+                headersReported = false;
+            } else if (key.equals("removeHeaders")) {
+                String pattern = value instanceof ScalarNode s ? s.getValue()
+                        : value instanceof MappingNode m ? scalar(m, "pattern").orElse("") : "";
+                if (PatternHelper.matchPattern(Exchange.HTTP_URI, pattern)
+                        && PatternHelper.matchPattern(Exchange.HTTP_PATH, pattern)) {
+                    headersRemoved = true;
+                }
+            }
             if (key.equals("uri") && value instanceof ScalarNode s) {
                 checkUri(s.getValue(), line);
             } else if (OTHER_LANGUAGES.contains(key)) {
@@ -160,6 +182,77 @@ public class FlowValidator {
             } else if (key.equals("message") && value instanceof ScalarNode s) {
                 checkSimple(s.getValue(), line); // log: { message: ... } is a simple expression
             }
+        }
+
+        /**
+         * An http step dropped on the canvas starts as {@code uri: http} with no URL; Camel then
+         * fails to start with a NullPointerException. The URL can be in the uri or in
+         * {@code parameters.httpUri}, which is where Kaoto's form puts it.
+         */
+        private void checkHttpUrl(MappingNode step) {
+            ScalarNode uri = null;
+            String httpUri = null;
+            for (NodeTuple t : step.getValue()) {
+                if (!(t.getKeyNode() instanceof ScalarNode k)) {
+                    continue;
+                }
+                if (k.getValue().equals("uri") && t.getValueNode() instanceof ScalarNode v) {
+                    uri = v;
+                } else if (k.getValue().equals("parameters") && t.getValueNode() instanceof MappingNode params) {
+                    for (NodeTuple p : params.getValue()) {
+                        if (p.getKeyNode() instanceof ScalarNode pk && pk.getValue().equals("httpUri")
+                                && p.getValueNode() instanceof ScalarNode pv) {
+                            httpUri = pv.getValue();
+                        }
+                    }
+                }
+            }
+            if (uri == null) {
+                return;
+            }
+            int line = uri.getStartMark().getLine() + 1;
+            Matcher m = HTTP_URI.matcher(quietlyResolved(uri.getValue().strip()));
+            if (!m.matches()) {
+                return;
+            }
+            if ((m.group(2) == null || m.group(2).isEmpty()) && (httpUri == null || httpUri.isBlank())) {
+                problems.add(new Problem(routeFile, line,
+                        "This %s step has no URL. Select it on the canvas and fill in Http Uri, for example %s://host.docker.internal:9090/orders."
+                                .formatted(m.group(1), m.group(1))));
+            } else if (fromPlatformHttp && !headersRemoved && !headersReported
+                    && !scalar(step, "parameters", "bridgeEndpoint").map(Boolean::parseBoolean).orElse(false)) {
+                // The incoming request's CamelHttpUri/CamelHttpPath headers would be added to this URL.
+                headersReported = true;
+                problems.add(new Problem(routeFile, line,
+                        "The incoming request's headers would change the URL this %s step calls. Add a Remove Headers step with pattern * before it, or turn on Bridge Endpoint in the step."
+                                .formatted(m.group(1))));
+            }
+        }
+
+        /** A scalar value at the given keys below the mapping, e.g. parameters.bridgeEndpoint. */
+        private static java.util.Optional<String> scalar(MappingNode map, String... keys) {
+            Node node = map;
+            for (String key : keys) {
+                if (!(node instanceof MappingNode m)) {
+                    return java.util.Optional.empty();
+                }
+                node = m.getValue().stream()
+                        .filter(t -> t.getKeyNode() instanceof ScalarNode k && k.getValue().equals(key))
+                        .map(NodeTuple::getValueNode).findFirst().orElse(null);
+            }
+            return node instanceof ScalarNode s ? java.util.Optional.of(s.getValue()) : java.util.Optional.empty();
+        }
+
+        /** The uri with {{placeholders}} filled in where the flow sets them; problems are reported elsewhere. */
+        private String quietlyResolved(String uri) {
+            Matcher p = PLACEHOLDER.matcher(uri);
+            var out = new StringBuilder();
+            while (p.find()) {
+                String value = flowProperties.getProperty(p.group(1).strip(), p.group(2));
+                p.appendReplacement(out, Matcher.quoteReplacement(value == null ? p.group() : value));
+            }
+            p.appendTail(out);
+            return out.toString();
         }
 
         private java.util.Optional<String> expressionText(Node value) {

@@ -82,7 +82,7 @@ Things to know:
   To call a service on your own computer, use `http://host.docker.internal:<port>`.
 - The incoming request's headers travel with the message. Add a **Remove Headers** step (pattern
   `*`) before calling other services, as the orders flow does, or the incoming path changes the
-  URL called. The log suggests this when it happens.
+  URL called. Validate (and so Run and Publish) reports a flow that does neither.
 - A test run uses the same Camel version and components as the flow image, but not the image's
   Spring Boot packaging, so build the image (step 5) as the final check.
 - Settings: `echo.run.enabled`, `first-port`, `last-port`, `idle-minutes` and `public-url` (the
