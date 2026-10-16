@@ -54,6 +54,9 @@ echo:
       accent-text: "#2E2E38"        # text drawn in the brand colour (tabs, toggles)
       masthead-background: "#2E2E38"
       masthead-text: "#FFFFFF"
+  editor:
+    # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.
+    autosave-seconds: 10
   validation:
     # Version 1 scope: HTTP + JSON, plus the DataMapper's XSLT.
     allowed-components: [platform-http, http, https, xslt-saxon, log, direct]

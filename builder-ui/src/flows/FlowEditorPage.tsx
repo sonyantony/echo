@@ -17,12 +17,13 @@ import { DownloadIcon, ImageIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useParams } from 'react-router-dom';
-import { downloadFlow, flowsApi, validateFlow, type ValidationResult } from '../api/flows';
+import { downloadFlow, editorSettings, flowsApi, validateFlow, type ValidationResult } from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { FLOWS_KEY, StatusLabel } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
 import { PublishModal } from './PublishModal';
+import { useAutosave } from './useAutosave';
 import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
 
@@ -37,10 +38,12 @@ export function FlowEditorPage() {
     enabled: !!routeFile,
     staleTime: Infinity,
   });
+  const settings = useQuery({ queryKey: ['editor-settings'], queryFn: editorSettings, staleTime: Infinity });
 
   const files = useMemo(() => new ApiFlowFiles(id), [id]);
   const editor = useRef<KaotoEditorHandle>(null);
   const savedYaml = useRef<string | undefined>(undefined);
+  const latestYaml = useRef<string | undefined>(undefined);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ variant: 'success' | 'danger'; text: string }>();
@@ -49,23 +52,34 @@ export function FlowEditorPage() {
   const [publishing, setPublishing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [drawing, setDrawing] = useState(false);
+  const [autosavedAt, setAutosavedAt] = useState<Date>();
 
   useEffect(() => {
     if (route.data !== undefined) savedYaml.current = route.data;
   }, [route.data]);
 
-  const onChange = useCallback((yaml: string) => setDirty(yaml !== savedYaml.current), []);
+  const onChange = useCallback((yaml: string) => {
+    latestYaml.current = yaml;
+    setDirty(yaml !== savedYaml.current);
+  }, []);
 
-  const save = useCallback(async (): Promise<boolean> => {
+  /** Saves the draft. An autosave stays quiet unless it fails, and leaves other messages alone. */
+  const save = useCallback(async (auto = false): Promise<boolean> => {
     if (!editor.current || !routeFile) return false;
     setSaving(true);
-    setMessage(undefined);
+    if (!auto) setMessage(undefined);
     try {
       const yaml = await editor.current.getContent();
       await flowsApi.writeFile(id, routeFile, yaml);
       savedYaml.current = yaml;
-      setDirty(false);
-      setMessage({ variant: 'success', text: 'Saved.' });
+      // Edits made while the save was in flight are still unsaved.
+      setDirty(latestYaml.current !== undefined && latestYaml.current !== yaml);
+      if (auto) {
+        setAutosavedAt(new Date());
+      } else {
+        setAutosavedAt(undefined);
+        setMessage({ variant: 'success', text: 'Saved.' });
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['flow', id], exact: true }),
         queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
@@ -113,6 +127,13 @@ export function FlowEditorPage() {
     }
   }, [flow.data]);
 
+  useAutosave({
+    intervalSeconds: settings.data?.autosaveSeconds,
+    dirty,
+    busy: saving || validating || publishing,
+    save: () => save(true),
+  });
+
   // Warn before leaving with unsaved changes, inside the app and when closing the tab.
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
@@ -154,7 +175,15 @@ export function FlowEditorPage() {
           <FlexItem>
             <StatusLabel status={flow.data.status} />
           </FlexItem>
-          {dirty && <FlexItem data-testid="unsaved">Unsaved changes</FlexItem>}
+          {dirty ? (
+            <FlexItem data-testid="unsaved">Unsaved changes</FlexItem>
+          ) : (
+            autosavedAt && (
+              <FlexItem data-testid="autosaved" className="echo-flow-editor__autosaved">
+                Autosaved at {autosavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </FlexItem>
+            )
+          )}
           <FlexItem className="echo-no-print" align={{ default: 'alignRight' }}>
             <Flex gap={{ default: 'gapSm' }}>
               <Button variant="secondary" onClick={validate} isLoading={validating} isDisabled={validating || saving}>

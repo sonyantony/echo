@@ -19,6 +19,10 @@ echo:
     committer-name: ECHO Builder
     committer-email: echo-builder@example.com
 
+  editor:
+    # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.
+    autosave-seconds: 10
+
   branding:
     # The Builder's look for this install (see docs/branding.md). Put logo files in
     # config/branding/ and refer to them as /branding/<file>. Leave a setting out to keep the default.
