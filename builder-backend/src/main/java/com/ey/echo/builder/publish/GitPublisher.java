@@ -19,6 +19,14 @@ public interface GitPublisher {
             String message);
 
     /**
+     * Deletes the flow folder with a normal commit, so it stays recoverable from Git history.
+     *
+     * @param flowName folder name under the flows folder
+     * @return changed is false when the folder was not in the repository
+     */
+    PublishResult remove(String flowName, String author, String message);
+
+    /**
      * @param commitSha the new commit, or the current head when nothing changed
      * @param changed false when the repository already had exactly these files
      */

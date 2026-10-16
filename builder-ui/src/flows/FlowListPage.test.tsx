@@ -78,12 +78,28 @@ describe('Flow list', () => {
     });
     render(<App queryClient={createQueryClient()} />);
     await screen.findByRole('link', { name: 'orders' });
-    await userEvent.click(screen.getByRole('button', { name: 'Kebab toggle' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete orders' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/removed from Git/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     expect(await screen.findByText('No flows yet')).toBeInTheDocument();
     expect(calls.some((c) => c.method === 'DELETE' && c.url === '/api/flows/1')).toBe(true);
+  });
+
+  it('keeps the flow and shows the error when Git refuses the delete', async () => {
+    mockFetch({
+      ...loggedIn,
+      'GET /api/flows': { status: 200, body: [flow(1, 'orders', 'PUBLISHED')] },
+      'DELETE /api/flows/1': { status: 502, body: { detail: 'Git error: push rejected' } },
+    });
+    render(<App queryClient={createQueryClient()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete orders' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(await within(dialog).findByText('Git error: push rejected')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'orders', hidden: true })).toBeInTheDocument();
   });
 
   it('uploads a saved flow zip and opens it', async () => {

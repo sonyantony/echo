@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,6 +46,13 @@ public class PublishController {
             case PublishService.Outcome.Published p -> ResponseEntity.ok(PublishedFlow.of(p.event(), p.changed()));
             case PublishService.Outcome.Invalid i -> ResponseEntity.unprocessableEntity().body(i.validation());
         };
+    }
+
+    /** Deletes the flow from the Builder and, if it was published, from Git. */
+    @DeleteMapping
+    public ResponseEntity<Void> delete(@PathVariable long id, Principal user) {
+        service.delete(id, user.getName());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/history")

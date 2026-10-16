@@ -17,6 +17,7 @@ import {
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
+import { TrashIcon } from '@patternfly/react-icons';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -94,6 +95,7 @@ export function FlowListPage() {
                   <Th>Description</Th>
                   <Th>Status</Th>
                   <Th>Last changed</Th>
+                  <Th screenReaderText="Delete" />
                   <Th screenReaderText="Actions" />
                 </Tr>
               </Thead>
@@ -110,6 +112,21 @@ export function FlowListPage() {
                     <Td dataLabel="Last changed">
                       {new Date(flow.updatedAt).toLocaleString()} by {flow.updatedBy}
                     </Td>
+                    <Td isActionCell>
+                      <Button
+                        variant="secondary"
+                        isDanger
+                        size="sm"
+                        icon={<TrashIcon />}
+                        aria-label={`Delete ${flow.name}`}
+                        onClick={() => {
+                          remove.reset();
+                          setDeleting(flow);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </Td>
                     <Td
                       isActionCell
                       actions={{
@@ -117,8 +134,6 @@ export function FlowListPage() {
                           { title: 'Open', onClick: () => navigate(`/flows/${flow.id}`) },
                           { title: 'Download', onClick: () => downloadFlow(flow.id) },
                           { title: 'Rename', onClick: () => setRenaming(flow) },
-                          { isSeparator: true },
-                          { title: 'Delete', onClick: () => setDeleting(flow) },
                         ],
                       }}
                     />
@@ -171,7 +186,8 @@ export function FlowListPage() {
         <Modal isOpen variant="small" onClose={() => setDeleting(undefined)} aria-labelledby="delete-title">
           <ModalHeader title={`Delete ${deleting.name}?`} titleIconVariant="warning" labelId="delete-title" />
           <ModalBody>
-            This deletes the draft from the Builder. Anything already published stays in Git.
+            This deletes the flow from the Builder. If it was published, its folder is also removed from Git with a
+            commit, so the pipeline stops building it (the old version stays in Git history).
             {remove.isError && <Alert variant="danger" isInline isPlain title={(remove.error as Error).message} />}
           </ModalBody>
           <ModalFooter>

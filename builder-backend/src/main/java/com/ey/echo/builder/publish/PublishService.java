@@ -76,6 +76,26 @@ public class PublishService {
         return new Outcome.Published(event, result.changed());
     }
 
+    /**
+     * Deletes the flow from the Builder and, if it was ever published, its folder from Git (as a
+     * normal commit, so it can be recovered from Git history). Git goes first: if it fails, the
+     * draft is kept and the user can try again.
+     */
+    @Transactional
+    public void delete(long flowId, String user) {
+        var flow = flows.get(flowId);
+        var lastPublish = events.findFirstByFlowIdOrderByPublishedAtDescIdDesc(flowId);
+        if (lastPublish.isPresent()) {
+            if (!git.configured()) {
+                throw new PublishException(("Flow '%s' was published, but publishing is not configured: "
+                        + "set echo.git.url in application.yaml to delete it.").formatted(flow.getName()));
+            }
+            String folder = lastPublish.get().getFlowName();
+            publisher.remove(folder, user, "Delete flow %s".formatted(folder));
+        }
+        flows.delete(flowId);
+    }
+
     @Transactional(readOnly = true)
     public List<PublishEvent> history(long flowId) {
         flows.get(flowId); // 404 for unknown flows
