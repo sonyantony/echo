@@ -1,5 +1,6 @@
 package com.ey.echo.builder.editor;
 
+import com.ey.echo.builder.run.RunProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -7,12 +8,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class EditorSettingsController {
 
-    public record EditorSettings(int autosaveSeconds) {}
+    public record EditorSettings(int autosaveSeconds, boolean runEnabled) {}
 
     private final EditorSettings settings;
 
-    public EditorSettingsController(EditorProperties properties) {
-        this.settings = new EditorSettings(properties.autosaveSeconds());
+    public EditorSettingsController(EditorProperties properties, RunProperties run) {
+        this.settings = new EditorSettings(properties.autosaveSeconds(), run.enabled());
     }
 
     @GetMapping("/api/editor/settings")

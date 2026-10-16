@@ -70,6 +70,16 @@ echo:
   editor:
     # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.
     autosave-seconds: 10
+  run:
+    # The editor's Run button: runs a draft inside the Builder so users can send it requests.
+    enabled: true
+    # Each running flow listens on its own port from this range (publish them in docker-compose).
+    first-port: 8081
+    last-port: 8090
+    # A run with no requests for this many minutes is stopped.
+    idle-minutes: 30
+    # How users reach the run ports, without the port (shown in the editor).
+    public-url: http://localhost
   validation:
     # Version 1 scope: HTTP + JSON, plus the DataMapper's XSLT.
     allowed-components: [platform-http, http, https, xslt-saxon, log, direct]

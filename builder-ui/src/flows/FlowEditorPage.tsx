@@ -13,17 +13,26 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { DownloadIcon, ImageIcon } from '@patternfly/react-icons';
+import { DownloadIcon, ImageIcon, PlayIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useParams } from 'react-router-dom';
-import { downloadFlow, editorSettings, flowsApi, validateFlow, type ValidationResult } from '../api/flows';
+import { ApiError } from '../api/client';
+import {
+  downloadFlow,
+  editorSettings,
+  flowsApi,
+  runApi,
+  validateFlow,
+  type ValidationResult,
+} from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { FLOWS_KEY, StatusLabel } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
 import { PublishModal } from './PublishModal';
 import { publishSummary } from './publishSummary';
+import { RunPanel } from './RunPanel';
 import { useAutosave } from './useAutosave';
 import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
@@ -40,6 +49,14 @@ export function FlowEditorPage() {
     staleTime: Infinity,
   });
   const settings = useQuery({ queryKey: ['editor-settings'], queryFn: editorSettings, staleTime: Infinity });
+  const runEnabled = settings.data?.runEnabled ?? false;
+  // Checked now and then, so a run stopped elsewhere (or for being idle) disappears.
+  const run = useQuery({
+    queryKey: ['flow', id, 'run'],
+    queryFn: () => runApi.status(id),
+    enabled: runEnabled,
+    refetchInterval: 15000,
+  });
 
   const files = useMemo(() => new ApiFlowFiles(id), [id]);
   const editor = useRef<KaotoEditorHandle>(null);
@@ -54,6 +71,8 @@ export function FlowEditorPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [autosavedAt, setAutosavedAt] = useState<Date>();
+  const [starting, setStarting] = useState(false);
+  const [stopping, setStopping] = useState(false);
 
   useEffect(() => {
     if (route.data !== undefined) savedYaml.current = route.data;
@@ -109,6 +128,37 @@ export function FlowEditorPage() {
     }
   }, [dirty, id, save]);
 
+  /** Runs what is on screen inside the Builder: unsaved edits are saved and the draft validated first. */
+  const startRun = useCallback(async () => {
+    setStarting(true);
+    setValidation(undefined);
+    try {
+      if (dirty && !(await save())) return;
+      setMessage(undefined);
+      queryClient.setQueryData(['flow', id, 'run'], await runApi.start(id));
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 422) {
+        setValidation(e.details as ValidationResult);
+      } else {
+        setMessage({ variant: 'danger', text: `Could not run: ${(e as Error).message}` });
+      }
+    } finally {
+      setStarting(false);
+    }
+  }, [dirty, id, save, queryClient]);
+
+  const stopRun = useCallback(async () => {
+    setStopping(true);
+    try {
+      await runApi.stop(id);
+      queryClient.setQueryData(['flow', id, 'run'], null);
+    } catch (e) {
+      setMessage({ variant: 'danger', text: `Could not stop: ${(e as Error).message}` });
+    } finally {
+      setStopping(false);
+    }
+  }, [id, queryClient]);
+
   /** Downloads what is on screen: unsaved edits are saved first. */
   const download = useCallback(async () => {
     if (dirty && !(await save())) return;
@@ -131,7 +181,7 @@ export function FlowEditorPage() {
   useAutosave({
     intervalSeconds: settings.data?.autosaveSeconds,
     dirty,
-    busy: saving || validating || publishing,
+    busy: saving || validating || publishing || starting,
     save: () => save(true),
   });
 
@@ -190,6 +240,22 @@ export function FlowEditorPage() {
               <Button variant="secondary" onClick={validate} isLoading={validating} isDisabled={validating || saving}>
                 Validate
               </Button>
+              {runEnabled && (
+                <Button
+                  variant="secondary"
+                  icon={<PlayIcon />}
+                  onClick={startRun}
+                  isLoading={starting}
+                  isDisabled={starting || saving || validating}
+                  title={
+                    run.data
+                      ? 'Restart the flow with your latest changes'
+                      : 'Run this flow inside the Builder and send it test requests'
+                  }
+                >
+                  {run.data ? 'Restart' : 'Run'}
+                </Button>
+              )}
               <Button variant="secondary" onClick={() => save()} isLoading={saving} isDisabled={saving}>
                 Save
               </Button>
@@ -234,6 +300,11 @@ export function FlowEditorPage() {
         {validation && (
           <div className="echo-flow-editor__message">
             <ValidationPanel result={validation} onClose={() => setValidation(undefined)} />
+          </div>
+        )}
+        {run.data && (
+          <div className="echo-flow-editor__message">
+            <RunPanel flowId={id} run={run.data} onStop={stopRun} stopping={stopping} />
           </div>
         )}
       </PageSection>

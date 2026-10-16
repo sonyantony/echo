@@ -74,6 +74,27 @@
       <groupId>org.apache.camel</groupId>
       <artifactId>camel-yaml-dsl</artifactId>
     </dependency>
+    <!-- Test runs (Run button): the Version 1 components, so a draft can run inside the Builder. -->
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-platform-http-vertx</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-http</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-xslt-saxon</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-log</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-direct</artifactId>
+    </dependency>
     <!-- Publishing: plain Git over HTTPS (or file:// in tests), any Git server. -->
     <dependency>
       <groupId>org.eclipse.jgit</groupId>

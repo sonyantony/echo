@@ -63,6 +63,32 @@ the Version 1 scope (HTTP and JSON components, allowed expression languages, and
 DataMapper files). Errors appear in the panel with the line they refer to. A valid flow shows
 "The flow is valid."
 
+## 3a. Run it and send it a request
+
+Choose **Run** in the editor header. The Builder saves and validates the draft, then starts it
+inside the Builder on its own port (8081 for the first running flow, up to 8090). A panel below
+the header shows:
+
+- the URL to call from your own tools, e.g. `http://localhost:8081/orders`;
+- a box to send a test request (method, path, JSON body) and the reply;
+- the flow's log: each request, its `log` steps, and errors.
+
+**Restart** runs your latest changes; **Stop** ends the run. A run stops by itself after 30
+minutes without requests.
+
+Things to know:
+
+- The flow runs inside the Builder container, so `localhost` in an `http` step is the container.
+  To call a service on your own computer, use `http://host.docker.internal:<port>`.
+- The incoming request's headers travel with the message. Add a **Remove Headers** step (pattern
+  `*`) before calling other services, as the orders flow does, or the incoming path changes the
+  URL called. The log suggests this when it happens.
+- A test run uses the same Camel version and components as the flow image, but not the image's
+  Spring Boot packaging, so build the image (step 5) as the final check.
+- Settings: `echo.run.enabled`, `first-port`, `last-port`, `idle-minutes` and `public-url` (the
+  host users call, shown in the panel) in `config/application.yaml`. docker-compose publishes
+  ports 8081 to 8090.
+
 ## 4. Publish
 
 Choose **Publish**, describe the change and confirm. The Builder validates the flow again,
@@ -99,6 +125,6 @@ curl -s -X POST localhost:8080/orders -H 'Content-Type: application/json' \
 ```
 
 Stop the Builder container first, or run the flow on another port with
-`-e SERVER_PORT=8081`, because both use port 8080. Set `-e FULFILMENT_URL=...` to point the
+`-e SERVER_PORT=8091`, because both use port 8080 (and the Builder keeps 8081 to 8090 for Run). Set `-e FULFILMENT_URL=...` to point the
 flow at a real service. The flow logs JSON (ECS), and its health endpoint is
 `/actuator/health`.

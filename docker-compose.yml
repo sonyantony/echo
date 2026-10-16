@@ -7,6 +7,7 @@ services:
     image: echo-builder:latest
     ports:
       - "8080:8080"
+      - "8081-8090:8081-8090"    # flows started with the editor's Run button (echo.run.*)
     environment:
       # Secrets can come from the shell or a .env file next to this file instead of
       # application.yaml. Passed only when set: an empty value would override application.yaml.

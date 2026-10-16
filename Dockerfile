@@ -30,7 +30,7 @@ ENV ECHO_DATA_DIR=/data
 # Logo, favicon and other branding files for this install (see docs/branding.md).
 ENV ECHO_BRANDING_DIR=/config/branding
 VOLUME /data
-EXPOSE 8080
+EXPOSE 8080 8081-8090
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
   CMD curl -fsS http://localhost:8080/actuator/health || exit 1
 # application.yaml in /config (mounted) overrides the built-in defaults.
