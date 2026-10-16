@@ -54,14 +54,45 @@ export const flowsApi = {
   downloadUrl: (id: number) => `/api/flows/${id}/download`,
 };
 
-/** Saves the flow's draft to the user's computer as <name>.zip (the browser's download). */
-export function downloadFlow(id: number) {
+/** A flow as it is in Git. flowId is the Builder flow it belongs to, if any. */
+export interface PublishedFlowSummary {
+  name: string;
+  description?: string | null;
+  version?: number | null;
+  publishedBy?: string | null;
+  publishedAt?: string | null;
+  flowId?: number | null;
+  /** The Builder flow has changes that are not published yet. */
+  draftChanged: boolean;
+}
+
+const publishedPath = (name: string) => `/api/published-flows/${encodeURIComponent(name)}`;
+
+export const publishedFlowsApi = {
+  list: () => api<PublishedFlowSummary[]>('/api/published-flows'),
+  /** Copies the published flow into the Builder as a new draft. */
+  createDraft: (name: string) => api<FlowDetail>(`${publishedPath(name)}/draft`, { method: 'POST' }),
+  remove: (name: string) => api<void>(publishedPath(name), { method: 'DELETE' }),
+  downloadUrl: (name: string) => `${publishedPath(name)}/download`,
+};
+
+function download(url: string) {
   const link = document.createElement('a');
-  link.href = flowsApi.downloadUrl(id);
+  link.href = url;
   link.download = '';
   document.body.appendChild(link);
   link.click();
   link.remove();
+}
+
+/** Saves the flow's draft to the user's computer as <name>.zip (the browser's download). */
+export function downloadFlow(id: number) {
+  download(flowsApi.downloadUrl(id));
+}
+
+/** Saves the published version of a flow, as it is in Git, as <name>.zip. */
+export function downloadPublishedFlow(name: string) {
+  download(publishedFlowsApi.downloadUrl(name));
 }
 
 export interface ValidationProblem {

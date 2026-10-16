@@ -28,3 +28,25 @@ test('publishes a flow to Git', async ({ page }) => {
   await page.getByRole('button', { name: 'History' }).click();
   await expect(page.getByRole('dialog').getByText(`First version of ${name}`)).toBeVisible();
 });
+
+// The Flows page lists what is in Git as Published, and Delete removes it from Git too.
+test('lists a published flow and deletes it from Git', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('del');
+  await createFlow(page, name);
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByText(/Published to main as [0-9a-f]{8}\./)).toBeVisible();
+
+  await page.goto('/');
+  const row = page.getByRole('row').filter({ hasText: name });
+  await expect(row).toHaveCount(1);
+  await expect(row.getByText('Published v1')).toBeVisible();
+
+  await row.getByRole('button', { name: `Delete ${name}` }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0); // closes once the delete is done
+  await expect(page.getByRole('row').filter({ hasText: name })).toHaveCount(0);
+  expect(git('ls-tree', '--name-only', 'main', 'flows/')).not.toContain(`flows/${name}`);
+  expect(git('log', '-1', '--format=%s|%an', 'main').trim()).toBe(`Delete flow ${name}|designer`);
+});

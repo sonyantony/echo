@@ -33,6 +33,11 @@ public class FlowService {
         return flows.findById(id).orElseThrow(() -> notFound("Flow " + id));
     }
 
+    @Transactional(readOnly = true)
+    public java.util.Optional<Flow> findByName(String name) {
+        return flows.findByNameIgnoreCase(name);
+    }
+
     /** Flow with its file list, loaded inside the transaction. */
     @Transactional(readOnly = true)
     public FlowDtos.FlowDetail detail(long id) {
