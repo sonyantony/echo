@@ -13,7 +13,7 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { DownloadIcon } from '@patternfly/react-icons';
+import { DownloadIcon, ImageIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useParams } from 'react-router-dom';
@@ -48,6 +48,7 @@ export function FlowEditorPage() {
   const [validating, setValidating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [drawing, setDrawing] = useState(false);
 
   useEffect(() => {
     if (route.data !== undefined) savedYaml.current = route.data;
@@ -98,6 +99,19 @@ export function FlowEditorPage() {
     if (dirty && !(await save())) return;
     downloadFlow(id);
   }, [dirty, id, save]);
+
+  /** Saves the diagram on the canvas (unsaved edits included) as <flow name>.png. */
+  const downloadDiagram = useCallback(async () => {
+    if (!editor.current || !flow.data) return;
+    setDrawing(true);
+    try {
+      await editor.current.downloadDiagram(`${flow.data.name}.png`);
+    } catch (e) {
+      setMessage({ variant: 'danger', text: `Could not download the diagram: ${(e as Error).message}` });
+    } finally {
+      setDrawing(false);
+    }
+  }, [flow.data]);
 
   // Warn before leaving with unsaved changes, inside the app and when closing the tab.
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
@@ -157,6 +171,16 @@ export function FlowEditorPage() {
                 title="Save this flow to your computer as a .zip you can upload again later"
               >
                 Download .zip
+              </Button>
+              <Button
+                variant="secondary"
+                icon={<ImageIcon />}
+                onClick={downloadDiagram}
+                isLoading={drawing}
+                isDisabled={drawing}
+                title="Save a picture of the whole flow diagram to your computer"
+              >
+                Download diagram (.png)
               </Button>
               <Button variant="primary" onClick={() => setPublishing(true)} isDisabled={saving || validating}>
                 Publish
