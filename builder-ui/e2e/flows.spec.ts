@@ -72,9 +72,11 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
   const name = uniqueName('zip');
   await createFlow(page, name);
   await addStep(page, 1, 'setBody');
+  // Kaoto's own "documentation" download icon is hidden so it is not mistaken for ours.
+  await expect(page.getByTestId('documentationPreviewButton')).toBeHidden();
 
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download' }).click();
+  await page.getByRole('button', { name: 'Download .zip' }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toBe(`${name}.zip`);
   await expect(page.getByTestId('unsaved')).toHaveCount(0); // saved first

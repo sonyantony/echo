@@ -13,6 +13,7 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
+import { DownloadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useParams } from 'react-router-dom';
@@ -148,14 +149,20 @@ export function FlowEditorPage() {
               <Button variant="secondary" onClick={() => save()} isLoading={saving} isDisabled={saving}>
                 Save
               </Button>
+              <Button
+                variant="secondary"
+                icon={<DownloadIcon />}
+                onClick={download}
+                isDisabled={saving}
+                title="Save this flow to your computer as a .zip you can upload again later"
+              >
+                Download .zip
+              </Button>
               <Button variant="primary" onClick={() => setPublishing(true)} isDisabled={saving || validating}>
                 Publish
               </Button>
               <Button variant="link" onClick={() => setShowHistory(true)}>
                 History
-              </Button>
-              <Button variant="link" onClick={download} isDisabled={saving}>
-                Download
               </Button>
             </Flex>
           </FlexItem>

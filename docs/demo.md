@@ -45,7 +45,7 @@ To skip the drawing, zip the `samples/flows/orders/` folder and choose **Upload 
 Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}`), as
 `demo.spec.ts` does.
 
-**Download** (in the editor, or a flow's menu on the Flows page) saves the flow folder to your
+**Download .zip** (in the editor header, or Download in a flow's menu on the Flows page) saves the flow folder to your
 computer as `<name>.zip`; **Upload flow** opens such a zip again as a new draft. An upload never
 overwrites an existing flow: give it a new name if the name is taken.
 

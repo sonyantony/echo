@@ -39,3 +39,9 @@
     break-inside: avoid;
   }
 }
+
+/* Kaoto's "Generate Route Documentation" button is a download icon that saves Markdown and
+   images, easily mistaken for the Builder's own Download (the flow as a zip). Hide it. */
+.echo-kaoto-host__editor .context-toolbar .pf-v6-c-toolbar__item:has(> [data-testid='documentationPreviewButton']) {
+  display: none;
+}
