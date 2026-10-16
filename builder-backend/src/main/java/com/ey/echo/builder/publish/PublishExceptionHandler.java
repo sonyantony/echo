@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/** Git errors (unreachable server, rejected push, not configured) as 502 problem details. */
+/** Publish target errors (unreachable server, rejected push, not configured) as 502 problem details. */
 @RestControllerAdvice(assignableTypes = {PublishController.class, PublishedFlowController.class})
 class PublishExceptionHandler {
 

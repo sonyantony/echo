@@ -23,7 +23,13 @@ function renderModal() {
 
 describe('PublishModal', () => {
   it('saves first, then publishes with the message', async () => {
-    const published = { commitSha: 'abc12345def', branch: 'main', publishedBy: 'designer', publishedAt: '', message: 'm', changed: true };
+    const published = {
+      publishedBy: 'designer',
+      publishedAt: '',
+      message: 'm',
+      changed: true,
+      targets: [{ target: 'git', name: 'Git', location: 'main', revision: 'abc12345def', changed: true }],
+    };
     const { calls } = mockFetch({ 'POST /api/flows/7/publish': { status: 200, body: published } });
     const props = renderModal();
 
@@ -31,7 +37,7 @@ describe('PublishModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     expect(props.beforePublish).toHaveBeenCalled();
-    expect(calls[0].body).toEqual({ message: 'Add mapping' });
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ message: 'Add mapping' });
     expect(props.onPublished).toHaveBeenCalledWith(published);
   });
 
@@ -50,5 +56,21 @@ describe('PublishModal', () => {
     renderModal();
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
     expect(await screen.findByText('Git error: connection refused')).toBeInTheDocument();
+  });
+
+  it('lists where the flow will be published', async () => {
+    mockFetch({
+      'GET /api/publish-targets': {
+        status: 200,
+        body: [
+          { id: 'git', name: 'Git', location: 'https://git.example.com/flows.git (branch main)' },
+          { id: 's3', name: 'S3', location: 's3://bucket/flows/' },
+        ],
+      },
+    });
+    renderModal();
+    const list = await screen.findByRole('list', { name: 'Publish targets' });
+    expect(list).toHaveTextContent('Git: https://git.example.com/flows.git (branch main)');
+    expect(list).toHaveTextContent('S3: s3://bucket/flows/');
   });
 });

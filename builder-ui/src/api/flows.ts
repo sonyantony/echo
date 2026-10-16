@@ -54,7 +54,7 @@ export const flowsApi = {
   downloadUrl: (id: number) => `/api/flows/${id}/download`,
 };
 
-/** A flow as it is in Git. flowId is the Builder flow it belongs to, if any. */
+/** A flow as it is in the publish target (Git, else S3). flowId is the Builder flow it belongs to, if any. */
 export interface PublishedFlowSummary {
   name: string;
   description?: string | null;
@@ -108,14 +108,36 @@ export interface ValidationResult {
 
 export const validateFlow = (id: number) => api<ValidationResult>(`/api/flows/${id}/validate`, { method: 'POST' });
 
+/** What one publish did in one target (Git, S3, ...). */
+export interface PublishTargetResult {
+  target: string;
+  /** The target's name for users, e.g. Git. */
+  name: string;
+  /** Where the flow went: the branch for Git, the folder URL for S3. */
+  location: string;
+  /** The commit for Git; null for targets without revisions. */
+  revision?: string | null;
+  changed: boolean;
+  /** Why this target failed; the others still got the flow. */
+  error?: string | null;
+}
+
 export interface PublishedFlow {
-  commitSha: string;
-  branch: string;
   publishedBy: string;
   publishedAt: string;
   message: string;
   changed: boolean;
+  targets: PublishTargetResult[];
 }
+
+/** An enabled publish target. */
+export interface PublishTarget {
+  id: string;
+  name: string;
+  location: string;
+}
+
+export const publishTargets = () => api<PublishTarget[]>('/api/publish-targets');
 
 export const publishFlow = (id: number, message: string) =>
   api<PublishedFlow>(`/api/flows/${id}/publish`, { method: 'POST', json: { message } });

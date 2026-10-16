@@ -37,7 +37,7 @@ export const FLOWS_KEY = ['flows'];
 /** Under FLOWS_KEY, so refreshing the flows also refreshes what is published. */
 const PUBLISHED_KEY = [...FLOWS_KEY, 'published'];
 
-/** One row of the list: a Builder flow, or a flow as it is in Git. */
+/** One row of the list: a Builder flow, or a flow as it is in the publish target. */
 type Row = { kind: 'draft'; flow: FlowSummary } | { kind: 'published'; published: PublishedFlowSummary };
 
 /**
@@ -123,7 +123,7 @@ export function FlowListPage() {
         {flows.isPending && <Spinner aria-label="Loading flows" />}
         {flows.isError && <Alert variant="danger" isInline title="Could not load flows" />}
         {published.isError && (
-          <Alert variant="warning" isInline title="Could not read the published flows from Git">
+          <Alert variant="warning" isInline title="Could not read the published flows">
             {(published.error as Error).message} Only the drafts in the Builder are shown.
           </Alert>
         )}
@@ -204,7 +204,7 @@ export function FlowListPage() {
                       <Td dataLabel="Last changed">
                         {row.published.publishedAt
                           ? `${new Date(row.published.publishedAt).toLocaleString()} by ${row.published.publishedBy ?? 'unknown'}`
-                          : 'Added in Git'}
+                          : 'Added outside the Builder'}
                       </Td>
                       <Td isActionCell>{deleteButton(row, row.published.name)}</Td>
                       <Td
@@ -294,16 +294,16 @@ export function FlowListPage() {
   );
 }
 
-const FROM_GIT =
-  'is removed from Git with a commit, so the pipeline stops building it (the old version stays in Git history).';
+const FROM_TARGETS =
+  'is removed from every publish target, so the pipeline stops building it (Git keeps the old version in its history).';
 
 function deleteMessage(row: Row, publishedVersion: PublishedFlowSummary | undefined) {
   if (row.kind === 'published') {
     return row.published.flowId != null
-      ? `The flow ${FROM_GIT} Its draft in the Builder is deleted too.`
-      : `The flow ${FROM_GIT}`;
+      ? `The flow ${FROM_TARGETS} Its draft in the Builder is deleted too.`
+      : `The flow ${FROM_TARGETS}`;
   }
   return publishedVersion
-    ? `This deletes the draft from the Builder, and the published version ${FROM_GIT}`
-    : 'This deletes the draft from the Builder. It was never published, so Git is not changed.';
+    ? `This deletes the draft from the Builder, and the published version ${FROM_TARGETS}`
+    : 'This deletes the draft from the Builder. It was never published, so the publish targets are not changed.';
 }

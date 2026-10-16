@@ -23,6 +23,7 @@ import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHo
 import { FLOWS_KEY, StatusLabel } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
 import { PublishModal } from './PublishModal';
+import { publishSummary } from './publishSummary';
 import { useAutosave } from './useAutosave';
 import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
@@ -46,7 +47,7 @@ export function FlowEditorPage() {
   const latestYaml = useRef<string | undefined>(undefined);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ variant: 'success' | 'danger'; text: string }>();
+  const [message, setMessage] = useState<{ variant: 'success' | 'warning' | 'danger'; text: string }>();
   const [validation, setValidation] = useState<ValidationResult>();
   const [validating, setValidating] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -261,12 +262,7 @@ export function FlowEditorPage() {
           onPublished={async (result) => {
             setPublishing(false);
             setValidation(undefined);
-            setMessage({
-              variant: 'success',
-              text: result.changed
-                ? `Published to ${result.branch} as ${result.commitSha.slice(0, 8)}.`
-                : `Nothing changed since the last publish (${result.commitSha.slice(0, 8)}).`,
-            });
+            setMessage(publishSummary(result));
             await Promise.all([
               queryClient.invalidateQueries({ queryKey: ['flow', id] }),
               queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),

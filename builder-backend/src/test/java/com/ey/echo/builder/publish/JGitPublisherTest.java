@@ -21,7 +21,7 @@ class JGitPublisherTest {
     void setUp() throws Exception {
         remote = new GitTestRepo(tmp.resolve("remote.git"));
         publisher = new JGitPublisher(new GitProperties(remote.url(), "main", null, null, null, "echo@example.com",
-                tmp.resolve("workdir"), null));
+                tmp.resolve("workdir"), null, null));
     }
 
     private static Map<String, String> orders(String yaml) {
@@ -33,9 +33,9 @@ class JGitPublisherTest {
         var result = publisher.publish("orders", null, orders("- route: {}\n"), "alice", "Publish orders");
 
         assertThat(result.changed()).isTrue();
-        assertThat(result.branch()).isEqualTo("main");
+        assertThat(result.location()).isEqualTo("main");
         var head = remote.head("main");
-        assertThat(head.getName()).isEqualTo(result.commitSha());
+        assertThat(head.getName()).isEqualTo(result.revision());
         assertThat(head.getFullMessage()).isEqualTo("Publish orders");
         assertThat(head.getAuthorIdent().getName()).isEqualTo("alice");
         assertThat(head.getCommitterIdent().getName()).isEqualTo("ECHO Builder");
@@ -50,8 +50,8 @@ class JGitPublisherTest {
         var second = publisher.publish("orders", "orders", orders("v1"), "alice", "two");
 
         assertThat(second.changed()).isFalse();
-        assertThat(second.commitSha()).isEqualTo(first.commitSha());
-        assertThat(remote.head("main").getName()).isEqualTo(first.commitSha());
+        assertThat(second.revision()).isEqualTo(first.revision());
+        assertThat(remote.head("main").getName()).isEqualTo(first.revision());
     }
 
     @Test
@@ -83,7 +83,7 @@ class JGitPublisherTest {
         var head = remote.head("main");
         assertThat(head.getFullMessage()).isEqualTo("Delete flow orders");
         assertThat(head.getAuthorIdent().getName()).isEqualTo("bob");
-        assertThat(head.getParent(0).getName()).isEqualTo(published.commitSha()); // history keeps the old files
+        assertThat(head.getParent(0).getName()).isEqualTo(published.revision()); // history keeps the old files
     }
 
     @Test
@@ -93,7 +93,7 @@ class JGitPublisherTest {
         var result = publisher.remove("refunds", "bob", "Delete flow refunds");
 
         assertThat(result.changed()).isFalse();
-        assertThat(remote.head("main").getName()).isEqualTo(first.commitSha());
+        assertThat(remote.head("main").getName()).isEqualTo(first.revision());
     }
 
     @Test
@@ -108,7 +108,7 @@ class JGitPublisherTest {
         publisher.publish("orders", null, orders("v1"), "alice", "one");
         remote.pushFromElsewhere(tmp.resolve("other"), "flows/refunds/refunds.camel.yaml", "r1");
 
-        assertThat(publisher.list()).extracting(GitPublisher.PublishedFolder::name)
+        assertThat(publisher.list()).extracting(FlowPublisher.PublishedFolder::name)
                 .containsExactly("orders", "refunds");
         assertThat(publisher.list().get(1).files()).containsEntry("refunds.camel.yaml", "r1");
         assertThat(publisher.read("orders")).contains(orders("v1"));
@@ -146,7 +146,7 @@ class JGitPublisherTest {
     @Test
     void unreachableRemoteFailsWithAGitError() {
         var broken = new JGitPublisher(new GitProperties(tmp.resolve("missing.git").toUri().toString(), "main", null,
-                null, null, null, tmp.resolve("wd2"), null));
+                null, null, null, tmp.resolve("wd2"), null, null));
         assertThatThrownBy(() -> broken.publish("orders", null, orders("v1"), "alice", "one"))
                 .isInstanceOf(PublishException.class).hasMessageStartingWith("Git error");
     }

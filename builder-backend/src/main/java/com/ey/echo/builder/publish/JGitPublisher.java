@@ -27,11 +27,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link GitPublisher} on JGit: keeps a working copy in {@code echo.git.workdir}, resets it to
+ * {@link FlowPublisher} for Git, on JGit: keeps a working copy in {@code echo.git.workdir}, resets it to
  * the remote branch before each publish, writes the flow folder, commits with the user as
  * author and pushes. Publishes are serialised with a lock, which is enough for about ten users.
  */
-public class JGitPublisher implements GitPublisher {
+public class JGitPublisher implements FlowPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(JGitPublisher.class);
     private static final String REMOTE = "origin";
@@ -42,6 +42,27 @@ public class JGitPublisher implements GitPublisher {
 
     public JGitPublisher(GitProperties props) {
         this.props = props;
+    }
+
+    @Override
+    public String id() {
+        return "git";
+    }
+
+    @Override
+    public String displayName() {
+        return "Git";
+    }
+
+    @Override
+    public String location() {
+        String url = props.url() == null ? "" : props.url().replaceFirst("^(\\w+://)[^/@]*@", "$1"); // no credentials
+        return "%s (branch %s)".formatted(url, props.branch());
+    }
+
+    @Override
+    public boolean enabled() {
+        return props.active();
     }
 
     @Override

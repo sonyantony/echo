@@ -22,6 +22,8 @@ Publishing always validates first and refuses an invalid flow (HTTP 422 with the
 
 ## Publishing
 
+(The publisher interface is now `FlowPublisher` with Git and S3 targets: see 0003.)
+
 - `GitPublisher` interface, `JGitPublisher` implementation: a Builder-owned working copy in
   `<data-dir>/git` is reset to the remote branch, `flows/<name>/` is replaced with the draft's
   files plus `echo-flow.json`, then committed (author = Builder user, committer = configured

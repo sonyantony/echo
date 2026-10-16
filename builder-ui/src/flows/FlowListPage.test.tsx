@@ -117,7 +117,7 @@ describe('Flow list', () => {
     render(<App queryClient={createQueryClient()} />);
     await userEvent.click(await screen.findByRole('button', { name: 'Delete orders' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText(/removed from Git with a commit/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/removed from every publish target/)).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     expect(await screen.findByText('No flows yet')).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe('Flow list', () => {
       'GET /api/published-flows': { status: 502, body: { detail: 'Git error: connection refused' } },
     });
     render(<App queryClient={createQueryClient()} />);
-    expect(await screen.findByText('Could not read the published flows from Git')).toBeInTheDocument();
+    expect(await screen.findByText('Could not read the published flows')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'refunds' })).toBeInTheDocument();
   });
 
@@ -170,7 +170,7 @@ describe('Flow list', () => {
     await screen.findByRole('link', { name: 'orders' });
     await userEvent.click(screen.getByRole('button', { name: 'Delete orders' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText(/never published, so Git is not changed/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/never published, so the publish targets are not changed/)).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     expect(await screen.findByText('No flows yet')).toBeInTheDocument();

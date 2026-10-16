@@ -1,12 +1,13 @@
 # ECHO
 
 ECHO has two parts: the **Builder** (web drag-and-drop designer for Camel YAML DSL flows,
-publishes them to Git) and the **Runtime** (each flow exported by Camel JBang to a Spring Boot
+publishes them to Git and/or S3) and the **Runtime** (each flow exported by Camel JBang to a Spring Boot
 app and built into an image by the buyer's pipeline).
 
 - Requirements: `docs/Initial Requirements.md`. Build plan and milestones: `docs/ECHO Builder Plan.md`.
 - Decisions: `docs/decisions/` (one short note per significant choice).
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
+- Publish targets (Git, S3; each with `enabled`) are per install config: `docs/publishing.md`.
 - Version 1 is a demo prototype: prefer simple over production-hardened, but keep the seams
   (auth, Git provider, CI, secrets, database) swappable. No cloud SDKs, no provider-specific
   Git APIs, no hard-wired CI or IdP.
@@ -65,5 +66,5 @@ Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar 
 - A flow is a folder: `<name>.camel.yaml` plus side files next to it (DataMapper
   `kaoto-datamapper-*.xsl`, `*.schema.json`, `.kaoto` metadata, `application.properties`).
 - Every milestone's "done when" check becomes an automated test. Tests run offline: Git is a
-  local bare repo, downstream HTTP is mocked.
+  local bare repo, S3 is an in-memory fake (`FakeS3`), downstream HTTP is mocked.
 - Run the relevant tests before every commit.

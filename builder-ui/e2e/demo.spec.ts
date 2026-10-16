@@ -49,7 +49,7 @@ test('the orders flow with DataMapper validates and publishes', async ({ page })
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await page.getByRole('dialog').getByLabel('What changed?').fill('Orders flow for the demo');
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
-  await expect(page.getByText(/Published to main as [0-9a-f]{8}\./)).toBeVisible();
+  await expect(page.getByText(/Published to Git \(main, [0-9a-f]{8}\)\./)).toBeVisible();
 
   const published = git('ls-tree', '--name-only', `main:flows/${name}`).trim().split('\n');
   expect(published).toEqual(

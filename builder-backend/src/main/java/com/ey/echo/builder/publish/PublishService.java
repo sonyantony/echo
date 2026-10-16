@@ -8,47 +8,56 @@ import com.ey.echo.builder.validation.ValidationResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Validates a flow, writes it to Git and records the publish. */
+/** Validates a flow, writes it to every enabled publish target and records the publish. */
 @Service
 public class PublishService {
+
+    private static final Logger log = LoggerFactory.getLogger(PublishService.class);
 
     /** ECHO's own metadata file in each published flow folder. */
     public static final String METADATA_FILE = "echo-flow.json";
 
     private final FlowService flows;
     private final FlowValidator validator;
-    private final GitPublisher publisher;
-    private final GitProperties git;
+    private final PublishTargets targets;
     private final PublishEventRepository events;
     private final Clock clock;
     private final ObjectMapper json = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
-    public PublishService(FlowService flows, FlowValidator validator, GitPublisher publisher, GitProperties git,
+    public PublishService(FlowService flows, FlowValidator validator, PublishTargets targets,
             PublishEventRepository events, Clock clock) {
         this.flows = flows;
         this.validator = validator;
-        this.publisher = publisher;
-        this.git = git;
+        this.targets = targets;
         this.events = events;
         this.clock = clock;
     }
 
     public sealed interface Outcome {
-        record Published(PublishEvent event, boolean changed) implements Outcome {}
+        /**
+         * @param event the recorded publish (the previous one if nothing changed anywhere)
+         * @param targets what this publish did in each enabled target, including failures
+         */
+        record Published(PublishEvent event, List<TargetOutcome> targets, boolean changed) implements Outcome {}
 
         record Invalid(ValidationResult validation) implements Outcome {}
     }
 
+    /**
+     * Publishes to every enabled target. A target that fails does not stop the others: the result
+     * lists each target's outcome. Only when every target fails is the publish an error.
+     */
     @Transactional
     public Outcome publish(long flowId, String user, String message) {
-        if (!git.configured()) {
-            throw new PublishException("Publishing is not configured: set echo.git.url in application.yaml.");
-        }
+        var enabled = targets.require();
         var flow = flows.get(flowId);
         var files = new LinkedHashMap<>(flows.files(flowId));
         var validation = validator.validate(FlowNames.routeFile(flow.getName()), files);
@@ -64,34 +73,44 @@ public class PublishService {
         String commitMessage = message == null || message.isBlank()
                 ? "Publish flow %s (version %d)".formatted(flow.getName(), version)
                 : message.strip();
-        var result = publisher.publish(flow.getName(), previous.map(PublishEvent::getFlowName).orElse(null), files,
-                user, commitMessage);
+        String previousName = previous.map(PublishEvent::getFlowName).orElse(null);
+        var outcomes = new ArrayList<TargetOutcome>();
+        for (var target : enabled) {
+            try {
+                outcomes.add(TargetOutcome.of(target,
+                        target.publish(flow.getName(), previousName, files, user, commitMessage)));
+            } catch (RuntimeException e) {
+                log.warn("Publishing flow {} to {} failed", flow.getName(), target.displayName(), e);
+                outcomes.add(TargetOutcome.failed(target, e.getMessage() == null ? e.toString() : e.getMessage()));
+            }
+        }
+        if (outcomes.stream().noneMatch(TargetOutcome::ok)) {
+            throw new PublishException(outcomes.stream()
+                    .map(o -> targets.displayName(o.target()) + ": " + o.error())
+                    .collect(java.util.stream.Collectors.joining("; ")));
+        }
 
         flow.setStatus(FlowStatus.PUBLISHED);
-        if (!result.changed() && previous.isPresent()) {
-            return new Outcome.Published(previous.get(), false);
+        boolean changed = outcomes.stream().anyMatch(TargetOutcome::changed);
+        if (!changed && previous.isPresent() && outcomes.stream().allMatch(TargetOutcome::ok)) {
+            return new Outcome.Published(previous.get(), outcomes, false);
         }
-        var event = events.save(new PublishEvent(flowId, flow.getName(), result.commitSha(), result.branch(), user,
-                now, commitMessage));
-        return new Outcome.Published(event, result.changed());
+        var event = events.save(new PublishEvent(flowId, flow.getName(), outcomes, user, now, commitMessage));
+        return new Outcome.Published(event, outcomes, changed);
     }
 
     /**
-     * Deletes the flow from the Builder and, if it was ever published, its folder from Git (as a
-     * normal commit, so it can be recovered from Git history). Git goes first: if it fails, the
-     * draft is kept and the user can try again.
+     * Deletes the flow from the Builder and, if it was ever published, its folder from every
+     * enabled target (in Git as a normal commit, so it can be recovered from Git history). The
+     * targets go first: if one fails, the draft is kept and the user can try again.
      */
     @Transactional
     public void delete(long flowId, String user) {
-        var flow = flows.get(flowId);
+        flows.get(flowId); // 404 for unknown flows
         var lastPublish = events.findFirstByFlowIdOrderByPublishedAtDescIdDesc(flowId);
         if (lastPublish.isPresent()) {
-            if (!git.configured()) {
-                throw new PublishException(("Flow '%s' was published, but publishing is not configured: "
-                        + "set echo.git.url in application.yaml to delete it.").formatted(flow.getName()));
-            }
             String folder = lastPublish.get().getFlowName();
-            publisher.remove(folder, user, "Delete flow %s".formatted(folder));
+            targets.removeEverywhere(folder, user, "Delete flow %s".formatted(folder));
         }
         flows.delete(flowId);
     }
