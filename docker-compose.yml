@@ -8,10 +8,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Secrets can come from the environment instead of application.yaml.
-      ECHO_GIT_TOKEN: ${ECHO_GIT_TOKEN:-}
-      ECHO_S3_ACCESS_KEY: ${ECHO_S3_ACCESS_KEY:-}
-      ECHO_S3_SECRET_KEY: ${ECHO_S3_SECRET_KEY:-}
+      # Secrets can come from the shell or a .env file next to this file instead of
+      # application.yaml. Passed only when set: an empty value would override application.yaml.
+      - ECHO_GIT_TOKEN
+      - ECHO_S3_ACCESS_KEY
+      - ECHO_S3_SECRET_KEY
     volumes:
       - echo-data:/data          # H2 database and the Git working copy
       - ./config:/config:ro      # application.yaml with users and the flow repository

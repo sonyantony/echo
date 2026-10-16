@@ -32,6 +32,10 @@ echo:
 
 Environment variables work too: `ECHO_GIT_ENABLED`, `ECHO_S3_ENABLED`, `ECHO_S3_BUCKET`,
 `ECHO_S3_REGION`, `ECHO_S3_ENDPOINT`, `ECHO_S3_ACCESS_KEY`, `ECHO_S3_SECRET_KEY`.
+With docker compose, the secrets can sit in `config/application.yaml` or come from the shell or
+a `.env` file next to `docker-compose.yml` (git-ignored). Compose passes a secret only when it is
+set, so an unset variable never blanks a value in `application.yaml`. After changing `.env`, run
+`docker compose up -d`; `restart` does not pick up new environment values.
 
 ## Behaviour
 
