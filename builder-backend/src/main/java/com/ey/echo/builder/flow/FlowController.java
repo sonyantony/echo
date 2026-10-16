@@ -85,11 +85,7 @@ public class FlowController {
         return service.detail(id);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable long id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
-    }
+    // DELETE /{id} is in PublishController: deleting a published flow also removes it from Git.
 
     // {*path} captures the rest of the URL (with a leading slash), so files may sit in sub-folders.
 

@@ -72,6 +72,37 @@ class JGitPublisherTest {
     }
 
     @Test
+    void removeDeletesOnlyThatFlowFolderWithACommit() throws Exception {
+        publisher.publish("orders", null, orders("v1"), "alice", "one");
+        var published = publisher.publish("refunds", null, Map.of("refunds.camel.yaml", "v1"), "alice", "two");
+
+        var result = publisher.remove("orders", "bob", "Delete flow orders");
+
+        assertThat(result.changed()).isTrue();
+        assertThat(remote.files("main")).containsExactly("flows/refunds/refunds.camel.yaml");
+        var head = remote.head("main");
+        assertThat(head.getFullMessage()).isEqualTo("Delete flow orders");
+        assertThat(head.getAuthorIdent().getName()).isEqualTo("bob");
+        assertThat(head.getParent(0).getName()).isEqualTo(published.commitSha()); // history keeps the old files
+    }
+
+    @Test
+    void removingAFlowThatIsNotInGitChangesNothing() throws Exception {
+        var first = publisher.publish("orders", null, orders("v1"), "alice", "one");
+
+        var result = publisher.remove("refunds", "bob", "Delete flow refunds");
+
+        assertThat(result.changed()).isFalse();
+        assertThat(remote.head("main").getName()).isEqualTo(first.commitSha());
+    }
+
+    @Test
+    void removeRejectsNamesOutsideTheFlowsFolder() {
+        assertThatThrownBy(() -> publisher.remove("..", "bob", "x")).isInstanceOf(PublishException.class);
+        assertThatThrownBy(() -> publisher.remove("../README.md", "bob", "x")).isInstanceOf(PublishException.class);
+    }
+
+    @Test
     void otherFlowsAndFilesInTheRepositoryAreKept() throws Exception {
         publisher.publish("orders", null, orders("v1"), "alice", "one");
         remote.pushFromElsewhere(tmp.resolve("other-clone"), "Jenkinsfile", "pipeline {}");

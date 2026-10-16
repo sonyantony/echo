@@ -21,8 +21,7 @@ test('creates, renames and deletes a flow', async ({ page }) => {
   const renamedRow = page.getByRole('row').filter({ hasText: renamed });
   await expect(renamedRow).toBeVisible();
 
-  await renamedRow.getByRole('button', { name: 'Kebab toggle' }).click();
-  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await renamedRow.getByRole('button', { name: `Delete ${renamed}` }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByRole('link', { name: renamed })).toHaveCount(0);
 });

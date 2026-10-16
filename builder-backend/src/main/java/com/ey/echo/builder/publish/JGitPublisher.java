@@ -43,11 +43,25 @@ public class JGitPublisher implements GitPublisher {
     @Override
     public PublishResult publish(String flowName, String previousName, Map<String, String> files, String author,
             String message) {
+        return commit(flowName, author, message, git -> writeFlow(git, flowName, previousName, files));
+    }
+
+    @Override
+    public PublishResult remove(String flowName, String author, String message) {
+        return commit(flowName, author, message, git -> removeFlow(git, flowName));
+    }
+
+    /** Changes the working copy; returns false if nothing changed. */
+    private interface Change {
+        boolean apply(Git git) throws GitAPIException, IOException;
+    }
+
+    private PublishResult commit(String flowName, String author, String message, Change change) {
         lock.lock();
         try (Git git = openWorkingCopy()) {
             for (int attempt = 1; ; attempt++) {
                 syncWithRemote(git);
-                if (!writeFlow(git, flowName, previousName, files)) {
+                if (!change.apply(git)) {
                     return new PublishResult(head(git), props.branch(), false);
                 }
                 var authorIdent = new PersonIdent(author, props.committerEmail());
@@ -55,7 +69,7 @@ public class JGitPublisher implements GitPublisher {
                 var commit = git.commit().setMessage(message).setAuthor(authorIdent).setCommitter(committer)
                         .setSign(false).call();
                 if (push(git)) {
-                    log.info("Published flow {} as {} on {}", flowName, commit.getName(), props.branch());
+                    log.info("Committed flow {} as {} on {}", flowName, commit.getName(), props.branch());
                     return new PublishResult(commit.getName(), props.branch(), true);
                 }
                 if (attempt >= ATTEMPTS) {
@@ -103,12 +117,8 @@ public class JGitPublisher implements GitPublisher {
     /** Replaces the flow folder's content. Returns false if nothing changed. */
     private boolean writeFlow(Git git, String flowName, String previousName, Map<String, String> files)
             throws GitAPIException, IOException {
-        Path root = git.getRepository().getWorkTree().toPath();
-        Path flows = root.resolve(props.flowsFolder());
-        Path folder = flows.resolve(flowName).normalize();
-        if (!folder.startsWith(flows)) {
-            throw new PublishException("Invalid flow name: " + flowName);
-        }
+        Path folder = flowFolder(git, flowName);
+        Path flows = folder.getParent();
         deleteRecursively(folder);
         if (previousName != null && !previousName.equals(flowName)) {
             deleteRecursively(flows.resolve(previousName).normalize());
@@ -121,6 +131,26 @@ public class JGitPublisher implements GitPublisher {
             Files.createDirectories(target.getParent());
             Files.writeString(target, file.getValue());
         }
+        return stage(git);
+    }
+
+    /** Deletes the flow folder. Returns false if it was not there. */
+    private boolean removeFlow(Git git, String flowName) throws GitAPIException, IOException {
+        deleteRecursively(flowFolder(git, flowName));
+        return stage(git);
+    }
+
+    private Path flowFolder(Git git, String flowName) {
+        Path flows = git.getRepository().getWorkTree().toPath().resolve(props.flowsFolder());
+        Path folder = flows.resolve(flowName).normalize();
+        if (!folder.startsWith(flows) || folder.equals(flows)) {
+            throw new PublishException("Invalid flow name: " + flowName);
+        }
+        return folder;
+    }
+
+    /** Stages everything under the flows folder. Returns false if nothing changed. */
+    private boolean stage(Git git) throws GitAPIException {
         git.add().addFilepattern(props.flowsFolder()).call();
         git.add().addFilepattern(props.flowsFolder()).setUpdate(true).call(); // stage deletions
         var status = git.status().call();

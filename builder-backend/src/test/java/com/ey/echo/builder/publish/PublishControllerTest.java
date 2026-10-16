@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -126,6 +127,43 @@ class PublishControllerTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.valid").value(false))
                 .andExpect(jsonPath("$.problems[0].message", containsString("kafka")));
+        var after = REMOTE.head("main");
+        assertThat(after == null ? null : after.getName()).isEqualTo(before == null ? null : before.getName());
+    }
+
+    @Test
+    void deletingAPublishedFlowRemovesItFromTheBuilderAndFromGit() throws Exception {
+        long id = create("payments");
+        mvc.perform(as(post("/api/flows/{id}/publish", id))).andExpect(status().isOk());
+        assertThat(REMOTE.files("main")).contains("flows/payments/payments.camel.yaml");
+
+        mvc.perform(as(delete("/api/flows/{id}", id))).andExpect(status().isNoContent());
+
+        assertThat(REMOTE.files("main")).noneMatch(f -> f.startsWith("flows/payments/"));
+        assertThat(REMOTE.head("main").getFullMessage()).isEqualTo("Delete flow payments");
+        assertThat(REMOTE.head("main").getAuthorIdent().getName()).isEqualTo("designer");
+        mvc.perform(as(get("/api/flows/{id}", id))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deletingARenamedPublishedFlowRemovesThePublishedFolder() throws Exception {
+        long id = create("invoices");
+        mvc.perform(as(post("/api/flows/{id}/publish", id))).andExpect(status().isOk());
+        mvc.perform(as(put("/api/flows/{id}", id)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"billing\",\"description\":\"Demo\"}")).andExpect(status().isOk());
+
+        mvc.perform(as(delete("/api/flows/{id}", id))).andExpect(status().isNoContent());
+
+        assertThat(REMOTE.files("main")).noneMatch(f -> f.startsWith("flows/invoices/"));
+    }
+
+    @Test
+    void deletingANeverPublishedFlowLeavesGitAlone() throws Exception {
+        long id = create("drafty");
+        var before = REMOTE.head("main");
+
+        mvc.perform(as(delete("/api/flows/{id}", id))).andExpect(status().isNoContent());
+
         var after = REMOTE.head("main");
         assertThat(after == null ? null : after.getName()).isEqualTo(before == null ? null : before.getName());
     }
