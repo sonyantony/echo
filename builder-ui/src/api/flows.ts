@@ -90,3 +90,10 @@ export const publishFlow = (id: number, message: string) =>
   api<PublishedFlow>(`/api/flows/${id}/publish`, { method: 'POST', json: { message } });
 
 export const flowHistory = (id: number) => api<PublishedFlow[]>(`/api/flows/${id}/history`);
+
+export interface EditorSettings {
+  /** Seconds between autosaves of unsaved changes; 0 means off. */
+  autosaveSeconds: number;
+}
+
+export const editorSettings = () => api<EditorSettings>('/api/editor/settings');

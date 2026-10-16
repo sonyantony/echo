@@ -40,6 +40,10 @@ java -jar target/echo-builder-backend-*.jar --echo.git.url=file:///tmp/echo-flow
    (`order-request` → `fulfilment-request`, `fulfilment-response` → `order-response`), then
    drag fields from the source to the target. Incoming JSON is never passed through verbatim.
 4. Choose **Save**. The editor warns you before you leave a page with unsaved changes.
+   The editor also autosaves the draft every 10 seconds when something has changed since the
+   last save (the header shows "Autosaved at ..."). Change the interval, or set 0 to turn it off,
+   with `echo.editor.autosave-seconds` in `config/application.yaml` (or the environment variable
+   `ECHO_EDITOR_AUTOSAVESECONDS`) and restart the container; no rebuild needed.
 
 To skip the drawing, zip the `samples/flows/orders/` folder and choose **Upload flow** on the
 Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}`), as

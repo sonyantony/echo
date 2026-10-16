@@ -12,11 +12,12 @@ const dataDir = process.env.ECHO_E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'ech
 export const e2eGitRepo = process.env.ECHO_E2E_GIT_REPO ?? join(dataDir, 'flows.git');
 if (!process.env.ECHO_E2E_GIT_REPO) execFileSync('git', ['init', '--bare', '-q', '-b', 'main', e2eGitRepo]);
 process.env.ECHO_E2E_GIT_REPO = e2eGitRepo; // shared with the test workers
+// Autosave is off so tests decide when a save happens; the autosave test turns it on itself.
 // ECHO_E2E_BUNDLED=1: the jar already serves the built UI (mvn -Pwith-ui), so test it on :8080
 // without the Vite dev server. CI does this; locally the default uses Vite for quick iteration.
 const bundled = !!process.env.ECHO_E2E_BUNDLED;
 const backend = {
-  command: `java -jar ${backendJar} --server.port=8080 --echo.data-dir=${dataDir} --echo.git.url=file://${e2eGitRepo}`,
+  command: `java -jar ${backendJar} --server.port=8080 --echo.data-dir=${dataDir} --echo.git.url=file://${e2eGitRepo} --echo.editor.autosave-seconds=0`,
   url: 'http://localhost:8080/actuator/health',
   reuseExistingServer: !process.env.CI,
   timeout: 120_000,

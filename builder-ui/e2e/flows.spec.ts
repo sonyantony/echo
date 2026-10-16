@@ -56,6 +56,29 @@ test('warns before leaving with unsaved changes', async ({ page }) => {
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 });
 
+// Autosave: saves unsaved edits on its interval, and only when something changed.
+test('autosaves changes and does not save again until something changes', async ({ page }) => {
+  await page.route('**/api/editor/settings', (route) => route.fulfill({ json: { autosaveSeconds: 2 } }));
+  const saves: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'PUT' && request.url().endsWith('.camel.yaml')) saves.push(request.url());
+  });
+  await login(page);
+  await createFlow(page, uniqueName('autosave'));
+  await page.waitForTimeout(3_000);
+  expect(saves).toHaveLength(0); // nothing changed yet
+
+  await addStep(page, 1, 'setBody');
+  await expect(page.getByTestId('autosaved')).toBeVisible();
+  await expect(page.getByTestId('unsaved')).toHaveCount(0);
+  expect(saves).toHaveLength(1);
+  await page.waitForTimeout(5_000);
+  expect(saves).toHaveLength(1); // nothing changed since the autosave
+
+  await page.reload();
+  await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
+});
+
 // M6: validation runs from the editor and saves unsaved edits first.
 test('validates a flow from the editor', async ({ page }) => {
   await login(page);

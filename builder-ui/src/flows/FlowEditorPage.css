@@ -8,6 +8,9 @@
   padding: 8px 16px;
   flex: none;
 }
+.echo-flow-editor__autosaved {
+  color: var(--pf-t--global--text--color--subtle);
+}
 .echo-flow-editor__message {
   margin-top: 8px;
 }
