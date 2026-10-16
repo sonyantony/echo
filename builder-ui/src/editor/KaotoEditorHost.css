@@ -45,3 +45,9 @@
 .echo-kaoto-host__editor .context-toolbar .pf-v6-c-toolbar__item:has(> [data-testid='documentationPreviewButton']) {
   display: none;
 }
+/* Kaoto's untitled "export image" button: the Builder's "Download diagram" presses it and saves
+   a tidier PNG under the flow's name (see diagramImage.ts). Hide only the button: the off-screen
+   canvas Kaoto draws the image on is rendered next to it and must stay laid out. */
+.echo-kaoto-host__editor .context-toolbar [data-testid='exportImageButton'] {
+  display: none;
+}

@@ -2,12 +2,15 @@ import { KaotoEditorFactory } from '@kaoto/kaoto';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { FlowFiles } from './flowFiles';
+import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
 import './KaotoEditorHost.css';
 
 export interface KaotoEditorHandle {
   /** Returns the current Camel YAML from the editor. */
   getContent(): Promise<string>;
+  /** Saves the whole flow diagram to the user's computer as a PNG called `fileName`. */
+  downloadDiagram(fileName: string): Promise<void>;
 }
 
 export interface KaotoEditorHostProps {
@@ -46,6 +49,10 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
 
   useImperativeHandle(ref, () => ({
     getContent: async () => (editorRef.current ? editorRef.current.getContent() : initialContent),
+    downloadDiagram: async (fileName) => {
+      if (!containerRef.current) throw new Error('The flow editor is not ready');
+      saveFile(await tidyDiagram(await captureKaotoDiagram(containerRef.current)), fileName);
+    },
   }));
 
   useEffect(() => {

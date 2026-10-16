@@ -49,6 +49,9 @@ Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}
 computer as `<name>.zip`; **Upload flow** opens such a zip again as a new draft. An upload never
 overwrites an existing flow: give it a new name if the name is taken.
 
+**Download diagram (.png)** saves a picture of the whole flow as `<name>.png`, as it is on the
+canvas (unsaved edits included).
+
 ## 3. Validate
 
 Choose **Validate**. The Builder loads the flow with Camel and checks that it stays within
