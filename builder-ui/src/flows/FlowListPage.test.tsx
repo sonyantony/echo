@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { App, createQueryClient } from '../App';
 import { mockFetch } from '../test/fetchMock';
 
+// The editor pulls in Kaoto, which does not load under jsdom; these tests only check navigation.
+vi.mock('./FlowEditorPage', () => ({ FlowEditorPage: () => <p>Flow editor</p> }));
+
 const flow = (id: number, name: string, status = 'DRAFT') => ({
   id,
   name,
@@ -81,5 +84,58 @@ describe('Flow list', () => {
 
     expect(await screen.findByText('No flows yet')).toBeInTheDocument();
     expect(calls.some((c) => c.method === 'DELETE' && c.url === '/api/flows/1')).toBe(true);
+  });
+
+  it('uploads a saved flow zip and opens it', async () => {
+    const { fn } = mockFetch({
+      ...loggedIn,
+      'GET /api/flows': { status: 200, body: [flow(1, 'orders')] },
+      'POST /api/flows/upload': { status: 201, body: { ...flow(3, 'orders-copy'), routeFile: 'orders-copy.camel.yaml' } },
+    });
+    render(<App queryClient={createQueryClient()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Upload flow' }));
+    const dialog = await screen.findByRole('dialog');
+    const upload = within(dialog).getByRole('button', { name: 'Upload' });
+    expect(upload).toBeDisabled();
+
+    const zip = new File(['PK'], 'orders.zip', { type: 'application/zip' });
+    await userEvent.upload(within(dialog).getByLabelText(/Flow file/), zip);
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'orders-copy');
+    await userEvent.click(upload);
+
+    expect(await screen.findByText('Flow editor')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/flows/3');
+    const [, init] = fn.mock.calls.find(([url]) => url === '/api/flows/upload')!;
+    const form = init!.body as FormData;
+    expect((form.get('file') as File).name).toBe('orders.zip');
+    expect(form.get('name')).toBe('orders-copy');
+    expect(new Headers(init!.headers).get('X-XSRF-TOKEN')).toBe('abc');
+  });
+
+  it('shows why an upload was refused', async () => {
+    mockFetch({
+      ...loggedIn,
+      'GET /api/flows': { status: 200, body: [] },
+      'POST /api/flows/upload': { status: 409, body: { detail: "A flow named 'orders' already exists." } },
+    });
+    render(<App queryClient={createQueryClient()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Upload flow' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.upload(within(dialog).getByLabelText(/Flow file/), new File(['PK'], 'orders.zip'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Upload' }));
+    expect(await within(dialog).findByText("A flow named 'orders' already exists.")).toBeInTheDocument();
+  });
+
+  it('offers a download of each flow', async () => {
+    mockFetch({ ...loggedIn, 'GET /api/flows': { status: 200, body: [flow(1, 'orders')] } });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      expect(this.getAttribute('href')).toBe('/api/flows/1/download');
+    });
+    render(<App queryClient={createQueryClient()} />);
+    await screen.findByRole('link', { name: 'orders' });
+    await userEvent.click(screen.getByRole('button', { name: 'Kebab toggle' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Download' }));
+    expect(click).toHaveBeenCalledOnce();
+    click.mockRestore();
   });
 });

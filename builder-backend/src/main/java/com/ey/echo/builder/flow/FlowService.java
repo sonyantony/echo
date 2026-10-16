@@ -58,6 +58,26 @@ public class FlowService {
         return flows.save(flow);
     }
 
+    /**
+     * Creates a flow from an uploaded zip. The flow is named after the zip's route file unless a
+     * name is given, in which case the route file is renamed to match.
+     */
+    public Flow importArchive(FlowArchive.Contents archive, String name, String description, String user) {
+        var flowName = name == null || name.isBlank() ? archive.name() : name.strip();
+        checkName(flowName);
+        if (flows.existsByNameIgnoreCase(flowName)) {
+            throw duplicateName(flowName);
+        }
+        if (description != null && description.length() > 1000) {
+            throw FlowExceptions.descriptionTooLong();
+        }
+        var flow = new Flow(flowName, blankToNull(description), user, now());
+        var originalRoute = FlowNames.routeFile(archive.name());
+        archive.files().forEach((path, content) ->
+                flow.putFile(path.equals(originalRoute) ? FlowNames.routeFile(flowName) : path, content));
+        return flows.save(flow);
+    }
+
     /** Renames and/or re-describes a flow. Renaming also renames its route file. */
     public Flow update(long id, String name, String description, String user) {
         var flow = get(id);

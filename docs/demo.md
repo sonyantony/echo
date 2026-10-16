@@ -41,9 +41,13 @@ java -jar target/echo-builder-backend-*.jar --echo.git.url=file:///tmp/echo-flow
    drag fields from the source to the target. Incoming JSON is never passed through verbatim.
 4. Choose **Save**. The editor warns you before you leave a page with unsaved changes.
 
-To skip the drawing, load the finished files from `samples/flows/orders/` into the flow
-through the API (`PUT /api/flows/{id}/files/{path}`), as `demo.spec.ts` does. Save the route
-as `orders.camel.yaml`.
+To skip the drawing, zip the `samples/flows/orders/` folder and choose **Upload flow** on the
+Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}`), as
+`demo.spec.ts` does.
+
+**Download** (in the editor, or a flow's menu on the Flows page) saves the flow folder to your
+computer as `<name>.zip`; **Upload flow** opens such a zip again as a new draft. An upload never
+overwrites an existing flow: give it a new name if the name is taken.
 
 ## 3. Validate
 

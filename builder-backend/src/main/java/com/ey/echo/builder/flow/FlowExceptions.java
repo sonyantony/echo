@@ -26,6 +26,14 @@ final class FlowExceptions {
         return new ResponseStatusException(HttpStatus.CONFLICT, "A flow named '%s' already exists.".formatted(name));
     }
 
+    static ResponseStatusException descriptionTooLong() {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, "The description is limited to 1000 characters.");
+    }
+
+    static ResponseStatusException invalidArchive(String reason) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, "This file cannot be uploaded as a flow: " + reason + ".");
+    }
+
     static ResponseStatusException routeFileRequired() {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, "The flow's route file cannot be deleted.");
     }

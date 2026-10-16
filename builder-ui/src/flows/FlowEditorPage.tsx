@@ -16,7 +16,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useParams } from 'react-router-dom';
-import { flowsApi, validateFlow, type ValidationResult } from '../api/flows';
+import { downloadFlow, flowsApi, validateFlow, type ValidationResult } from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { FLOWS_KEY, StatusLabel } from './FlowListPage';
@@ -92,6 +92,12 @@ export function FlowEditorPage() {
     }
   }, [dirty, id, save]);
 
+  /** Downloads what is on screen: unsaved edits are saved first. */
+  const download = useCallback(async () => {
+    if (dirty && !(await save())) return;
+    downloadFlow(id);
+  }, [dirty, id, save]);
+
   // Warn before leaving with unsaved changes, inside the app and when closing the tab.
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
@@ -147,6 +153,9 @@ export function FlowEditorPage() {
               </Button>
               <Button variant="link" onClick={() => setShowHistory(true)}>
                 History
+              </Button>
+              <Button variant="link" onClick={download} isDisabled={saving}>
+                Download
               </Button>
             </Flex>
           </FlexItem>
