@@ -44,6 +44,8 @@ public class FlowValidator {
             "python", "ognl", "mvel", "spel", "datasonnet", "jsonata", "csimple", "joor", "java", "wasm");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([^}:]+)(?::([^}]*))?}}");
     private static final Set<String> XSLT_COMPONENTS = Set.of("xslt-saxon", "xslt");
+    /** An http or https uri: group 2 is the URL after the scheme, without options. */
+    private static final Pattern HTTP_URI = Pattern.compile("^(https?)(?::/*([^?]*))?(?:\\?.*)?$");
 
     private final ValidationProperties properties;
 
@@ -131,6 +133,7 @@ public class FlowValidator {
         void walk(Node node, String key) {
             switch (node) {
                 case MappingNode map -> {
+                    checkHttpUrl(map);
                     for (NodeTuple tuple : map.getValue()) {
                         if (tuple.getKeyNode() instanceof ScalarNode k) {
                             check(k.getValue(), tuple.getValueNode());
@@ -159,6 +162,40 @@ public class FlowValidator {
                 checkSimple(s.getValue(), line);
             } else if (key.equals("message") && value instanceof ScalarNode s) {
                 checkSimple(s.getValue(), line); // log: { message: ... } is a simple expression
+            }
+        }
+
+        /**
+         * An http step dropped on the canvas starts as {@code uri: http} with no URL; Camel then
+         * fails to start with a NullPointerException. The URL can be in the uri or in
+         * {@code parameters.httpUri}, which is where Kaoto's form puts it.
+         */
+        private void checkHttpUrl(MappingNode step) {
+            ScalarNode uri = null;
+            String httpUri = null;
+            for (NodeTuple t : step.getValue()) {
+                if (!(t.getKeyNode() instanceof ScalarNode k)) {
+                    continue;
+                }
+                if (k.getValue().equals("uri") && t.getValueNode() instanceof ScalarNode v) {
+                    uri = v;
+                } else if (k.getValue().equals("parameters") && t.getValueNode() instanceof MappingNode params) {
+                    for (NodeTuple p : params.getValue()) {
+                        if (p.getKeyNode() instanceof ScalarNode pk && pk.getValue().equals("httpUri")
+                                && p.getValueNode() instanceof ScalarNode pv) {
+                            httpUri = pv.getValue();
+                        }
+                    }
+                }
+            }
+            if (uri == null) {
+                return;
+            }
+            Matcher m = HTTP_URI.matcher(uri.getValue().strip());
+            if (m.matches() && (m.group(2) == null || m.group(2).isEmpty()) && (httpUri == null || httpUri.isBlank())) {
+                problems.add(new Problem(routeFile, uri.getStartMark().getLine() + 1,
+                        "This %s step has no URL. Select it on the canvas and fill in Http Uri, for example %s://host.docker.internal:9090/orders."
+                                .formatted(m.group(1), m.group(1))));
             }
         }
 

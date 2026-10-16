@@ -126,4 +126,39 @@ class FlowValidatorTest {
         var files = Map.of("flow.camel.yaml", read(FIXTURES.resolve("disallowed-component.camel.yaml")));
         assertThat(kafkaAllowed.validate("flow.camel.yaml", files).valid()).isTrue();
     }
+
+    private static String multicastTo(String to) {
+        return """
+                - route:
+                    from:
+                      uri: platform-http:/firsttestflow
+                      steps:
+                        - multicast:
+                            steps:
+                              - to:
+                %s
+                """.formatted(to.indent(20).stripTrailing());
+    }
+
+    @Test
+    void anHttpStepWithoutAUrlIsReported() {
+        // What Kaoto writes for an http step dropped on the canvas and not filled in.
+        for (String to : List.of("uri: http", "uri: https\nparameters: {}", "uri: \"http:\"")) {
+            var result = validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", multicastTo(to)));
+            assertThat(result.problems()).as(to).singleElement().satisfies(p -> {
+                assertThat(p.line()).isEqualTo(8);
+                assertThat(p.message()).contains("step has no URL").contains("Http Uri");
+            });
+        }
+    }
+
+    @Test
+    void anHttpUrlInTheUriOrInHttpUriIsFine() {
+        for (String to : List.of("uri: http://localhost:9090/one",
+                "uri: http\nparameters:\n  httpUri: localhost:9090/one",
+                "uri: https\nparameters:\n  httpUri: \"https://example.com/two\"")) {
+            var result = validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", multicastTo(to)));
+            assertThat(result.problems()).as(to).isEmpty();
+        }
+    }
 }
