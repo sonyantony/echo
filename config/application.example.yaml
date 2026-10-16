@@ -36,11 +36,10 @@ echo:
     autosave-seconds: 10
 
   branding:
-    # The Builder's look for this install (see docs/branding.md). Put logo files in
-    # config/branding/ and refer to them as /branding/<file>. Leave a setting out to keep the default.
-    product-name: EY ECHO Builder
+    # Your company logo and colours (see docs/branding.md). Put logo files in config/branding/
+    # and refer to them as /branding/<file>. Leave a setting out to keep the default.
     logo: /branding/logo.svg
-    logo-alt: EY
+    logo-alt: Acme
     # favicon: /branding/favicon.svg
     # colors:
     #   primary: "#FFE600"

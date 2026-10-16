@@ -7,9 +7,11 @@ export interface BrandingColors {
   mastheadText?: string | null;
 }
 
-/** The install's look, from echo.branding in the Builder's application.yaml. */
+/** The product name is fixed; only the buyer's logo and colours are configurable. */
+export const PRODUCT_NAME = 'EY ECHO Builder';
+
+/** The buyer's company logo and colours, from echo.branding in the Builder's application.yaml. */
 export interface Branding {
-  productName: string;
   logo?: string | null;
   logoAlt?: string | null;
   favicon?: string | null;
@@ -17,7 +19,7 @@ export interface Branding {
 }
 
 /** Used when the backend cannot be reached; matches the built-in defaults minus the colours. */
-export const DEFAULT_BRANDING: Branding = { productName: 'EY ECHO Builder', logo: null, favicon: null, colors: null };
+export const DEFAULT_BRANDING: Branding = { logo: null, favicon: null, colors: null };
 
 /** Which PatternFly tokens (or ECHO's own variables) each configured colour sets. */
 const TOKENS: Record<keyof BrandingColors, string[]> = {
@@ -48,7 +50,7 @@ export function applyBranding(branding: Branding, doc: Document = document) {
     }
   }
 
-  doc.title = branding.productName;
+  doc.title = PRODUCT_NAME;
 
   if (branding.favicon) {
     let link = doc.querySelector<HTMLLinkElement>('link[rel="icon"]');

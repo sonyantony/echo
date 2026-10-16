@@ -51,12 +51,12 @@ echo:
     secret-key: ${ECHO_S3_SECRET_KEY:${AWS_SECRET_ACCESS_KEY:}}
     session-token: ${AWS_SESSION_TOKEN:}
   branding:
-    # The Builder's look. Override any of these in /config/application.yaml; no rebuild needed.
-    product-name: EY ECHO Builder
+    # The buyer's company logo and colours. Override any of these in /config/application.yaml;
+    # no rebuild needed. The product name "EY ECHO Builder" is fixed.
     # URLs the browser loads. /branding/<file> is served from asset-dir first, then from the
     # defaults built into the image (builder-backend/src/main/resources/branding/).
     logo: /branding/logo.svg
-    logo-alt: EY
+    logo-alt: Company logo
     favicon: /branding/favicon.svg
     asset-dir: ${ECHO_BRANDING_DIR:./config/branding}
     # CSS colours (EY: yellow #FFE600, grey #2E2E38). Leave one out to keep the PatternFly default.

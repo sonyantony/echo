@@ -1,12 +1,12 @@
 package com.ey.echo.builder.branding;
 
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * The Builder's look for this install, read from {@code echo.branding} in application.yaml, so a
- * buyer can rebrand without rebuilding the image.
+ * The buyer's company logo and colours for this install, read from {@code echo.branding} in
+ * application.yaml, so a buyer can brand an install without rebuilding the image. The product
+ * name ("EY ECHO Builder") is fixed and lives in the UI.
  *
  * <p>{@code logo} and {@code favicon} are URLs the browser loads. Files under {@code /branding/}
  * are served from {@code asset-dir} first (e.g. a mounted {@code /config/branding}) and then from
@@ -15,7 +15,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties("echo.branding")
 public record BrandingProperties(
-        @NotBlank String productName, String logo, String logoAlt, String favicon, String assetDir, Colors colors) {
+        String logo, String logoAlt, String favicon, String assetDir, Colors colors) {
 
     public BrandingProperties {
         favicon = favicon == null || favicon.isBlank() ? logo : favicon;

@@ -8,13 +8,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class BrandingController {
 
     public record Branding(
-            String productName, String logo, String logoAlt, String favicon, BrandingProperties.Colors colors) {}
+            String logo, String logoAlt, String favicon, BrandingProperties.Colors colors) {}
 
     private final Branding branding;
 
     public BrandingController(BrandingProperties properties) {
         this.branding = new Branding(
-                properties.productName(),
                 properties.logo(),
                 properties.logoAlt(),
                 properties.favicon(),

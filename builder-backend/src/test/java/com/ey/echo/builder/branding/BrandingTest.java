@@ -27,7 +27,6 @@ class BrandingTest {
         assetDir = Files.createTempDirectory("echo-branding");
         Files.writeString(assetDir.resolve("acme.svg"), "<svg>acme</svg>");
         registry.add("echo.branding.asset-dir", assetDir::toString);
-        registry.add("echo.branding.product-name", () -> "Acme Flows");
         registry.add("echo.branding.colors.primary", () -> "#123456");
     }
 
@@ -38,7 +37,7 @@ class BrandingTest {
     void brandingIsReadableBeforeLoginAndComesFromConfig() throws Exception {
         mvc.perform(get("/api/branding"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.productName").value("Acme Flows"))
+                .andExpect(jsonPath("$.productName").doesNotExist())
                 .andExpect(jsonPath("$.logo").value("/branding/logo.svg"))
                 .andExpect(jsonPath("$.favicon").value("/branding/favicon.svg"))
                 .andExpect(jsonPath("$.colors.primary").value("#123456"))
