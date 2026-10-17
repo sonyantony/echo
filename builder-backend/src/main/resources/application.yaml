@@ -72,6 +72,11 @@ echo:
       accent-text: "#2E2E38"        # text drawn in the brand colour (tabs, toggles)
       masthead-background: "#2E2E38"
       masthead-text: "#FFFFFF"
+  catalog:
+    # Processors the editor's catalog hides: they need jars the Builder does not bundle, so Run
+    # could not start a flow that uses them. Kamelets are hidden unless "kamelet" is an allowed component.
+    hidden-processors: [circuitBreaker, onFallback, saga, marshal, unmarshal, transacted, policy, script,
+                        tokenizer, a2aSubTask, pausable, resumable]
   editor:
     # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.
     autosave-seconds: 10
@@ -86,8 +91,10 @@ echo:
     # How users reach the run ports, without the port (shown in the editor).
     public-url: http://localhost
   validation:
-    # Version 1 scope: HTTP + JSON, plus the DataMapper's XSLT.
-    allowed-components: [platform-http, http, https, xslt-saxon, log, direct]
+    # HTTP + JSON, the DataMapper's XSLT, and rest-openapi (calls an operation of an OpenAPI spec).
+    # The editor's catalog shows only these. Adding one also needs its jar in builder-backend/pom.xml,
+    # or Run cannot start flows that use it.
+    allowed-components: [platform-http, http, https, xslt-saxon, log, direct, rest-openapi]
     allowed-languages: [simple, constant, header, exchangeProperty, variable]
 
 server:

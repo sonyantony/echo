@@ -95,6 +95,10 @@
       <groupId>org.apache.camel</groupId>
       <artifactId>camel-direct</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-rest-openapi</artifactId>
+    </dependency>
     <!-- Publishing: plain Git over HTTPS (or file:// in tests), any Git server. -->
     <dependency>
       <groupId>org.eclipse.jgit</groupId>

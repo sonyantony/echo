@@ -77,10 +77,12 @@ SRC="$OUT/src-flow"
 APP="$OUT/app"
 rm -rf "$OUT" && mkdir -p "$SRC"
 
-# Only what the runtime needs: routes, DataMapper XSLT and properties (template first, flow last).
+# Only what the runtime needs: routes, DataMapper XSLT, OpenAPI specs and JSON schemas (rest-openapi
+# reads specs from the classpath) and properties (template first, flow last).
 shopt -s nullglob
 cp "$FLOW_DIR"/*.camel.yaml "$SRC/"
 for f in "$FLOW_DIR"/*.xsl; do cp "$f" "$SRC/"; done
+for f in "$FLOW_DIR"/*.json; do [[ "$(basename "$f")" == echo-flow.json ]] || cp "$f" "$SRC/"; done
 { cat "$TEMPLATE/application.properties"; echo; echo "# --- flow $NAME ---";
   [[ -f "$FLOW_DIR/application.properties" ]] && cat "$FLOW_DIR/application.properties"; } > "$SRC/application.properties"
 sed -i.bak "s/\${ECHO_FLOW_NAME:echo-flow}/$NAME/" "$SRC/application.properties" && rm -f "$SRC/application.properties.bak"
