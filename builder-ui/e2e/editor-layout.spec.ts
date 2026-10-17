@@ -25,10 +25,11 @@ test('editor fits the page and prints the whole open tab', async ({ page }) => {
   expect(pages.length).toBeGreaterThan(1);
 });
 
-test("Kaoto's About tab shows its versions", async ({ page }) => {
+test('the About tab shows EY ECHO and its developer', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('about'));
   await page.getByRole('tab', { name: /About/ }).click();
-  await expect(page.getByTestId('about-vscode-version')).toHaveText('Not used (embedded in EY ECHO Builder)');
-  await expect(page.getByText('2.13.0')).toBeVisible();
+  await expect(page.getByText('EY ECHO.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Developed By : Sony Antony', { exact: true })).toBeVisible();
+  await expect(page.getByAltText('Kaoto about page logo')).toHaveCount(0);
 });
