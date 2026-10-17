@@ -1,0 +1,76 @@
+# Approved downstream APIs
+
+Flows call downstream systems with a **REST OpenApi** step (Camel's `rest-openapi` component). The
+step names a spec and an operation, not a URL. The HTTP method, path, base path, path and query
+parameters and content type all come from the spec. Each install lists the specs its flows may
+call in `echo.apis`. A buyer adds their own specs (a vendor's TMF APIs, for example) as files in
+`config/apis/`, without a rebuild. Nothing about any one vendor is in ECHO's code.
+
+```yaml
+echo:
+  apis:
+    only: true                          # flows may call nothing else (no plain http/https steps)
+    specs:
+      - id: blueplanet                  # lower case; the flow's copy is blueplanet.openapi.json
+        name: Blue Planet               # used in messages
+        file: /config/apis/blueplanet.yaml
+        allowed-tags:                   # operations with one of these tags may be called
+          - TMF638 Service Controller
+          - TMF639 Resource Typed Controller
+          - TMF639 Resource Untyped Controller
+          - TMF634 Resource Catalog Controller
+        allowed-operations: []          # operationIds allowed whatever their tags
+```
+
+With both `allowed-tags` and `allowed-operations` left out, every operation in the spec may be
+called. Specs may be OpenAPI 3 or Swagger 2.0, in YAML or JSON. Swagger 2.0 is converted to OpenAPI 3
+when the Builder starts, because Camel reads only OpenAPI 3. A spec that cannot be loaded is logged
+and reported by Validate on the flows that use it. It does not stop the Builder. Restart the Builder
+after changing a spec (`docker compose restart`).
+
+## In a flow
+
+1. Add a **REST OpenApi** step. In its **All** tab, pick **Specification Uri** and **Operation Id**.
+   With `only: true` both are drop-downs of the approved specs and their allowed operations, and
+   the catalog has no HTTP steps.
+2. Set **Host** to the API's address, for example `{{blueplanet.host}}`, when the spec has no server
+   host (relative `servers`). Set the value in the flow's `application.properties`, or supply it
+   when the container starts.
+3. Path and query parameters come from headers with the same names. For example, set a header `id`
+   for `/v1/service/{id}`. The request body is the message body.
+4. Add a **Remove Headers** step with pattern `*` before the call, so the incoming request's headers
+   don't change the URL. Then set what the API needs, such as
+   `Authorization: Bearer {{blueplanet.token}}`. Secrets stay as placeholders and never go into Git.
+
+The step is saved as:
+
+```yaml
+- to:
+    uri: rest-openapi
+    parameters:
+      specificationUri: blueplanet.openapi.json
+      operationId: createService
+      host: "{{blueplanet.host}}"
+```
+
+## What the Builder checks
+
+Validate (and so Run and Publish) rejects:
+
+- a REST OpenApi step calling an operation that isn't in the spec, or isn't allowed;
+- a step without Host when the spec names no server host;
+- a REST OpenApi step without Remove Headers before it in a route started by an HTTP request;
+- with `only: true`: plain `http`/`https` steps, and REST OpenApi steps naming a spec that isn't approved.
+
+## Run and Publish
+
+The flow refers to the spec by its file name. Run and Publish add a current copy of the approved
+spec, converted to OpenAPI 3 JSON, to the flow's files. Run finds it on the classpath. Publish
+writes it to the flow folder, and `pipeline/build-flow.sh` copies it into the image. A published
+flow keeps the spec version it was published with, until it is published again.
+
+## Limits
+
+- Camel's `requestValidationEnabled` only checks that a body is present and is JSON, and that
+  required parameters are set. It doesn't check the body against the schema.
+- A spec that uses a path parameter without declaring it sends the literal `{name}`. Fix the spec.

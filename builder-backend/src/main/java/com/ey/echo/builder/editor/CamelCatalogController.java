@@ -1,12 +1,15 @@
 package com.ey.echo.builder.editor;
 
+import com.ey.echo.builder.apis.ApiCatalog;
 import com.ey.echo.builder.validation.ValidationProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,6 +30,10 @@ import org.springframework.web.server.ResponseStatusException;
  * no processors from {@code echo.catalog.hidden-processors} and no Kamelets unless the
  * {@code kamelet} component is allowed. Other catalog files are passed through unchanged.
  *
+ * <p>When flows may only call approved APIs ({@code echo.apis.only}), http and https are left out
+ * too, and the REST OpenApi step's Specification Uri and Operation Id become drop-downs of the
+ * approved specs and their allowed operations.
+ *
  * <p>The catalog is the one copied by builder-ui/scripts/copy-camel-catalog.mjs. Its file names
  * are hashed, so which file is which comes from the runtime index (catalogs.components.file and
  * so on). Public, like the static catalog files: it is Camel's documentation, and the playground
@@ -40,15 +47,22 @@ public class CamelCatalogController {
     private final ObjectMapper json;
     private final Resource root;
     private final Map<String, Predicate<String>> filters;
+    private final Set<String> componentFiles = ConcurrentHashMap.newKeySet();
+    private final ApiCatalog apis;
     private final Map<String, byte[]> filtered = new ConcurrentHashMap<>();
 
     public CamelCatalogController(CatalogProperties catalog, ValidationProperties validation,
-            ResourceLoader resources, ObjectMapper json) {
+            ResourceLoader resources, ObjectMapper json, ApiCatalog apis) {
         this.json = json;
+        this.apis = apis;
         this.root = catalog.locations().stream().map(resources::getResource)
                 .filter(r -> relative(r, "index.json").exists())
                 .findFirst().orElse(null);
-        this.filters = root == null ? Map.of() : filtersFor(Set.copyOf(validation.allowedComponents()),
+        var components = new java.util.HashSet<>(validation.allowedComponents());
+        if (apis.only()) {
+            components.removeAll(Set.of("http", "https"));
+        }
+        this.filters = root == null ? Map.of() : filtersFor(Set.copyOf(components),
                 Set.copyOf(validation.allowedLanguages()), Set.copyOf(catalog.hiddenProcessors()));
     }
 
@@ -69,7 +83,7 @@ public class CamelCatalogController {
         if (keep == null) {
             return ResponseEntity.ok().contentType(type).body(file);
         }
-        return ResponseEntity.ok().contentType(type).body(filtered.computeIfAbsent(path, p -> keepOnly(file, keep)));
+        return ResponseEntity.ok().contentType(type).body(filtered.computeIfAbsent(path, p -> keepOnly(p, file, keep)));
     }
 
     /** Catalog file path (relative to the root) to the entry names it keeps. */
@@ -86,6 +100,7 @@ public class CamelCatalogController {
             String dir = index.substring(0, slash + 1);
             JsonNode catalogs = read(relative(root, index)).path("catalogs");
             put(result, dir, catalogs, "components", components::contains);
+            componentFiles.add(dir + catalogs.path("components").path("file").asText(""));
             put(result, dir, catalogs, "languages", languages::contains);
             put(result, dir, catalogs, "patterns",
                     name -> !hiddenProcessors.contains(name) && (kamelets || !name.equals("kamelet")));
@@ -103,14 +118,41 @@ public class CamelCatalogController {
         }
     }
 
-    private byte[] keepOnly(Resource file, Predicate<String> keep) {
+    private byte[] keepOnly(String path, Resource file, Predicate<String> keep) {
         var entries = (ObjectNode) read(file);
         entries.retain(entries.properties().stream().map(Map.Entry::getKey).filter(keep).toList());
+        if (apis.only() && componentFiles.contains(path) && entries.get("rest-openapi") instanceof ObjectNode restOpenApi) {
+            offerApprovedApis(restOpenApi);
+        }
         try {
             return json.writeValueAsBytes(entries);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /**
+     * Specification Uri and Operation Id become drop-downs of what flows may call: Kaoto builds
+     * the form from {@code propertiesSchema} (a JSON schema), where an enum is a drop-down.
+     */
+    private void offerApprovedApis(ObjectNode restOpenApi) {
+        var specs = apis.apis().stream().map(ApiCatalog.Api::fileName).toList();
+        var operations = apis.apis().stream().flatMap(api -> api.allowedOperations().stream()).distinct().toList();
+        for (JsonNode properties : List.of(restOpenApi.path("properties"),
+                restOpenApi.path("propertiesSchema").path("properties"))) {
+            if (properties.get("specificationUri") instanceof ObjectNode spec) {
+                enumOf(spec, specs);
+                spec.remove(List.of("default", "defaultValue"));
+            }
+            if (properties.get("operationId") instanceof ObjectNode operation) {
+                enumOf(operation, operations);
+            }
+        }
+    }
+
+    private static void enumOf(ObjectNode property, List<String> values) {
+        ArrayNode array = property.putArray("enum");
+        values.forEach(array::add);
     }
 
     private static Resource relative(Resource base, String path) {

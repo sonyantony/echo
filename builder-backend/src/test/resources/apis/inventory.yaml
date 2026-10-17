@@ -1,0 +1,51 @@
+# A small inventory API in the shape of a TMF638 implementation: relative server, tagged operations.
+openapi: 3.0.1
+info:
+  title: Inventory API
+  version: "1"
+servers:
+- url: /inventory-api
+paths:
+  /v1/service:
+    post:
+      tags: [TMF638 Service Controller]
+      operationId: createService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service Creation Request'
+      responses:
+        "201":
+          description: Created
+  /v1/service/{id}:
+    get:
+      tags: [TMF638 Service Controller]
+      operationId: getService
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Success
+  /shutdown/init:
+    post:
+      tags: [Shutdown controller]
+      operationId: init
+      responses:
+        "202":
+          description: Accepted
+components:
+  schemas:
+    Service Creation Request:
+      type: object
+      required: ['@type']
+      properties:
+        '@type':
+          type: string
+        name:
+          type: string

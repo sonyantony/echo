@@ -31,6 +31,22 @@ echo:
     access-key: ${ECHO_S3_ACCESS_KEY:changeme}   # better: set these in the environment
     secret-key: ${ECHO_S3_SECRET_KEY:changeme}
 
+  apis:
+    # The downstream APIs flows may call (see docs/apis.md). Put the spec files in config/apis/.
+    # only: true means flows can call nothing else: no plain http/https steps.
+    only: false
+    specs: []
+    # specs:
+    #   - id: blueplanet                       # the flow's copy is blueplanet.openapi.json
+    #     name: Blue Planet
+    #     file: /config/apis/blueplanet.yaml   # OpenAPI 3 or Swagger 2.0, YAML or JSON
+    #     allowed-tags:                        # leave both lists out to allow every operation
+    #       - TMF638 Service Controller
+    #       - TMF639 Resource Typed Controller
+    #       - TMF639 Resource Untyped Controller
+    #       - TMF634 Resource Catalog Controller
+    #     allowed-operations: []               # operationIds allowed whatever their tags
+
   editor:
     # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.
     autosave-seconds: 10

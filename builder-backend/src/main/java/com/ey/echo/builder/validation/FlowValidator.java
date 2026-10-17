@@ -1,5 +1,6 @@
 package com.ey.echo.builder.validation;
 
+import com.ey.echo.builder.apis.ApiCatalog;
 import com.ey.echo.builder.validation.ValidationResult.Problem;
 import java.io.IOException;
 import java.io.StringReader;
@@ -34,7 +35,8 @@ import org.yaml.snakeyaml.nodes.SequenceNode;
  *   <li>Camel 4.22's YAML DSL loads it into a throwaway, never-started Camel context (catches
  *       unknown steps and wrong structure, with line numbers);
  *   <li>only allowed components and expression languages, property
- *       placeholders defined in application.properties, XSLT files present in the flow;
+ *       placeholders defined in application.properties, XSLT files present in the flow, REST
+ *       OpenApi steps calling allowed operations of approved APIs ({@code echo.apis});
  *   <li>simple-language expressions parse.
  * </ol>
  */
@@ -49,10 +51,19 @@ public class FlowValidator {
     /** An http or https uri: group 2 is the URL after the scheme, without options. */
     private static final Pattern HTTP_URI = Pattern.compile("^(https?)(?::/*([^?]*))?(?:\\?.*)?$");
 
+    private static final String REST_OPENAPI = "rest-openapi";
+
     private final ValidationProperties properties;
+    private final ApiCatalog apis;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public FlowValidator(ValidationProperties properties, ApiCatalog apis) {
+        this.properties = properties;
+        this.apis = apis;
+    }
 
     public FlowValidator(ValidationProperties properties) {
-        this.properties = properties;
+        this(properties, ApiCatalog.none());
     }
 
     /**
@@ -141,6 +152,7 @@ public class FlowValidator {
             switch (node) {
                 case MappingNode map -> {
                     checkHttpUrl(map);
+                    checkApiCall(map);
                     for (NodeTuple tuple : map.getValue()) {
                         if (tuple.getKeyNode() instanceof ScalarNode k) {
                             check(k.getValue(), tuple.getValueNode());
@@ -229,6 +241,81 @@ public class FlowValidator {
             }
         }
 
+        /**
+         * A REST OpenApi step: {@code rest-openapi:<spec>#<operationId>}, or Kaoto's form with
+         * {@code specificationUri} and {@code operationId} under {@code parameters}. It must call
+         * an allowed operation of an approved API ({@code echo.apis}), and set {@code host} when
+         * the spec names no server host.
+         */
+        private void checkApiCall(MappingNode step) {
+            var uriNode = step.getValue().stream()
+                    .filter(t -> t.getKeyNode() instanceof ScalarNode k && k.getValue().equals("uri")
+                            && t.getValueNode() instanceof ScalarNode)
+                    .map(t -> (ScalarNode) t.getValueNode()).findFirst().orElse(null);
+            if (uriNode == null) {
+                return;
+            }
+            String uri = quietlyResolved(uriNode.getValue().strip());
+            if (!uri.equals(REST_OPENAPI) && !uri.startsWith(REST_OPENAPI + ":")) {
+                return;
+            }
+            int line = uriNode.getStartMark().getLine() + 1;
+            String path = uri.length() > REST_OPENAPI.length() ? uri.substring(REST_OPENAPI.length() + 1) : "";
+            path = path.replaceFirst("\\?.*$", "");
+            int hash = path.indexOf('#');
+            String spec = hash >= 0 ? path.substring(0, hash) : path;
+            String operation = hash >= 0 ? path.substring(hash + 1) : "";
+            if (spec.isBlank()) {
+                spec = scalar(step, "parameters", "specificationUri").orElse("");
+            }
+            if (operation.isBlank()) {
+                operation = scalar(step, "parameters", "operationId").orElse("");
+            }
+            spec = quietlyResolved(spec.strip());
+            operation = quietlyResolved(operation.strip());
+
+            if (fromPlatformHttp && !headersRemoved && !headersReported) {
+                // The incoming request's CamelHttpUri/CamelHttpPath headers would be added to the URL.
+                headersReported = true;
+                problems.add(new Problem(routeFile, line,
+                        "The incoming request's headers would change the URL this REST OpenApi step calls. Add a Remove Headers step with pattern * before it."));
+            }
+            var api = apis.forSpecificationUri(spec);
+            if (api.isEmpty()) {
+                if (apis.only()) {
+                    problems.add(new Problem(routeFile, line, (spec.isBlank()
+                            ? "This REST OpenApi step has no spec. "
+                            : "'%s' is not an approved API. ".formatted(spec))
+                            + "Set Specification Uri to one of: %s.".formatted(approvedFiles())));
+                }
+                return;
+            }
+            var a = api.get();
+            if (a.problem() != null) {
+                problems.add(new Problem(routeFile, line,
+                        "The approved API '%s' could not be loaded: %s".formatted(a.name(), a.problem())));
+                return;
+            }
+            var op = a.operations().get(operation);
+            if (operation.isBlank()) {
+                problems.add(new Problem(routeFile, line,
+                        "Choose the %s operation this step calls (Operation Id).".formatted(a.name())));
+            } else if (op == null) {
+                problems.add(new Problem(routeFile, line,
+                        "'%s' is not an operation of %s.".formatted(operation, a.name())));
+            } else if (!op.allowed()) {
+                problems.add(new Problem(routeFile, line,
+                        "Flows may not call %s's '%s' operation (%s %s). Allowed: %s."
+                                .formatted(a.name(), operation, op.method(), op.path(),
+                                        String.join(", ", a.allowedOperations()))));
+            }
+            if (!a.hasHost() && scalar(step, "parameters", "host").map(String::isBlank).orElse(true)) {
+                problems.add(new Problem(routeFile, line,
+                        "%s's spec names no server, so set Host on this step, for example {{%s.host}} in application.properties."
+                                .formatted(a.name(), a.id())));
+            }
+        }
+
         /** A scalar value at the given keys below the mapping, e.g. parameters.bridgeEndpoint. */
         private static java.util.Optional<String> scalar(MappingNode map, String... keys) {
             Node node = map;
@@ -292,6 +379,12 @@ public class FlowValidator {
                                 .formatted(scheme, String.join(", ", properties.allowedComponents()))));
                 return;
             }
+            if (apis.only() && (scheme.equals("http") || scheme.equals("https"))) {
+                problems.add(new Problem(routeFile, line,
+                        "Flows may only call approved APIs (%s). Use a REST OpenApi step instead of %s."
+                                .formatted(approvedNames(), scheme)));
+                return;
+            }
             if (XSLT_COMPONENTS.contains(scheme)) {
                 String resource = uri.substring(colon + 1).replaceFirst("\\?.*$", "")
                         .replaceFirst("^(classpath|file):", "");
@@ -317,6 +410,15 @@ public class FlowValidator {
             m.appendTail(out);
             return out.toString();
         }
+    }
+
+    private String approvedNames() {
+        var names = apis.apis().stream().map(ApiCatalog.Api::name).toList();
+        return names.isEmpty() ? "none are set up in echo.apis" : String.join(", ", names);
+    }
+
+    private String approvedFiles() {
+        return apis.apis().stream().map(ApiCatalog.Api::fileName).collect(java.util.stream.Collectors.joining(", "));
     }
 
     private static Integer lineOf(Throwable e) {

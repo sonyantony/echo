@@ -15,16 +15,16 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 
 /** A local bare repository standing in for the buyer's Git server. */
-final class GitTestRepo {
+public final class GitTestRepo {
 
     final Path bare;
 
-    GitTestRepo(Path dir) throws Exception {
+    public GitTestRepo(Path dir) throws Exception {
         this.bare = dir;
         Git.init().setBare(true).setDirectory(dir.toFile()).setInitialBranch("main").call().close();
     }
 
-    String url() {
+    public String url() {
         return bare.toUri().toString();
     }
 
@@ -50,7 +50,7 @@ final class GitTestRepo {
         }
     }
 
-    String read(String branch, String path) throws IOException {
+    public String read(String branch, String path) throws IOException {
         try (var git = Git.open(bare.toFile()); var walk = new RevWalk(git.getRepository())) {
             var commit = walk.parseCommit(git.getRepository().resolve(Constants.R_HEADS + branch));
             try (var tree = TreeWalk.forPath(git.getRepository(), path, commit.getTree())) {

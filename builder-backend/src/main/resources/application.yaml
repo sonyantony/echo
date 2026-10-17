@@ -90,6 +90,11 @@ echo:
     idle-minutes: 30
     # How users reach the run ports, without the port (shown in the editor).
     public-url: http://localhost
+  apis:
+    # Approved downstream APIs (OpenAPI or Swagger 2.0 specs) that flows call with REST OpenApi
+    # steps, set per install (docs/apis.md). only: true also rejects plain http/https steps.
+    only: false
+    specs: []
   validation:
     # HTTP + JSON, the DataMapper's XSLT, and rest-openapi (calls an operation of an OpenAPI spec).
     # The editor's catalog shows only these. Adding one also needs its jar in builder-backend/pom.xml,
