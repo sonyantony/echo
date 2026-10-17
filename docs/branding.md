@@ -15,6 +15,7 @@ The default colours are EY's: yellow (`#FFE600`) and grey (`#2E2E38`).
 | `logo-alt` | Alt text of the logo | `Company logo` |
 | `favicon` | Browser tab icon | `/branding/favicon.svg` (falls back to `logo`) |
 | `asset-dir` | Folder whose files are served at `/branding/<file>` | `/config/branding` in the image, `./config/branding` otherwise |
+| `theme` | The look of the whole Builder, the flow editor included: `studio` (light, dot-grid canvas), `graphite` (dark throughout) or `blueprint` (light, dark grid canvas). See [Themes](#themes). | `studio` |
 | `colors.primary` / `primary-hover` | Primary buttons, selected items | `#FFE600` / `#E6CF00` |
 | `colors.on-primary` | Text on primary buttons | `#2E2E38` |
 | `colors.accent-text` | Text PatternFly draws in the brand colour (tabs, toggles) | `#2E2E38` |
@@ -22,6 +23,24 @@ The default colours are EY's: yellow (`#FFE600`) and grey (`#2E2E38`).
 
 Leave a colour out to keep the PatternFly default for it. Colours map to PatternFly 6 tokens in
 `builder-ui/src/branding/applyBranding.ts`.
+
+## Themes
+
+`theme` restyles the Builder and the embedded Kaoto editor together (canvas, step cards,
+connectors, route header, tabs, forms, catalog), so the editor matches the rest of the Builder
+instead of looking like stock Kaoto. Every theme uses the Inter typeface and draws its accents in
+`colors.primary`, so a buyer's own colours carry through. Links and selected toggles use
+`colors.masthead-background`.
+
+```yaml
+echo:
+  branding:
+    theme: graphite
+```
+
+The CSS is in `builder-ui/src/branding/themes.css`; Kaoto itself is not modified. Diagrams
+downloaded with **Download diagram (.png)** always use light colours on white, whatever the
+theme. The API spec editor (Apicurio) keeps its own look. Kaoto's step icons are Camel's own.
 
 ## Using your own logo
 

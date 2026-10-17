@@ -28,6 +28,7 @@ class BrandingTest {
         Files.writeString(assetDir.resolve("acme.svg"), "<svg>acme</svg>");
         registry.add("echo.branding.asset-dir", assetDir::toString);
         registry.add("echo.branding.colors.primary", () -> "#123456");
+        registry.add("echo.branding.theme", () -> "Blueprint");
     }
 
     @Autowired
@@ -40,8 +41,16 @@ class BrandingTest {
                 .andExpect(jsonPath("$.productName").doesNotExist())
                 .andExpect(jsonPath("$.logo").value("/branding/logo.svg"))
                 .andExpect(jsonPath("$.favicon").value("/branding/favicon.svg"))
+                .andExpect(jsonPath("$.theme").value("blueprint"))
                 .andExpect(jsonPath("$.colors.primary").value("#123456"))
                 .andExpect(jsonPath("$.colors.mastheadBackground").value("#2E2E38"));
+    }
+
+    @Test
+    void themeDefaultsToStudio() {
+        org.assertj.core.api.Assertions.assertThat(
+                        new BrandingProperties(null, null, null, null, null, null).theme().id())
+                .isEqualTo("studio");
     }
 
     @Test

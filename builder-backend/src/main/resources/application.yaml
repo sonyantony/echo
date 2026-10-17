@@ -59,6 +59,11 @@ echo:
     logo-alt: Company logo
     favicon: /branding/favicon.svg
     asset-dir: ${ECHO_BRANDING_DIR:./config/branding}
+    # The look of the whole Builder, the flow editor included. One of:
+    #   studio     light, with a dot-grid canvas
+    #   graphite   dark throughout
+    #   blueprint  light, with a dark grid canvas
+    theme: studio
     # CSS colours (EY: yellow #FFE600, grey #2E2E38). Leave one out to keep the PatternFly default.
     colors:
       primary: "#FFE600"            # primary buttons, selected items
