@@ -4,7 +4,7 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Version 1 scope: flows may only use these Camel components and expression languages
+ * Flows may only use these Camel components and expression languages
  * (HTTP and JSON, plus the DataMapper's XSLT). Configurable in {@code echo.validation}.
  */
 @ConfigurationProperties("echo.validation")

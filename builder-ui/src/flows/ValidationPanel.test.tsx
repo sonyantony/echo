@@ -13,7 +13,7 @@ describe('ValidationPanel', () => {
         result={{
           valid: false,
           problems: [
-            { file: 'orders.camel.yaml', line: 6, message: "The 'kafka' component is not available in Version 1." },
+            { file: 'orders.camel.yaml', line: 6, message: "The 'kafka' component is not allowed in flows." },
             { file: 'application.properties', line: null, message: 'Cannot read properties.' },
           ],
         }}
@@ -22,7 +22,7 @@ describe('ValidationPanel', () => {
     );
     expect(screen.getByText('2 problems to fix before publishing')).toBeInTheDocument();
     expect(screen.getByText('orders.camel.yaml:6')).toBeInTheDocument();
-    expect(screen.getByText("The 'kafka' component is not available in Version 1.")).toBeInTheDocument();
+    expect(screen.getByText("The 'kafka' component is not allowed in flows.")).toBeInTheDocument();
     expect(screen.getByText('application.properties')).toBeInTheDocument();
   });
 });
