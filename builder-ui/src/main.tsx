@@ -1,4 +1,6 @@
 import '@patternfly/react-core/dist/styles/base.css';
+import '@fontsource-variable/inter';
+import './branding/themes.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

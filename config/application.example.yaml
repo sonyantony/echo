@@ -40,6 +40,11 @@ echo:
     # and refer to them as /branding/<file>. Leave a setting out to keep the default.
     logo: /branding/logo.svg
     logo-alt: Acme
+    # The look of the whole Builder, the flow editor included. One of:
+    #   studio     light, with a dot-grid canvas
+    #   graphite   dark throughout
+    #   blueprint  light, with a dark grid canvas
+    theme: studio
     # favicon: /branding/favicon.svg
     # colors:
     #   primary: "#FFE600"

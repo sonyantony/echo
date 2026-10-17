@@ -7,6 +7,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.pushState({}, '', '/');
   document.documentElement.removeAttribute('style');
+  document.documentElement.removeAttribute('data-echo-theme');
+  document.documentElement.classList.remove('pf-v6-theme-dark');
   document.querySelector('link[rel="icon"]')?.remove();
 });
 
@@ -56,5 +58,22 @@ describe('Branding', () => {
 
     applyBranding({ colors: { primary: '#ffe600' } });
     expect(style.getPropertyValue('--echo-masthead-background')).toBe('');
+  });
+
+  it('applies the configured theme, using the dark palette for graphite', () => {
+    applyBranding({ theme: 'graphite' });
+    expect(document.documentElement.dataset.echoTheme).toBe('graphite');
+    expect(document.documentElement).toHaveClass('pf-v6-theme-dark');
+
+    applyBranding({ theme: 'blueprint' });
+    expect(document.documentElement.dataset.echoTheme).toBe('blueprint');
+    expect(document.documentElement).not.toHaveClass('pf-v6-theme-dark');
+  });
+
+  it('falls back to the studio theme when none or an unknown one is set', () => {
+    applyBranding({});
+    expect(document.documentElement.dataset.echoTheme).toBe('studio');
+    applyBranding({ theme: 'neon' });
+    expect(document.documentElement.dataset.echoTheme).toBe('studio');
   });
 });
