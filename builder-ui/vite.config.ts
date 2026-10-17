@@ -16,6 +16,10 @@ const backend = process.env.ECHO_BACKEND_URL ?? 'http://localhost:8080';
 
 export default defineConfig({
   plugins: [react()],
+  // Kaoto's About tab reads this build-time global (set by its VS Code extension build).
+  define: {
+    __VSCODE_KAOTO_VERSION: JSON.stringify('Not used (embedded in EY ECHO Builder)'),
+  },
   server: {
     port: 5173,
     // The golden sample flows live in ../samples.

@@ -24,3 +24,11 @@ test('editor fits the page and prints the whole open tab', async ({ page }) => {
   const pages = pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? [];
   expect(pages.length).toBeGreaterThan(1);
 });
+
+test("Kaoto's About tab shows its versions", async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('about'));
+  await page.getByRole('tab', { name: /About/ }).click();
+  await expect(page.getByTestId('about-vscode-version')).toHaveText('Not used (embedded in EY ECHO Builder)');
+  await expect(page.getByText('2.13.0')).toBeVisible();
+});
