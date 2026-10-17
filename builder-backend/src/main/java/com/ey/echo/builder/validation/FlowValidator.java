@@ -33,7 +33,7 @@ import org.yaml.snakeyaml.nodes.SequenceNode;
  *   <li>the route file is well-formed YAML;
  *   <li>Camel 4.22's YAML DSL loads it into a throwaway, never-started Camel context (catches
  *       unknown steps and wrong structure, with line numbers);
- *   <li>Version 1 scope: only allowed components and expression languages, property
+ *   <li>only allowed components and expression languages, property
  *       placeholders defined in application.properties, XSLT files present in the flow;
  *   <li>simple-language expressions parse.
  * </ol>
@@ -41,7 +41,7 @@ import org.yaml.snakeyaml.nodes.SequenceNode;
 @Component
 public class FlowValidator {
 
-    /** Expression languages that, if used, are reported as outside Version 1 scope. */
+    /** Expression languages that, if used, are reported as not allowed. */
     private static final Set<String> OTHER_LANGUAGES = Set.of("jsonpath", "jq", "xpath", "xquery", "groovy", "js",
             "python", "ognl", "mvel", "spel", "datasonnet", "jsonata", "csimple", "joor", "java", "wasm");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([^}:]+)(?::([^}]*))?}}");
@@ -173,7 +173,7 @@ public class FlowValidator {
                 checkUri(s.getValue(), line);
             } else if (OTHER_LANGUAGES.contains(key)) {
                 problems.add(new Problem(routeFile, line,
-                        "The '%s' expression language is not available in Version 1 (allowed: %s)."
+                        "The '%s' expression language is not allowed in flows (allowed languages: %s)."
                                 .formatted(key, String.join(", ", properties.allowedLanguages()))));
             } else if (key.equals("simple")) {
                 expressionText(value).ifPresent(text -> checkSimple(text, line));
@@ -288,7 +288,7 @@ public class FlowValidator {
             String scheme = colon > 0 ? uri.substring(0, colon) : uri;
             if (!properties.allowedComponents().contains(scheme)) {
                 problems.add(new Problem(routeFile, line,
-                        "The '%s' component is not available in Version 1 (allowed: %s)."
+                        "The '%s' component is not allowed in flows (allowed components: %s)."
                                 .formatted(scheme, String.join(", ", properties.allowedComponents()))));
                 return;
             }

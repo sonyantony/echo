@@ -29,7 +29,7 @@ test('the About tab shows EY ECHO and its developer', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('about'));
   await page.getByRole('tab', { name: /About/ }).click();
-  await expect(page.getByText('EY ECHO.', { exact: true })).toBeVisible();
+  await expect(page.getByText('EY ECHO (V2.0).', { exact: true })).toBeVisible();
   await expect(page.getByText('Developed By : Sony Antony', { exact: true })).toBeVisible();
   await expect(page.getByAltText('Kaoto about page logo')).toHaveCount(0);
 });

@@ -47,7 +47,7 @@ import org.springframework.stereotype.Service;
  * Runs flow drafts inside the Builder so users can call them before publishing (the editor's Run
  * button). Each run gets its own Camel context with its own HTTP server on a port from
  * {@code echo.run.first-port}..{@code last-port}. It uses the Builder's Camel version and the
- * Version 1 components, like the flow image, but not the image's Spring Boot packaging: building
+ * same components, like the flow image, but not the image's Spring Boot packaging: building
  * the image stays the final check.
  *
  * <p>The flow's files are written to a temporary folder that is first on the run's classpath, so

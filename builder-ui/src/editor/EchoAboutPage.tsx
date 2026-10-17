@@ -9,7 +9,7 @@ export function Component() {
     <Bullseye className="echo-about">
       <Content>
         <Content component="h1">
-          <strong>EY ECHO.</strong>
+          <strong>EY ECHO (V2.0).</strong>
         </Content>
         <Content component="p">
           <strong>Developed By : Sony Antony</strong>

@@ -70,19 +70,19 @@ class FlowValidatorTest {
     }
 
     @Test
-    void componentsOutsideVersion1ScopeAreRejected() {
+    void disallowedComponentsAreRejected() {
         var result = validateFixture("disallowed-component.camel.yaml");
         assertThat(result.problems()).extracting(Problem::message)
-                .containsExactly("The 'kafka' component is not available in Version 1 "
-                        + "(allowed: platform-http, http, https, xslt-saxon, log, direct).");
+                .containsExactly("The 'kafka' component is not allowed in flows "
+                        + "(allowed components: platform-http, http, https, xslt-saxon, log, direct).");
         assertThat(result.problems().getFirst().line()).isEqualTo(6);
     }
 
     @Test
-    void languagesOutsideVersion1ScopeAreRejected() {
+    void disallowedLanguagesAreRejected() {
         var result = validateFixture("disallowed-language.camel.yaml");
         assertThat(result.problems()).extracting(Problem::message)
-                .singleElement().asString().startsWith("The 'jq' expression language is not available");
+                .singleElement().asString().startsWith("The 'jq' expression language is not allowed in flows");
     }
 
     @Test
