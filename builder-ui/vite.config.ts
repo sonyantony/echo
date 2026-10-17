@@ -12,13 +12,29 @@ const tildeImporter = {
   },
 };
 
+// Kaoto's editor router lazy-loads its About tab from '../pages/About'; show ECHO's instead.
+const kaotoAboutImport = /^\.\.\/pages\/About$/;
+const echoAboutPage = fileURLToPath(new URL('./src/editor/EchoAboutPage.tsx', import.meta.url));
+
 const backend = process.env.ECHO_BACKEND_URL ?? 'http://localhost:8080';
 
 export default defineConfig({
   plugins: [react()],
-  // Kaoto's About tab reads this build-time global (set by its VS Code extension build).
-  define: {
-    __VSCODE_KAOTO_VERSION: JSON.stringify('Not used (embedded in EY ECHO Builder)'),
+  resolve: {
+    alias: [{ find: kaotoAboutImport, replacement: echoAboutPage }],
+  },
+  // Kaoto is pre-bundled in dev, where resolve.alias does not apply.
+  optimizeDeps: {
+    esbuildOptions: {
+      plugins: [
+        {
+          name: 'echo-about-page',
+          setup(build) {
+            build.onResolve({ filter: kaotoAboutImport }, () => ({ path: echoAboutPage }));
+          },
+        },
+      ],
+    },
   },
   server: {
     port: 5173,
