@@ -62,6 +62,9 @@ Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar 
 
 ## Conventions
 
+- Kaoto's catalog is served by the backend (`/api/camel-catalog/**`), cut down to
+  `echo.validation.allowed-components` (docs/decisions/0005). To allow another component, add it to
+  that list and its jar to `builder-backend/pom.xml` together, or Run cannot start flows using it.
 - Kaoto stays unmodified; Builder code wraps it (`builder-ui/src/editor/`). Kaoto is rendered
   in its own React root because it brings its own router.
 - A flow is a folder: `<name>.camel.yaml` plus side files next to it (DataMapper

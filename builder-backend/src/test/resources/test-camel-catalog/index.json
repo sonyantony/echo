@@ -1,0 +1,3 @@
+{"version":3,"name":"Test catalog","definitions":[
+ {"name":"Camel Spring Boot 4.22.1","fileName":"camel-springboot/4.22.1/index-abc.json"},
+ {"name":"Citrus","fileName":"citrus/1.0/index.json"}]}

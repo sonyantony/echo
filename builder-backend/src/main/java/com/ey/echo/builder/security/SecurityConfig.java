@@ -32,6 +32,8 @@ public class SecurityConfig {
             throws Exception {
         http.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/csrf", "/api/branding").permitAll()
+                        // Kaoto's Camel catalog (filtered); the playground page loads it without a login.
+                        .requestMatchers("/api/camel-catalog/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/api/**", "/actuator/**").authenticated()
                         // Everything else is the UI bundle (and Kaoto's catalog files).

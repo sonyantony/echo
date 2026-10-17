@@ -1,0 +1,7 @@
+{"name":"Camel Spring Boot 4.22.1","catalogs":{
+ "components":{"file":"components-1.json"},
+ "patterns":{"file":"patterns-1.json"},
+ "languages":{"file":"languages-1.json"},
+ "kamelets":{"file":"kamelets-1.json"},
+ "kameletBoundaries":{"file":"boundaries-1.json"},
+ "models":{"file":"models-1.json"}}}

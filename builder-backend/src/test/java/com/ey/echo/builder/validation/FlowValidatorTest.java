@@ -74,7 +74,7 @@ class FlowValidatorTest {
         var result = validateFixture("disallowed-component.camel.yaml");
         assertThat(result.problems()).extracting(Problem::message)
                 .containsExactly("The 'kafka' component is not allowed in flows "
-                        + "(allowed components: platform-http, http, https, xslt-saxon, log, direct).");
+                        + "(allowed components: platform-http, http, https, xslt-saxon, log, direct, rest-openapi).");
         assertThat(result.problems().getFirst().line()).isEqualTo(6);
     }
 

@@ -20,6 +20,7 @@ export interface KaotoEditorHostProps {
   initialContent: string;
   files: FlowFiles;
   onChange?(content: string): void;
+  /** Defaults to the Builder's catalog, cut down to what flows may use (CamelCatalogController). */
   catalogUrl?: string;
 }
 
@@ -36,7 +37,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/camel-catalog/index.json' },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json' },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);

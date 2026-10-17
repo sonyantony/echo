@@ -100,6 +100,37 @@ class FlowRunnerTest {
     }
 
     @Test
+    void callsAnOperationOfTheFlowsOpenApiSpecWithRestOpenapi() throws Exception {
+        var files = Map.of(
+                "spec.camel.yaml", """
+                        - route:
+                            from:
+                              uri: platform-http:/orders
+                              steps:
+                                - removeHeaders: {pattern: "*"}
+                                - setHeader: {name: Content-Type, constant: application/json}
+                                - to:
+                                    uri: rest-openapi:fulfilment.json#createFulfilment
+                                    parameters:
+                                      host: "{{fulfilment.host}}"
+                        """,
+                "fulfilment.json", """
+                        {"openapi": "3.0.3", "info": {"title": "Fulfilment", "version": "1"},
+                         "paths": {"/fulfilment": {"post": {"operationId": "createFulfilment",
+                           "requestBody": {"content": {"application/json": {"schema": {"type": "object"}}}},
+                           "responses": {"200": {"description": "ok"}}}}}}
+                        """,
+                "application.properties", "fulfilment.host=" + downstreamUrl(""));
+
+        var run = runner.start(1, "spec", "spec.camel.yaml", files, "designer");
+        var response = post(run.port, "/orders", "{\"reference\":\"A100\"}");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("FUL-A100");
+        assertThat(downstreamCalls).containsExactly("POST /fulfilment {\"reference\":\"A100\"}");
+    }
+
+    @Test
     void runsTheGoldenOrdersFlowWithItsDataMapperFiles() throws Exception {
         var files = folder(ORDERS);
         files.put("application.properties", "fulfilment.url=" + downstreamUrl("/fulfilment"));
