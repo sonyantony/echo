@@ -9,6 +9,7 @@ app and built into an image by the buyer's pipeline).
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
 - Publish targets (Git, S3; each with `enabled`) are per install config: `docs/publishing.md`.
 - A flow's OpenAPI spec (`openapi.json`, edited in the vendored Apicurio editor): `docs/api-spec.md`.
+- Downstream APIs flows may call (approved specs per install, `echo.apis`, REST OpenApi steps): `docs/apis.md`.
 - Version 1 is a demo prototype: prefer simple over production-hardened, but keep the seams
   (auth, Git provider, CI, secrets, database) swappable. No cloud SDKs, no provider-specific
   Git APIs, no hard-wired CI or IdP.

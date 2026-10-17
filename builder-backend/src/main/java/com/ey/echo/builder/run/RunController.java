@@ -1,5 +1,6 @@
 package com.ey.echo.builder.run;
 
+import com.ey.echo.builder.apis.ApiCatalog;
 import com.ey.echo.builder.flow.FlowNames;
 import com.ey.echo.builder.flow.FlowService;
 import com.ey.echo.builder.run.FlowRun.LogLine;
@@ -43,15 +44,17 @@ public class RunController {
     private final FlowService flows;
     private final FlowValidator validator;
     private final FlowRunner runner;
+    private final ApiCatalog apis;
     private final HttpClient http = HttpClient.newBuilder()
             .proxy(HttpClient.Builder.NO_PROXY)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
-    public RunController(FlowService flows, FlowValidator validator, FlowRunner runner) {
+    public RunController(FlowService flows, FlowValidator validator, FlowRunner runner, ApiCatalog apis) {
         this.flows = flows;
         this.validator = validator;
         this.runner = runner;
+        this.apis = apis;
     }
 
     /**
@@ -74,7 +77,7 @@ public class RunController {
     public ResponseEntity<?> start(@PathVariable long id, Principal user) {
         var flow = flows.get(id);
         String routeFile = FlowNames.routeFile(flow.getName());
-        var files = flows.files(id);
+        var files = apis.withSpecs(routeFile, flows.files(id));
         var validation = validator.validate(routeFile, files);
         if (!validation.valid()) {
             return ResponseEntity.unprocessableEntity().body(validation);

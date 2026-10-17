@@ -90,4 +90,34 @@ class CamelCatalogTest {
             mvc.perform(get(DIR + "kamelets-1.json")).andExpect(jsonPath("$['aws-s3-source']").exists());
         }
     }
+    @Nested
+    @SpringBootTest(properties = {
+        "echo.catalog.locations=classpath:/test-camel-catalog/",
+        "echo.apis.only=true",
+        "echo.apis.specs[0].id=inventory",
+        "echo.apis.specs[0].file=src/test/resources/apis/inventory.yaml",
+        "echo.apis.specs[0].allowed-tags=TMF638 Service Controller"
+    })
+    @AutoConfigureMockMvc
+    class ApprovedApisOnly {
+        @Autowired
+        private MockMvc mvc;
+
+        @Test
+        void plainHttpIsHiddenAndRestOpenApiOffersTheApprovedOperations() throws Exception {
+            mvc.perform(get(DIR + "components-1.json"))
+                    .andExpect(jsonPath("$.http").doesNotExist())
+                    .andExpect(jsonPath("$['rest-openapi'].properties.specificationUri.enum[0]")
+                            .value("inventory.openapi.json"))
+                    .andExpect(jsonPath("$['rest-openapi'].properties.specificationUri.defaultValue").doesNotExist())
+                    .andExpect(jsonPath("$['rest-openapi'].properties.operationId.enum")
+                            .value(org.hamcrest.Matchers.contains("createService", "getService")))
+                    .andExpect(jsonPath("$['rest-openapi'].propertiesSchema.properties.specificationUri.enum[0]")
+                            .value("inventory.openapi.json"))
+                    .andExpect(jsonPath("$['rest-openapi'].propertiesSchema.properties.specificationUri.default")
+                            .doesNotExist())
+                    .andExpect(jsonPath("$['rest-openapi'].propertiesSchema.properties.operationId.enum")
+                            .value(org.hamcrest.Matchers.contains("createService", "getService")));
+        }
+    }
 }

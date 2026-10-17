@@ -99,6 +99,20 @@
       <groupId>org.apache.camel</groupId>
       <artifactId>camel-rest-openapi</artifactId>
     </dependency>
+    <!-- Reads the approved API specs (echo.apis), converting Swagger 2.0 to OpenAPI 3. Same version
+         as the swagger-parser-v3 that camel-rest-openapi brings. -->
+    <dependency>
+      <groupId>io.swagger.parser.v3</groupId>
+      <artifactId>swagger-parser</artifactId>
+      <version>2.1.45</version>
+      <exclusions>
+        <!-- Same classes as the swagger-models-jakarta Camel uses. -->
+        <exclusion>
+          <groupId>io.swagger.core.v3</groupId>
+          <artifactId>swagger-models</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- Publishing: plain Git over HTTPS (or file:// in tests), any Git server. -->
     <dependency>
       <groupId>org.eclipse.jgit</groupId>

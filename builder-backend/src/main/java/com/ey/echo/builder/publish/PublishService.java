@@ -1,5 +1,6 @@
 package com.ey.echo.builder.publish;
 
+import com.ey.echo.builder.apis.ApiCatalog;
 import com.ey.echo.builder.flow.FlowNames;
 import com.ey.echo.builder.flow.FlowService;
 import com.ey.echo.builder.flow.FlowStatus;
@@ -30,11 +31,13 @@ public class PublishService {
     private final PublishTargets targets;
     private final PublishEventRepository events;
     private final Clock clock;
+    private final ApiCatalog apis;
     private final ObjectMapper json = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
     public PublishService(FlowService flows, FlowValidator validator, PublishTargets targets,
-            PublishEventRepository events, Clock clock) {
+            PublishEventRepository events, Clock clock, ApiCatalog apis) {
         this.flows = flows;
+        this.apis = apis;
         this.validator = validator;
         this.targets = targets;
         this.events = events;
@@ -59,8 +62,10 @@ public class PublishService {
     public Outcome publish(long flowId, String user, String message) {
         var enabled = targets.require();
         var flow = flows.get(flowId);
-        var files = new LinkedHashMap<>(flows.files(flowId));
-        var validation = validator.validate(FlowNames.routeFile(flow.getName()), files);
+        String routeFile = FlowNames.routeFile(flow.getName());
+        // A current copy of each approved API spec the flow calls goes into the flow folder.
+        var files = new LinkedHashMap<>(apis.withSpecs(routeFile, flows.files(flowId)));
+        var validation = validator.validate(routeFile, files);
         if (!validation.valid()) {
             return new Outcome.Invalid(validation);
         }
