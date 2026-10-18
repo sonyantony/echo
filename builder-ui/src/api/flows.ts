@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, ApiError } from './client';
 
 export type FlowStatus = 'DRAFT' | 'PUBLISHED';
 
@@ -52,7 +52,44 @@ export const flowsApi = {
     return api<FlowDetail>('/api/flows/upload', { method: 'POST', body: form });
   },
   downloadUrl: (id: number) => `/api/flows/${id}/download`,
+  /**
+   * Save As: the flow (with routeContent as the route) under another name. Fails with 409 and
+   * confirmOverwrite when that name is taken; send overwrite once the user agreed.
+   */
+  saveAs: (id: number, name: string, routeContent: string, overwrite = false) =>
+    api<FlowDetail>(`/api/flows/${id}/save-as`, { method: 'POST', json: { name, routeContent, overwrite } }),
 };
+
+/** A flow template, kept in the templates folder of Git (next to the flows folder). */
+export interface TemplateSummary {
+  name: string;
+  description?: string | null;
+  savedBy?: string | null;
+  savedAt?: string | null;
+}
+
+export const templatesApi = {
+  list: () => api<TemplateSummary[]>('/api/templates'),
+  /** Save As Template; 409 with confirmOverwrite when the template exists. */
+  saveFromFlow: (flowId: number, name: string, routeContent: string, overwrite = false) =>
+    api<TemplateSummary>(`/api/templates/from-flow/${flowId}`, {
+      method: 'POST',
+      json: { name, routeContent, overwrite },
+    }),
+  /** Open Template: a new draft made from the template. */
+  open: (template: string, name: string, description?: string) =>
+    api<FlowDetail>(`/api/templates/${encodeURIComponent(template)}/flows`, {
+      method: 'POST',
+      json: { name, description },
+    }),
+};
+
+/** True when a save failed only because it would replace something, and may be confirmed. */
+export function needsOverwriteConfirmation(e: unknown): boolean {
+  return (
+    e instanceof ApiError && e.status === 409 && (e.details as { confirmOverwrite?: boolean })?.confirmOverwrite === true
+  );
+}
 
 /** A flow as it is in the publish target (Git, else S3). flowId is the Builder flow it belongs to, if any. */
 export interface PublishedFlowSummary {

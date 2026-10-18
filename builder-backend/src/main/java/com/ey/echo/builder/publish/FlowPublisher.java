@@ -43,11 +43,23 @@ public interface FlowPublisher {
      */
     PublishResult remove(String flowName, String author, String message);
 
+    /**
+     * The same target's templates: flow folders kept in {@link #templatesFolder} next to the flows
+     * folder, so pipelines that build the flows folder never see them.
+     */
+    FlowPublisher templates();
+
     /** Flows currently in the target, one per flow folder, sorted by name. */
     List<PublishedFolder> list();
 
     /** Files of one published flow, path to content; empty if the target has no such flow. */
     Optional<Map<String, String>> read(String flowName);
+
+    /** The templates folder next to a flows folder: {@code flows} gives {@code templates}. */
+    static String templatesFolder(String flowsFolder) {
+        int slash = flowsFolder.lastIndexOf('/');
+        return slash < 0 ? "templates" : flowsFolder.substring(0, slash + 1) + "templates";
+    }
 
     /** A flow folder in the target with its files, path to content. */
     record PublishedFolder(String name, Map<String, String> files) {}

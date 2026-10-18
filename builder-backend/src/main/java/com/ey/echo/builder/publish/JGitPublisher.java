@@ -38,10 +38,24 @@ public class JGitPublisher implements FlowPublisher {
     private static final int ATTEMPTS = 2;
 
     private final GitProperties props;
-    private final ReentrantLock lock = new ReentrantLock();
+    /** The folder this publisher writes: the flows folder, or the templates folder next to it. */
+    private final String folder;
+    private final ReentrantLock lock;
+    private final JGitPublisher templates;
 
     public JGitPublisher(GitProperties props) {
         this.props = props;
+        this.folder = props.flowsFolder();
+        this.lock = new ReentrantLock();
+        this.templates = new JGitPublisher(props, FlowPublisher.templatesFolder(folder), lock);
+    }
+
+    /** The templates view: same working copy and lock, another folder. */
+    private JGitPublisher(GitProperties props, String folder, ReentrantLock lock) {
+        this.props = props;
+        this.folder = folder;
+        this.lock = lock;
+        this.templates = this;
     }
 
     @Override
@@ -77,9 +91,14 @@ public class JGitPublisher implements FlowPublisher {
     }
 
     @Override
+    public FlowPublisher templates() {
+        return templates;
+    }
+
+    @Override
     public List<PublishedFolder> list() {
         return onRemoteHead(git -> {
-            Path flows = git.getRepository().getWorkTree().toPath().resolve(props.flowsFolder());
+            Path flows = git.getRepository().getWorkTree().toPath().resolve(folder);
             var result = new ArrayList<PublishedFolder>();
             if (Files.isDirectory(flows)) {
                 try (Stream<Path> dirs = Files.list(flows)) {
@@ -221,7 +240,7 @@ public class JGitPublisher implements FlowPublisher {
     }
 
     private Path flowFolder(Git git, String flowName) {
-        Path flows = git.getRepository().getWorkTree().toPath().resolve(props.flowsFolder());
+        Path flows = git.getRepository().getWorkTree().toPath().resolve(folder);
         Path folder = flows.resolve(flowName).normalize();
         if (!folder.startsWith(flows) || folder.equals(flows)) {
             throw new PublishException("Invalid flow name: " + flowName);
@@ -229,10 +248,10 @@ public class JGitPublisher implements FlowPublisher {
         return folder;
     }
 
-    /** Stages everything under the flows folder. Returns false if nothing changed. */
+    /** Stages everything under this publisher's folder. Returns false if nothing changed. */
     private boolean stage(Git git) throws GitAPIException {
-        git.add().addFilepattern(props.flowsFolder()).call();
-        git.add().addFilepattern(props.flowsFolder()).setUpdate(true).call(); // stage deletions
+        git.add().addFilepattern(folder).call();
+        git.add().addFilepattern(folder).setUpdate(true).call(); // stage deletions
         var status = git.status().call();
         return !status.getAdded().isEmpty() || !status.getChanged().isEmpty() || !status.getRemoved().isEmpty();
     }

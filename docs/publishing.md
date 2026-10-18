@@ -46,6 +46,11 @@ set, so an unset variable never blanks a value in `application.yaml`. After chan
 - **Delete** tries every enabled target. If one fails, the Builder keeps the draft and shows the
   error; deleting again finishes the job.
 - **The Flows page** lists published flows from the first enabled target (Git, else S3).
+- **Templates** (Save As Template, Open Template) live in a `templates` folder next to the flows
+  folder: `templates/<name>/` in Git, `<parent of prefix>/templates/<name>/` in S3. Saving a
+  template writes it to every enabled target (Git commit "Save template <name>"); Open Template
+  reads the first enabled one. Each template folder is a flow folder plus `echo-template.json`
+  (description, who saved it, when). Pipelines build `flows/` only, so templates are never built.
 - Git keeps every version in its history. S3 keeps only the latest; turn on bucket versioning
   if you need old versions there.
 - The S3 credentials need `s3:ListBucket` on the bucket and `s3:GetObject`, `s3:PutObject`,
@@ -55,7 +60,7 @@ set, so an unset variable never blanks a value in `application.yaml`. After chan
 
 A target is a Spring bean implementing `FlowPublisher`
 (`builder-backend/src/main/java/com/ey/echo/builder/publish/`): `publish`, `remove`, `list`,
-`read`, plus an `enabled()` check read from its own settings. `PublishConfig` registers the Git
+`read`, `templates()` (the same operations on the templates folder), plus an `enabled()` check read from its own settings. `PublishConfig` registers the Git
 and S3 beans; a new one is another `@Bean` there (its `@Order` decides its place, which matters
 only for the Flows page). Nothing else changes: `PublishTargets` hands every enabled bean to
 publish and delete. S3 is spoken over plain HTTPS with SigV4 signing (`S3Client`), keeping the

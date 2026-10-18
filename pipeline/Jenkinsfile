@@ -3,7 +3,7 @@
 // repository and point a Jenkins (multibranch) pipeline job at pipeline/Jenkinsfile.
 //
 // It builds an image for every flow folder changed since the last successful build and pushes it
-// to your registry. Promotion between environments stays with your own release process.
+// to your registry. Only flows/ is built: templates/ (the Builder's Save As Template) is ignored. Promotion between environments stays with your own release process.
 //
 // Agent needs: Java 21, Maven, curl, git. No Docker daemon needed (Jib pushes directly).
 pipeline {

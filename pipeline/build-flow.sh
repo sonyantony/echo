@@ -40,6 +40,10 @@ done
 [[ -n "$FLOW_DIR" && -d "$FLOW_DIR" ]] || { echo "Flow folder not found: $FLOW_DIR" >&2; usage 1; }
 FLOW_DIR="$(cd "$FLOW_DIR" && pwd)"
 NAME="$(basename "$FLOW_DIR")"
+# Templates (saved with the Builder's Save As Template) are starting points, not deployable flows.
+if [[ "$(basename "$(dirname "$FLOW_DIR")")" == "templates" ]]; then
+  echo "Skipping $FLOW_DIR: templates are not built into images." >&2; exit 0
+fi
 [[ -f "$FLOW_DIR/$NAME.camel.yaml" ]] || { echo "Missing $NAME.camel.yaml in $FLOW_DIR" >&2; exit 1; }
 if [[ "$MODE" == "push" && -z "$REGISTRY" ]]; then
   echo "No registry given: use --registry, --local-image or --jar-only" >&2; exit 1

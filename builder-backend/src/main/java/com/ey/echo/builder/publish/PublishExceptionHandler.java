@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** Publish target errors (unreachable server, rejected push, not configured) as 502 problem details. */
-@RestControllerAdvice(assignableTypes = {PublishController.class, PublishedFlowController.class})
+@RestControllerAdvice(assignableTypes = {PublishController.class, PublishedFlowController.class, TemplateController.class})
 class PublishExceptionHandler {
 
     @ExceptionHandler(PublishException.class)

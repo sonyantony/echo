@@ -4,7 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 /** Errors the flow API reports as RFC 9457 problem details. */
-final class FlowExceptions {
+public final class FlowExceptions {
 
     private FlowExceptions() {}
 
@@ -24,6 +24,16 @@ final class FlowExceptions {
 
     static ResponseStatusException duplicateName(String name) {
         return new ResponseStatusException(HttpStatus.CONFLICT, "A flow named '%s' already exists.".formatted(name));
+    }
+
+    /**
+     * A save that would replace something: 409 with {@code "confirmOverwrite": true}, so the
+     * editor asks the user and sends the request again with {@code overwrite: true}.
+     */
+    public static ResponseStatusException confirmOverwrite(String message) {
+        var e = new ResponseStatusException(HttpStatus.CONFLICT, message);
+        e.getBody().setProperty("confirmOverwrite", true);
+        return e;
     }
 
     static ResponseStatusException descriptionTooLong() {

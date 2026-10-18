@@ -6,6 +6,7 @@ app and built into an image by the buyer's pipeline).
 
 - Requirements: `docs/Initial Requirements.md`. Build plan and milestones: `docs/ECHO Builder Plan.md`.
 - Decisions: `docs/decisions/` (one short note per significant choice).
+- Save As, Save As Template and Open Template (templates in `templates/` next to `flows/`): `docs/decisions/0007-save-as-and-templates.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
 - Publish targets (Git, S3; each with `enabled`) are per install config: `docs/publishing.md`.
 - A flow's OpenAPI spec (`openapi.json`, edited in the vendored Apicurio editor): `docs/api-spec.md`.

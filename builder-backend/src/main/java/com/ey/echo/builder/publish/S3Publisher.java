@@ -20,11 +20,26 @@ public class S3Publisher implements FlowPublisher {
 
     private final S3Properties props;
     private final S3Client s3;
-    private final ReentrantLock lock = new ReentrantLock();
+    /** The key prefix this publisher writes: the flows prefix, or the templates prefix next to it. */
+    private final String prefix;
+    private final ReentrantLock lock;
+    private final S3Publisher templates;
 
     public S3Publisher(S3Properties props, java.time.Clock clock) {
         this.props = props;
         this.s3 = new S3Client(props, clock);
+        this.prefix = props.prefix();
+        this.lock = new ReentrantLock();
+        this.templates = new S3Publisher(this);
+    }
+
+    /** The templates view of a flows publisher: same bucket and lock, another prefix. */
+    private S3Publisher(S3Publisher flows) {
+        this.props = flows.props;
+        this.s3 = flows.s3;
+        this.prefix = FlowPublisher.templatesFolder(flows.prefix);
+        this.lock = flows.lock;
+        this.templates = this;
     }
 
     @Override
@@ -39,7 +54,7 @@ public class S3Publisher implements FlowPublisher {
 
     @Override
     public String location() {
-        return "s3://%s/%s/".formatted(props.bucket(), props.prefix())
+        return "s3://%s/%s/".formatted(props.bucket(), prefix)
                 + (props.endpoint() == null ? "" : " at " + props.endpoint());
     }
 
@@ -103,9 +118,14 @@ public class S3Publisher implements FlowPublisher {
     }
 
     @Override
+    public FlowPublisher templates() {
+        return templates;
+    }
+
+    @Override
     public List<PublishedFolder> list() {
         var byFlow = new TreeMap<String, Map<String, String>>();
-        String root = props.prefix() + "/";
+        String root = prefix + "/";
         for (String key : s3.list(root)) {
             String rest = key.substring(root.length());
             int slash = rest.indexOf('/');
@@ -142,7 +162,7 @@ public class S3Publisher implements FlowPublisher {
                 || flowName.equals(".") || flowName.equals("..")) {
             throw new PublishException("Invalid flow name: " + flowName);
         }
-        return props.prefix() + "/" + flowName + "/";
+        return prefix + "/" + flowName + "/";
     }
 
     private String url(String folder) {
