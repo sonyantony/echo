@@ -13,6 +13,14 @@ public final class FlowDtos {
 
     public record UpdateFlow(@NotBlank String name, @Size(max = 1000) String description) {}
 
+    /**
+     * Save As, and Save As Template.
+     *
+     * @param routeContent the route as shown in the editor (unsaved edits included); null copies the saved route
+     * @param overwrite true once the user confirmed replacing an existing flow or template
+     */
+    public record SaveAs(@NotBlank String name, String routeContent, boolean overwrite) {}
+
     public record FlowSummary(
             long id, String name, String description, FlowStatus status, String updatedBy, Instant updatedAt) {
 

@@ -40,6 +40,17 @@ class S3PublisherTest {
     }
 
     @Test
+    void templatesGoToTheTemplatesFolderNextToTheFlowsFolder() {
+        publisher.publish("orders", null, orders("flow"), "alice", "Publish orders");
+        publisher.templates().publish("basic", null, Map.of("basic.camel.yaml", "tpl"), "alice", "Save template");
+
+        assertThat(s3.objects).containsEntry("echo/templates/basic/basic.camel.yaml", "tpl");
+        assertThat(publisher.list()).extracting(FlowPublisher.PublishedFolder::name).containsExactly("orders");
+        assertThat(publisher.templates().list()).extracting(FlowPublisher.PublishedFolder::name).containsExactly("basic");
+        assertThat(publisher.templates().read("basic")).contains(Map.of("basic.camel.yaml", "tpl"));
+    }
+
+    @Test
     void publishingTheSameContentAgainWritesNothing() {
         publisher.publish("orders", null, orders("v1"), "alice", "one");
         s3.requests.clear();

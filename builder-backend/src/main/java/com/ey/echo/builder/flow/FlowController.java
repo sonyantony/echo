@@ -85,6 +85,17 @@ public class FlowController {
         return service.detail(id);
     }
 
+    /** Save As: the flow (route as on screen) under another name; 409 with confirmOverwrite if that name is taken. */
+    @PostMapping("/{id}/save-as")
+    public ResponseEntity<FlowDetail> saveAs(@PathVariable long id, @Valid @RequestBody FlowDtos.SaveAs request,
+            Principal user) {
+        boolean existed = service.findByName(request.name()).isPresent();
+        var flow = service.saveAs(id, request.name(), request.routeContent(), request.overwrite(), user.getName());
+        var detail = service.detail(flow.getId());
+        return existed ? ResponseEntity.ok(detail)
+                : ResponseEntity.created(URI.create("/api/flows/" + flow.getId())).body(detail);
+    }
+
     // DELETE /{id} is in PublishController: deleting a published flow also removes it from Git.
 
     // {*path} captures the rest of the URL (with a leading slash), so files may sit in sub-folders.

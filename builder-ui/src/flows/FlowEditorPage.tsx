@@ -3,12 +3,17 @@ import {
   AlertActionCloseButton,
   Bullseye,
   Button,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   Flex,
   FlexItem,
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
+  MenuToggle,
+  MenuToggleAction,
   PageSection,
   Spinner,
   Title,
@@ -23,6 +28,7 @@ import {
   editorSettings,
   flowsApi,
   runApi,
+  templatesApi,
   validateFlow,
   type ValidationResult,
 } from '../api/flows';
@@ -33,11 +39,18 @@ import { HistoryModal } from './HistoryModal';
 import { PublishModal } from './PublishModal';
 import { publishSummary } from './publishSummary';
 import { RunPanel } from './RunPanel';
+import { SaveAsModal } from './SaveAsModal';
 import { useAutosave } from './useAutosave';
 import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
 
+/** One editor per flow: moving to another flow (e.g. after Save As) starts a fresh editor. */
 export function FlowEditorPage() {
+  const { id } = useParams();
+  return <FlowEditor key={id} />;
+}
+
+function FlowEditor() {
   const id = Number(useParams().id);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -74,6 +87,10 @@ export function FlowEditorPage() {
   const [autosavedAt, setAutosavedAt] = useState<Date>();
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
+  /** Set when Save As moves to the new flow, so leaving this one does not ask about unsaved edits. */
+  const leavingAfterSaveAs = useRef(false);
 
   useEffect(() => {
     if (route.data !== undefined) savedYaml.current = route.data;
@@ -187,7 +204,10 @@ export function FlowEditorPage() {
   });
 
   // Warn before leaving with unsaved changes, inside the app and when closing the tab.
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty && !leavingAfterSaveAs.current && currentLocation.pathname !== nextLocation.pathname,
+  );
   useEffect(() => {
     if (!dirty) return;
     const handler = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -257,9 +277,44 @@ export function FlowEditorPage() {
                   {run.data ? 'Restart' : 'Run'}
                 </Button>
               )}
-              <Button variant="secondary" onClick={() => save()} isLoading={saving} isDisabled={saving}>
-                Save
-              </Button>
+              <Dropdown
+                isOpen={saveMenuOpen}
+                onOpenChange={setSaveMenuOpen}
+                onSelect={() => setSaveMenuOpen(false)}
+                popperProps={{ position: 'end' }}
+                toggle={(toggleRef) => (
+                  <MenuToggle
+                    ref={toggleRef}
+                    variant="secondary"
+                    isDisabled={saving}
+                    isExpanded={saveMenuOpen}
+                    onClick={() => setSaveMenuOpen((open) => !open)}
+                    aria-label="Saving options"
+                    splitButtonItems={[
+                      <MenuToggleAction key="save" onClick={() => save()} aria-label="Save">
+                        Save
+                      </MenuToggleAction>,
+                    ]}
+                  />
+                )}
+              >
+                <DropdownList>
+                  <DropdownItem
+                    key="save-as"
+                    onClick={() => setSavingAs('flow')}
+                    description="Save this flow under another name and continue there"
+                  >
+                    Save As
+                  </DropdownItem>
+                  <DropdownItem
+                    key="save-as-template"
+                    onClick={() => setSavingAs('template')}
+                    description="Store this flow in Git's templates folder for Open Template"
+                  >
+                    Save As Template
+                  </DropdownItem>
+                </DropdownList>
+              </Dropdown>
               <Button
                 variant="secondary"
                 icon={<DownloadIcon />}
@@ -348,6 +403,44 @@ export function FlowEditorPage() {
               queryClient.invalidateQueries({ queryKey: ['flow', id] }),
               queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
             ]);
+          }}
+        />
+      )}
+      {savingAs === 'flow' && (
+        <SaveAsModal
+          title="Save As"
+          description="Saves what is on screen as a draft with another name and opens it. This flow keeps its last saved version."
+          initialName={`${flow.data.name}-copy`}
+          onClose={() => setSavingAs(undefined)}
+          onSave={async (name, overwrite) => {
+            const yaml = await editor.current!.getContent();
+            const copy = await flowsApi.saveAs(id, name, yaml, overwrite);
+            setSavingAs(undefined);
+            await queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
+            if (copy.id === id) {
+              savedYaml.current = yaml;
+              setDirty(latestYaml.current !== undefined && latestYaml.current !== yaml);
+              setMessage({ variant: 'success', text: 'Saved.' });
+              return;
+            }
+            queryClient.removeQueries({ queryKey: ['flow', copy.id] });
+            leavingAfterSaveAs.current = true;
+            navigate(`/flows/${copy.id}`);
+          }}
+        />
+      )}
+      {savingAs === 'template' && (
+        <SaveAsModal
+          title="Save As Template"
+          description="Saves what is on screen as a template in Git's templates folder. Pipelines do not build templates."
+          initialName={flow.data.name}
+          onClose={() => setSavingAs(undefined)}
+          onSave={async (name, overwrite) => {
+            const yaml = await editor.current!.getContent();
+            await templatesApi.saveFromFlow(id, name, yaml, overwrite);
+            setSavingAs(undefined);
+            setMessage({ variant: 'success', text: `Saved as template ${name}.` });
+            await queryClient.invalidateQueries({ queryKey: ['templates'] });
           }}
         />
       )}

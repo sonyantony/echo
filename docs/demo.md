@@ -53,6 +53,13 @@ Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}
 computer as `<name>.zip`; **Upload flow** opens such a zip again as a new draft. An upload never
 overwrites an existing flow: give it a new name if the name is taken.
 
+**Save As** (in the Save button's menu) saves what is on screen as a draft with another name and
+opens it; the original keeps its last saved version. **Save As Template** saves it to the
+`templates/` folder of the flow repository (next to `flows/`). **Open Template** on the Flows
+page starts a new draft from one of those templates. Both Save As choices warn and ask before
+replacing an existing draft or template. Pipelines build only `flows/`, so templates never become
+images.
+
 **Download diagram (.png)** saves a picture of the whole flow as `<name>.png`, as it is on the
 canvas (unsaved edits included).
 

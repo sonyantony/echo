@@ -31,6 +31,7 @@ import {
   type PublishedFlowSummary,
 } from '../api/flows';
 import { FlowFormModal } from './FlowFormModal';
+import { OpenTemplateModal } from './OpenTemplateModal';
 import { UploadFlowModal } from './UploadFlowModal';
 
 export const FLOWS_KEY = ['flows'];
@@ -65,6 +66,7 @@ export function FlowListPage() {
   const published = useQuery({ queryKey: PUBLISHED_KEY, queryFn: publishedFlowsApi.list, retry: false });
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [openingTemplate, setOpeningTemplate] = useState(false);
   const [renaming, setRenaming] = useState<FlowSummary>();
   const [deleting, setDeleting] = useState<Row>();
   const refresh = () => queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
@@ -113,6 +115,11 @@ export function FlowListPage() {
       Upload flow
     </Button>
   );
+  const templateButton = (
+    <Button variant="secondary" onClick={() => setOpeningTemplate(true)}>
+      Open Template
+    </Button>
+  );
 
   return (
     <>
@@ -136,6 +143,7 @@ export function FlowListPage() {
             <EmptyStateFooter>
               <EmptyStateActions>
                 {newButton}
+                {templateButton}
                 {uploadButton}
               </EmptyStateActions>
             </EmptyStateFooter>
@@ -146,6 +154,7 @@ export function FlowListPage() {
             <Toolbar>
               <ToolbarContent>
                 <ToolbarItem>{newButton}</ToolbarItem>
+                <ToolbarItem>{templateButton}</ToolbarItem>
                 <ToolbarItem>{uploadButton}</ToolbarItem>
               </ToolbarContent>
             </Toolbar>
@@ -250,6 +259,16 @@ export function FlowListPage() {
           onClose={() => setUploading(false)}
           onUploaded={async (flow) => {
             setUploading(false);
+            await refresh();
+            navigate(`/flows/${flow.id}`);
+          }}
+        />
+      )}
+      {openingTemplate && (
+        <OpenTemplateModal
+          onClose={() => setOpeningTemplate(false)}
+          onOpened={async (flow) => {
+            setOpeningTemplate(false);
             await refresh();
             navigate(`/flows/${flow.id}`);
           }}

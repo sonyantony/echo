@@ -100,6 +100,62 @@ public class FlowService {
         return flow;
     }
 
+    /**
+     * Save As: copies a flow, with its side files, to a draft with another name. The route file is
+     * renamed to match and gets {@code routeContent} (what is on screen) when given. An existing
+     * draft with that name is replaced only when {@code overwrite} is true; the source keeps its
+     * last saved state. Saving under the flow's own name is a plain save.
+     */
+    public Flow saveAs(long sourceId, String name, String routeContent, boolean overwrite, String user) {
+        checkName(name);
+        var source = get(sourceId);
+        String sourceRoute = FlowNames.routeFile(source.getName());
+        if (source.getName().equals(name)) {
+            if (routeContent != null) {
+                writeFile(sourceId, sourceRoute, routeContent, user);
+            }
+            return source;
+        }
+        var files = new java.util.TreeMap<String, String>();
+        source.getFiles().forEach(f -> files.put(f.getPath(), f.getContent()));
+        String route = files.remove(sourceRoute);
+        files.put(FlowNames.routeFile(name), routeContent != null ? routeContent : route);
+
+        var existing = flows.findByNameIgnoreCase(name);
+        if (existing.isPresent() && existing.get().getId().equals(sourceId)) {
+            throw duplicateName(name); // differs only in case from the source's own name
+        }
+        if (existing.isPresent() && !overwrite) {
+            throw FlowExceptions.confirmOverwrite("A flow named '%s' already exists. Replace it?".formatted(name));
+        }
+        var target = existing.orElseGet(() -> new Flow(name, source.getDescription(), user, now()));
+        replaceFiles(target, files);
+        target.touch(user, now());
+        return existing.isPresent() ? target : flows.save(target);
+    }
+
+    /**
+     * Creates a draft from a template's files (as read from the template folder). The template's
+     * route file is renamed to match the new flow. Never overwrites a flow.
+     */
+    public Flow createFromTemplate(String templateName, java.util.Map<String, String> templateFiles, String name,
+            String description, String user) {
+        String templateRoute = FlowNames.routeFile(templateName);
+        if (!templateFiles.containsKey(templateRoute)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY,
+                    "The template '%s' has no %s.".formatted(templateName, templateRoute));
+        }
+        templateFiles.keySet().forEach(FlowService::checkPath);
+        return importArchive(new FlowArchive.Contents(templateName, templateFiles), name, description, user);
+    }
+
+    /** Makes the flow's files exactly {@code files}, updating rows in place (no delete-then-insert of a path). */
+    private static void replaceFiles(Flow flow, java.util.Map<String, String> files) {
+        files.forEach(flow::putFile);
+        flow.getFiles().removeIf(f -> !files.containsKey(f.getPath()));
+    }
+
     public void delete(long id) {
         flows.delete(get(id));
     }
