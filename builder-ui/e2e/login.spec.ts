@@ -17,6 +17,7 @@ test('logs in and sees the flow list', async ({ page }) => {
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByRole('heading', { name: 'Flows', exact: true })).toBeVisible();
   await expect(page.getByTestId('current-user')).toHaveText('designer');
+  await expect(page.getByRole('banner')).toContainText('User: designer');
   await expect(page.getByRole('banner').getByAltText('Company logo')).toBeVisible();
   await expect(page.getByRole('banner')).toContainText('EY ECHO Builder');
 
