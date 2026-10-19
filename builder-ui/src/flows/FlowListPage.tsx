@@ -75,6 +75,26 @@ export function StatusLabel({ status }: { status: FlowSummary['status'] }) {
 /** Address of the Open Flow page (the list of flows). */
 export const OPEN_FLOW_PATH = '/flows';
 
+/** The flow last opened in the editor, kept per browser so Cancel can return to it after a reload. */
+const LAST_FLOW_KEY = 'echo.lastFlowId';
+
+export function rememberLastFlow(id: number) {
+  try {
+    localStorage.setItem(LAST_FLOW_KEY, String(id));
+  } catch {
+    // Storage blocked: Cancel then falls back to the blank canvas.
+  }
+}
+
+function lastFlowId(): number | undefined {
+  try {
+    const id = Number(localStorage.getItem(LAST_FLOW_KEY));
+    return id > 0 ? id : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Router state the editor passes when it sends you here, so Cancel can take you back. */
 export interface OpenFlowState {
   from?: string;
@@ -113,6 +133,13 @@ export function FlowListPage() {
   });
 
   const rows = flows.data ? listRows(flows.data, published.data ?? []) : undefined;
+  /** Back to where you came from; else to the flow last worked on, if it still exists; else the blank canvas. */
+  const cancel = () => {
+    const last = lastFlowId();
+    if (cameFrom) navigate(cameFrom);
+    else if (last && flows.data?.some((f) => f.id === last)) navigate(`/flows/${last}`);
+    else navigate('/');
+  };
   const shownRows = rows?.filter((r) => (isPublished(r) ? showPublished : showUnpublished) && matches(r, search)) ?? [];
   const publishedFor = (flowId: number) => published.data?.find((p) => p.flowId === flowId);
   const deleteButton = (row: Row, name: string) => (
@@ -171,6 +198,9 @@ export function FlowListPage() {
                 {newButton}
                 {templateButton}
                 {uploadButton}
+                <Button variant="secondary" onClick={cancel}>
+                  Cancel
+                </Button>
               </EmptyStateActions>
             </EmptyStateFooter>
           </EmptyState>
@@ -206,8 +236,7 @@ export function FlowListPage() {
                     />
                   </ToolbarItem>
                   <ToolbarItem>
-                    {/* Back to where you came from; with no history, to the blank canvas. */}
-                    <Button variant="secondary" onClick={() => navigate(cameFrom ?? '/')}>
+                    <Button variant="secondary" onClick={cancel}>
                       Cancel
                     </Button>
                   </ToolbarItem>

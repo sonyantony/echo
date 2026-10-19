@@ -202,7 +202,8 @@ test('saves the blank canvas as a new flow', async ({ page }) => {
   expect(created).toHaveLength(1);
 });
 
-// Cancel on Open Flow goes back to where you were: the canvas, or with no history the canvas too.
+// Cancel on Open Flow goes back to where you were; with no history, to the flow last worked on, or
+// to the canvas if there is none.
 test('Cancel on Open Flow goes back', async ({ page }) => {
   await login(page);
   await fileMenu(page, /^Open Flow/);
@@ -213,4 +214,10 @@ test('Cancel on Open Flow goes back', async ({ page }) => {
   await page.goto('/flows');
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+
+  const name = uniqueName('last');
+  await createFlow(page, name);
+  await page.goto('/flows');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name })).toBeVisible();
 });
