@@ -87,6 +87,47 @@ describe('Flow list', () => {
     expect(screen.queryByRole('link', { name: 'legacy' })).not.toBeInTheDocument();
   });
 
+  it('filters the list by search text and by Published / Unpublished', async () => {
+    mockFetch({
+      ...loggedIn,
+      'GET /api/flows': { status: 200, body: [flow(2, 'refunds'), { ...flow(3, 'billing'), description: 'Monthly invoices' }] },
+      'GET /api/published-flows': {
+        status: 200,
+        body: [
+          { ...published('orders', 1), draftChanged: false },
+          { ...published('refunds', 2), draftChanged: true },
+        ],
+      },
+    });
+    render(<App queryClient={createQueryClient()} />);
+    await screen.findByRole('link', { name: 'orders' });
+    const shown = () =>
+      screen
+        .queryAllByRole('row')
+        .slice(1)
+        .map((r) => `${(r as HTMLTableRowElement).cells[0].textContent} ${(r as HTMLTableRowElement).cells[2].textContent}`);
+
+    const search = screen.getByRole('textbox', { name: 'Search flows' });
+    await userEvent.type(search, 'REF');
+    expect(shown()).toEqual(['refunds Published v2', 'refunds Draft']);
+    await userEvent.clear(search);
+    await userEvent.type(search, 'invoices'); // matches the description
+    expect(shown()).toEqual(['billing Draft']);
+    await userEvent.clear(search);
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Published' }));
+    expect(shown()).toEqual(['billing Draft', 'refunds Draft']);
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Unpublished' }));
+    expect(shown()).toEqual([]);
+    expect(screen.getByText('No flows match')).toBeInTheDocument();
+    expect(screen.getByText('Tick Published or Unpublished to see flows.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Published' }));
+    expect(shown()).toEqual(['orders Published v1', 'refunds Published v2']);
+
+    await userEvent.type(search, 'nothing like this');
+    expect(screen.getByText('No flows match')).toBeInTheDocument();
+  });
+
   it('opens a flow that is only in Git as a new draft', async () => {
     const { calls } = mockFetch({
       ...loggedIn,
