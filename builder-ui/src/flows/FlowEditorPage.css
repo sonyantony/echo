@@ -58,12 +58,6 @@
 .echo-tab-actions .pf-v6-c-menu-toggle__icon {
   color: var(--pf-t--global--icon--color--brand--default, currentColor);
 }
-.echo-tab-actions__divider {
-  align-self: stretch;
-  width: 1px;
-  margin: 8px 8px;
-  background: var(--pf-t--global--border--color--default);
-}
 .echo-tab-actions__more {
   display: none;
 }
@@ -100,8 +94,9 @@
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
-/* File and Advanced read like desktop menu bar entries: no dropdown arrow. */
+/* File, Run and Advanced read like desktop menu bar entries: no dropdown arrow. */
 .echo-tab-actions .echo-file-menu .pf-v6-c-menu-toggle__controls,
+.echo-tab-actions .echo-run-menu .pf-v6-c-menu-toggle__controls,
 .echo-tab-actions .echo-advanced-menu .pf-v6-c-menu-toggle__controls {
   display: none;
 }

@@ -72,14 +72,14 @@ canvas (unsaved edits included).
 
 ## 3. Validate
 
-Choose **Validate**. The Builder loads the flow with Camel and checks that it stays within
+Choose **Run > Validate**. The Builder loads the flow with Camel and checks that it stays within
 the Version 1 scope (HTTP and JSON components, allowed expression languages, and existing
 DataMapper files). Errors appear in the panel with the line they refer to. A valid flow shows
 "The flow is valid."
 
 ## 3a. Run it and send it a request
 
-Choose **Run** in the editor header. The Builder saves and validates the draft, then starts it
+Choose **Run > Run <flow name>** in the editor. The Builder saves and validates the draft, then starts it
 inside the Builder on its own port (8081 for the first running flow, up to 8090). A panel below
 the header shows:
 
@@ -105,7 +105,7 @@ Things to know:
 
 ## 4. Publish
 
-Choose **Publish**, describe the change and confirm. The Builder validates the flow again,
+Choose **Run > Publish**, describe the change and confirm. The Builder validates the flow again,
 then commits `flows/orders/` to the configured branch as you. The commit holds the route,
 the DataMapper XSLT, the schemas, `application.properties` and `echo-flow.json`. **History**
 lists earlier publishes with their commit ids.

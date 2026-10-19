@@ -92,6 +92,7 @@ function FlowEditor() {
   const [stopping, setStopping] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [runMenuOpen, setRunMenuOpen] = useState(false);
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -363,25 +364,64 @@ function FlowEditor() {
     </div>
   );
 
+  // The Run menu, among Kaoto's tabs just before Advanced: run the flow, validate it, publish it.
+  const runMenu = (
+    <div className="echo-tab-actions echo-no-print">
+      <Dropdown
+        isOpen={runMenuOpen}
+        onOpenChange={setRunMenuOpen}
+        onSelect={() => setRunMenuOpen(false)}
+        popperProps={{ position: 'start', appendTo: () => document.body }}
+        toggle={(toggleRef) => (
+          <MenuToggle
+            ref={toggleRef}
+            variant="plainText"
+            className="echo-run-menu"
+            isExpanded={runMenuOpen}
+            onClick={() => setRunMenuOpen((open) => !open)}
+          >
+            Run
+          </MenuToggle>
+        )}
+      >
+        <DropdownList>
+          {runEnabled && (
+            <DropdownItem
+              key="run"
+              icon={<PlayIcon />}
+              onClick={startRun}
+              isDisabled={starting || saving || validating}
+              description={run.data ? 'Restart the flow with your latest changes' : 'Run this flow inside the Builder and send it test requests'}
+            >
+              {run.data ? 'Restart' : 'Run'} {flow.data.name}
+            </DropdownItem>
+          )}
+          <DropdownItem
+            key="validate"
+            onClick={validate}
+            isDisabled={validating || saving}
+            description="Check the flow for problems before publishing it"
+          >
+            Validate
+          </DropdownItem>
+          <Divider component="li" key="publish-divider" />
+          <DropdownItem
+            key="publish"
+            onClick={() => setPublishing(true)}
+            isDisabled={saving || validating}
+            description="Publish this flow so the pipeline can build it"
+          >
+            Publish
+          </DropdownItem>
+        </DropdownList>
+      </Dropdown>
+    </div>
+  );
+
   // Shown at the right end of Kaoto's tab bar, styled like its tabs. On narrow screens History moves
   // into the More menu (FlowEditorPage.css).
   const actions = (
     <div className="echo-tab-actions echo-no-print">
-      <Button variant="plain" onClick={validate} isLoading={validating} isDisabled={validating || saving}>
-        Validate
-      </Button>
-      {runEnabled && (
-        <Button
-          variant="plain"
-          icon={<PlayIcon />}
-          onClick={startRun}
-          isLoading={starting}
-          isDisabled={starting || saving || validating}
-          title={run.data ? 'Restart the flow with your latest changes' : 'Run this flow inside the Builder and send it test requests'}
-        >
-          {run.data ? 'Restart' : 'Run'}
-        </Button>
-      )}
       <Button
         variant="plain"
         icon={<CodeIcon />}
@@ -417,10 +457,6 @@ function FlowEditor() {
           </DropdownItem>
         </DropdownList>
       </Dropdown>
-      <span className="echo-tab-actions__divider" />
-      <Button variant="primary" size="sm" onClick={() => setPublishing(true)} isDisabled={saving || validating}>
-        Publish
-      </Button>
     </div>
   );
 
@@ -482,6 +518,7 @@ function FlowEditor() {
           files={files}
           onChange={onChange}
           tabBarStart={fileMenu}
+          tabBarMenus={runMenu}
           tabBarActions={actions}
         />
       </div>
