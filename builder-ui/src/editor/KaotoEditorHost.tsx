@@ -1,5 +1,6 @@
 import { KaotoEditorFactory } from '@kaoto/kaoto';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import type { FlowFiles } from './flowFiles';
 import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
@@ -22,6 +23,8 @@ export interface KaotoEditorHostProps {
   onChange?(content: string): void;
   /** Defaults to the Builder's catalog, cut down to what flows may use (CamelCatalogController). */
   catalogUrl?: string;
+  /** Builder controls shown at the right end of Kaoto's tab bar (Design, Beans, ...), on the same line. */
+  tabBarActions?: ReactNode;
 }
 
 interface KaotoEditor {
@@ -37,7 +40,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json' },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +50,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   onChangeRef.current = onChange;
   const pickRef = useRef<((files: Record<string, string> | undefined) => void) | null>(null);
   const [error, setError] = useState<string>();
+  const [tabBarSlot, setTabBarSlot] = useState<HTMLElement>();
 
   useImperativeHandle(ref, () => ({
     getContent: async () => (editorRef.current ? editorRef.current.getContent() : initialContent),
@@ -109,6 +113,29 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Kaoto renders its tab bar when it starts; put a slot for the Builder's controls at its end, and
+  // put it back should Kaoto ever render the tab bar again.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const slot = document.createElement('div');
+    slot.className = 'echo-kaoto-host__tab-actions';
+    const attach = () => {
+      const tabBar = container.querySelector(":scope > .shell > div[role='region']");
+      if (tabBar && slot.parentElement !== tabBar) {
+        tabBar.appendChild(slot);
+        setTabBarSlot(slot);
+      }
+    };
+    const observer = new MutationObserver(attach);
+    observer.observe(container, { childList: true, subtree: true });
+    attach();
+    return () => {
+      observer.disconnect();
+      slot.remove();
+    };
+  }, []);
+
   const onFilesPicked = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const picked: Record<string, string> = {};
     await Promise.all(Array.from(event.target.files ?? []).map(async (f) => (picked[f.name] = await f.text())));
@@ -121,6 +148,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     <div className="echo-kaoto-host" data-testid="kaoto-editor-host">
       {error && <div role="alert">Could not start the flow editor: {error}</div>}
       <div ref={containerRef} className="echo-kaoto-host__editor" />
+      {tabBarSlot && tabBarActions && createPortal(tabBarActions, tabBarSlot)}
       <input
         ref={fileInputRef}
         type="file"

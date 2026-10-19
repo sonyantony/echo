@@ -25,6 +25,28 @@ test('editor fits the page and prints the whole open tab', async ({ page }) => {
   expect(pages.length).toBeGreaterThan(1);
 });
 
+test("the editor's controls share the line with Kaoto's tabs", async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('tabline'));
+  const tabBar = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"]');
+  const top = async (name: string) => (await page.getByRole('button', { name, exact: true }).boundingBox())!.y;
+  const tabBox = (await tabBar.boundingBox())!;
+  for (const name of ['Validate', 'Save', 'Download', 'API spec', 'History', 'Publish']) {
+    const y = await top(name);
+    expect(y).toBeGreaterThanOrEqual(tabBox.y);
+    expect(y).toBeLessThan(tabBox.y + tabBox.height);
+  }
+
+  // On a narrow screen Download and History move into the More menu.
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await expect(page.getByRole('button', { name: 'History', exact: true })).toBeHidden();
+  await page.getByRole('button', { name: 'More actions' }).click();
+  await expect(page.getByRole('menuitem', { name: 'History' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /Download \.zip/ })).toBeVisible();
+  const publish = (await page.getByRole('button', { name: 'Publish', exact: true }).boundingBox())!;
+  expect(publish.x + publish.width).toBeLessThanOrEqual(1100);
+});
+
 test('the About tab shows EY ECHO and its developer', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('about'));
