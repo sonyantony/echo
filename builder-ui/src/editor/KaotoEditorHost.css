@@ -52,13 +52,17 @@
   display: none;
 }
 
-/* The Builder's controls share the line with Kaoto's tabs, at its right end. */
+/* The Builder's controls share the line with Kaoto's tabs: the File menu first, the rest at its right end. */
 .echo-kaoto-host__editor > .shell > div[role='region'] {
   display: flex;
   align-items: center;
 }
 .echo-kaoto-host__editor > .shell > div[role='region'] > .pf-v6-c-tabs__list {
   flex: none;
+}
+.echo-kaoto-host__tab-start {
+  flex: none;
+  padding-inline-start: 8px;
 }
 .echo-kaoto-host__tab-actions {
   margin-inline-start: auto;

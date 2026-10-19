@@ -25,6 +25,8 @@ export interface KaotoEditorHostProps {
   catalogUrl?: string;
   /** Builder controls shown at the right end of Kaoto's tab bar (Design, Beans, ...), on the same line. */
   tabBarActions?: ReactNode;
+  /** Builder controls shown at the left end of Kaoto's tab bar, before its first tab (e.g. a File menu). */
+  tabBarStart?: ReactNode;
 }
 
 interface KaotoEditor {
@@ -40,7 +42,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,6 +53,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const pickRef = useRef<((files: Record<string, string> | undefined) => void) | null>(null);
   const [error, setError] = useState<string>();
   const [tabBarSlot, setTabBarSlot] = useState<HTMLElement>();
+  const [tabBarStartSlot, setTabBarStartSlot] = useState<HTMLElement>();
 
   useImperativeHandle(ref, () => ({
     getContent: async () => (editorRef.current ? editorRef.current.getContent() : initialContent),
@@ -113,18 +116,25 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Kaoto renders its tab bar when it starts; put a slot for the Builder's controls at its end, and
-  // put it back should Kaoto ever render the tab bar again.
+  // Kaoto renders its tab bar when it starts; put slots for the Builder's controls at its start and
+  // end, and put them back should Kaoto ever render the tab bar again.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const slot = document.createElement('div');
     slot.className = 'echo-kaoto-host__tab-actions';
+    const startSlot = document.createElement('div');
+    startSlot.className = 'echo-kaoto-host__tab-start';
     const attach = () => {
       const tabBar = container.querySelector(":scope > .shell > div[role='region']");
-      if (tabBar && slot.parentElement !== tabBar) {
+      if (!tabBar) return;
+      if (slot.parentElement !== tabBar) {
         tabBar.appendChild(slot);
         setTabBarSlot(slot);
+      }
+      if (tabBar.firstElementChild !== startSlot) {
+        tabBar.prepend(startSlot);
+        setTabBarStartSlot(startSlot);
       }
     };
     const observer = new MutationObserver(attach);
@@ -133,6 +143,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     return () => {
       observer.disconnect();
       slot.remove();
+      startSlot.remove();
     };
   }, []);
 
@@ -148,6 +159,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     <div className="echo-kaoto-host" data-testid="kaoto-editor-host">
       {error && <div role="alert">Could not start the flow editor: {error}</div>}
       <div ref={containerRef} className="echo-kaoto-host__editor" />
+      {tabBarStartSlot && tabBarStart && createPortal(tabBarStart, tabBarStartSlot)}
       {tabBarSlot && tabBarActions && createPortal(tabBarActions, tabBarSlot)}
       <input
         ref={fileInputRef}

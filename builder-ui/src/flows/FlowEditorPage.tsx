@@ -3,6 +3,7 @@ import {
   AlertActionCloseButton,
   Bullseye,
   Button,
+  Divider,
   Dropdown,
   DropdownItem,
   DropdownList,
@@ -13,12 +14,11 @@ import {
   ModalFooter,
   ModalHeader,
   MenuToggle,
-  MenuToggleAction,
   PageSection,
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { CodeIcon, DownloadIcon, EllipsisVIcon, PlayIcon } from '@patternfly/react-icons';
+import { CodeIcon, EllipsisVIcon, PlayIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
@@ -36,10 +36,12 @@ import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { FLOWS_KEY, StatusLabel } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
+import { OpenTemplateModal } from './OpenTemplateModal';
 import { PublishModal } from './PublishModal';
 import { publishSummary } from './publishSummary';
 import { RunPanel } from './RunPanel';
 import { SaveAsModal } from './SaveAsModal';
+import { UploadFlowModal } from './UploadFlowModal';
 import { useAutosave } from './useAutosave';
 import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
@@ -87,10 +89,11 @@ function FlowEditor() {
   const [autosavedAt, setAutosavedAt] = useState<Date>();
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
-  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
-  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
+  const [openingTemplate, setOpeningTemplate] = useState(false);
+  const [uploading, setUploading] = useState(false);
   /** Set when Save As moves to the new flow, so leaving this one does not ask about unsaved edits. */
   const leavingAfterSaveAs = useRef(false);
 
@@ -234,29 +237,90 @@ function FlowEditor() {
     );
   }
 
-  const downloadItems = (
-    <>
-      <DropdownItem
-        key="zip"
-        onClick={download}
-        isDisabled={saving}
-        description="The flow as a .zip you can upload again later"
+  /** Opens a draft just made by Open Template or Upload Flow (leaving this one asks about unsaved edits). */
+  const openNewDraft = async (newId: number) => {
+    setOpeningTemplate(false);
+    setUploading(false);
+    await queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
+    navigate(`/flows/${newId}`);
+  };
+
+  // The File menu, first on the line with Kaoto's tabs as in most desktop software.
+  const fileMenu = (
+    <div className="echo-tab-actions echo-no-print">
+      <Dropdown
+        isOpen={fileMenuOpen}
+        onOpenChange={setFileMenuOpen}
+        onSelect={() => setFileMenuOpen(false)}
+        popperProps={{ position: 'start', appendTo: () => document.body }}
+        toggle={(toggleRef) => (
+          <MenuToggle
+            ref={toggleRef}
+            variant="plainText"
+            isExpanded={fileMenuOpen}
+            onClick={() => setFileMenuOpen((open) => !open)}
+          >
+            File
+          </MenuToggle>
+        )}
       >
-        Download .zip
-      </DropdownItem>
-      <DropdownItem
-        key="png"
-        onClick={downloadDiagram}
-        isDisabled={drawing}
-        description="A picture of the whole flow diagram"
-      >
-        Download diagram (.png)
-      </DropdownItem>
-    </>
+        <DropdownList>
+          <DropdownItem
+            key="open-template"
+            onClick={() => setOpeningTemplate(true)}
+            description="Start a new flow from a template stored in Git"
+          >
+            Open Template
+          </DropdownItem>
+          <DropdownItem
+            key="upload"
+            onClick={() => setUploading(true)}
+            description="Open a flow .zip saved with Download, as a new draft"
+          >
+            Upload Flow
+          </DropdownItem>
+          <Divider component="li" key="open-divider" />
+          <DropdownItem key="save" onClick={() => save()} isDisabled={saving}>
+            Save
+          </DropdownItem>
+          <DropdownItem
+            key="save-as"
+            onClick={() => setSavingAs('flow')}
+            description="Save this flow under another name and continue there"
+          >
+            Save As
+          </DropdownItem>
+          <DropdownItem
+            key="save-as-template"
+            onClick={() => setSavingAs('template')}
+            description="Store this flow in Git's templates folder for Open Template"
+          >
+            Save As Template
+          </DropdownItem>
+          <Divider component="li" key="save-divider" />
+          <DropdownItem
+            key="zip"
+            onClick={download}
+            isDisabled={saving}
+            description="The flow as a .zip you can upload again later"
+          >
+            Download .zip
+          </DropdownItem>
+          <DropdownItem
+            key="png"
+            onClick={downloadDiagram}
+            isDisabled={drawing}
+            description="A picture of the whole flow diagram"
+          >
+            Download diagram (.png)
+          </DropdownItem>
+        </DropdownList>
+      </Dropdown>
+    </div>
   );
 
-  // Shown at the right end of Kaoto's tab bar, styled like its tabs. On narrow screens Download and
-  // History move into the More menu (FlowEditorPage.css).
+  // Shown at the right end of Kaoto's tab bar, styled like its tabs. On narrow screens History moves
+  // into the More menu (FlowEditorPage.css).
   const actions = (
     <div className="echo-tab-actions echo-no-print">
       <Button variant="plain" onClick={validate} isLoading={validating} isDisabled={validating || saving}>
@@ -274,64 +338,6 @@ function FlowEditor() {
           {run.data ? 'Restart' : 'Run'}
         </Button>
       )}
-      <Dropdown
-        isOpen={saveMenuOpen}
-        onOpenChange={setSaveMenuOpen}
-        onSelect={() => setSaveMenuOpen(false)}
-        popperProps={{ position: 'end', appendTo: () => document.body }}
-        toggle={(toggleRef) => (
-          <MenuToggle
-            ref={toggleRef}
-            variant="plainText"
-            isDisabled={saving}
-            isExpanded={saveMenuOpen}
-            onClick={() => setSaveMenuOpen((open) => !open)}
-            aria-label="Saving options"
-            splitButtonItems={[
-              <MenuToggleAction key="save" onClick={() => save()} aria-label="Save">
-                Save
-              </MenuToggleAction>,
-            ]}
-          />
-        )}
-      >
-        <DropdownList>
-          <DropdownItem
-            key="save-as"
-            onClick={() => setSavingAs('flow')}
-            description="Save this flow under another name and continue there"
-          >
-            Save As
-          </DropdownItem>
-          <DropdownItem
-            key="save-as-template"
-            onClick={() => setSavingAs('template')}
-            description="Store this flow in Git's templates folder for Open Template"
-          >
-            Save As Template
-          </DropdownItem>
-        </DropdownList>
-      </Dropdown>
-      <Dropdown
-        isOpen={downloadMenuOpen}
-        onOpenChange={setDownloadMenuOpen}
-        onSelect={() => setDownloadMenuOpen(false)}
-        popperProps={{ position: 'end', appendTo: () => document.body }}
-        toggle={(toggleRef) => (
-          <MenuToggle
-            ref={toggleRef}
-            className="echo-tab-actions__wide"
-            variant="plainText"
-            icon={<DownloadIcon />}
-            isExpanded={downloadMenuOpen}
-            onClick={() => setDownloadMenuOpen((open) => !open)}
-          >
-            Download
-          </MenuToggle>
-        )}
-      >
-        <DropdownList>{downloadItems}</DropdownList>
-      </Dropdown>
       <Button
         variant="plain"
         icon={<CodeIcon />}
@@ -362,7 +368,6 @@ function FlowEditor() {
         )}
       >
         <DropdownList>
-          {downloadItems}
           <DropdownItem key="history" onClick={() => setShowHistory(true)}>
             History
           </DropdownItem>
@@ -429,6 +434,7 @@ function FlowEditor() {
           initialContent={route.data ?? ''}
           files={files}
           onChange={onChange}
+          tabBarStart={fileMenu}
           tabBarActions={actions}
         />
       </div>
@@ -492,6 +498,12 @@ function FlowEditor() {
             await queryClient.invalidateQueries({ queryKey: ['templates'] });
           }}
         />
+      )}
+      {openingTemplate && (
+        <OpenTemplateModal onClose={() => setOpeningTemplate(false)} onOpened={(created) => openNewDraft(created.id)} />
+      )}
+      {uploading && (
+        <UploadFlowModal onClose={() => setUploading(false)} onUploaded={(created) => openNewDraft(created.id)} />
       )}
       {showHistory && <HistoryModal flowId={id} onClose={() => setShowHistory(false)} />}
 
