@@ -33,7 +33,7 @@ describe('PublishModal', () => {
     const { calls } = mockFetch({ 'POST /api/flows/7/publish': { status: 200, body: published } });
     const props = renderModal();
 
-    await userEvent.type(screen.getByLabelText('What changed?'), 'Add mapping');
+    await userEvent.type(screen.getByLabelText('Description'), 'Add mapping');
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     expect(props.beforePublish).toHaveBeenCalled();
@@ -58,19 +58,22 @@ describe('PublishModal', () => {
     expect(await screen.findByText('Git error: connection refused')).toBeInTheDocument();
   });
 
-  it('lists where the flow will be published', async () => {
+  it('does not show where the flow will be published', async () => {
     mockFetch({
       'GET /api/publish-targets': {
         status: 200,
-        body: [
-          { id: 'git', name: 'Git', location: 'https://git.example.com/flows.git (branch main)' },
-          { id: 's3', name: 'S3', location: 's3://bucket/flows/' },
-        ],
+        body: [{ id: 'git', name: 'Git', location: 'https://git.example.com/flows.git (branch main)' }],
       },
     });
     renderModal();
-    const list = await screen.findByRole('list', { name: 'Publish targets' });
-    expect(list).toHaveTextContent('Git: https://git.example.com/flows.git (branch main)');
-    expect(list).toHaveTextContent('S3: s3://bucket/flows/');
+    expect(await screen.findByLabelText('Description')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Publish targets' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/git\.example\.com/)).not.toBeInTheDocument();
+  });
+
+  it('warns when no publish target is enabled', async () => {
+    mockFetch({ 'GET /api/publish-targets': { status: 200, body: [] } });
+    renderModal();
+    expect(await screen.findByText('No publish target is enabled in application.yaml.')).toBeInTheDocument();
   });
 });

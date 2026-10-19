@@ -12,11 +12,8 @@ const result = (targets: PublishTargetResult[], changed = true) => ({
 });
 
 describe('publishSummary', () => {
-  it('names every target the flow went to', () => {
-    expect(publishSummary(result([git, s3]))).toEqual({
-      variant: 'success',
-      text: 'Published to Git (main, abc12345) and S3 (s3://b/flows/orders/).',
-    });
+  it('says Published Successfully when every target succeeded', () => {
+    expect(publishSummary(result([git, s3]))).toEqual({ variant: 'success', text: 'Published Successfully' });
   });
 
   it('warns about targets that failed', () => {

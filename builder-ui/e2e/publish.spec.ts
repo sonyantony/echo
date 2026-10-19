@@ -13,10 +13,10 @@ test('publishes a flow to Git', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('What changed?').fill(`First version of ${name}`);
+  await dialog.getByLabel('Description').fill(`First version of ${name}`);
   await dialog.getByRole('button', { name: 'Publish' }).click();
 
-  await expect(page.getByText(/Published to Git \(main, [0-9a-f]{8}\)\./)).toBeVisible();
+  await expect(page.getByText('Published Successfully')).toBeVisible();
   await expect(page.getByText('Published', { exact: true })).toBeVisible();
 
   expect(git('log', '-1', '--format=%s|%an', 'main', '--', `flows/${name}`).trim()).toBe(
@@ -36,7 +36,7 @@ test('lists a published flow and deletes it from Git', async ({ page }) => {
   await createFlow(page, name);
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
-  await expect(page.getByText(/Published to Git \(main, [0-9a-f]{8}\)\./)).toBeVisible();
+  await expect(page.getByText('Published Successfully')).toBeVisible();
 
   await page.goto('/');
   const row = page.getByRole('row').filter({ hasText: name });
