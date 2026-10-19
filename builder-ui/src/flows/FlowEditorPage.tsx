@@ -36,7 +36,6 @@ import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { FLOWS_KEY, StatusLabel } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
-import { OpenFlowModal } from './OpenFlowModal';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { PublishModal } from './PublishModal';
 import { publishSummary } from './publishSummary';
@@ -94,7 +93,6 @@ function FlowEditor() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
   const [openingTemplate, setOpeningTemplate] = useState(false);
-  const [openingFlow, setOpeningFlow] = useState<'unpublished' | 'published'>();
   const [uploading, setUploading] = useState(false);
   /** Set when Save As moves to the new flow, so leaving this one does not ask about unsaved edits. */
   const leavingAfterSaveAs = useRef(false);
@@ -258,10 +256,9 @@ function FlowEditor() {
     );
   }
 
-  /** Opens the flow picked or made by Open Template, Open Flow or Upload Flow (leaving this one asks about unsaved edits). */
+  /** Opens a draft just made by Open Template or Upload Flow (leaving this one asks about unsaved edits). */
   const openNewDraft = async (newId: number) => {
     setOpeningTemplate(false);
-    setOpeningFlow(undefined);
     setUploading(false);
     await queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
     navigate(`/flows/${newId}`);
@@ -298,18 +295,11 @@ function FlowEditor() {
             <Shortcut keys="Ctrl+O" />
           </DropdownItem>
           <DropdownItem
-            key="open-unpublished"
-            onClick={() => setOpeningFlow('unpublished')}
-            description="Open a flow saved in the Builder that is not published yet"
+            key="open-flow"
+            onClick={() => navigate('/')}
+            description="Pick a flow from the Flows list"
           >
-            Open Flow (Unpublished)
-          </DropdownItem>
-          <DropdownItem
-            key="open-published"
-            onClick={() => setOpeningFlow('published')}
-            description="Open a flow as it is published in Git"
-          >
-            Open Flow (Published)
+            Open Flow
           </DropdownItem>
           <DropdownItem
             key="upload"
@@ -541,14 +531,6 @@ function FlowEditor() {
       )}
       {openingTemplate && (
         <OpenTemplateModal onClose={() => setOpeningTemplate(false)} onOpened={(created) => openNewDraft(created.id)} />
-      )}
-      {openingFlow && (
-        <OpenFlowModal
-          kind={openingFlow}
-          currentId={id}
-          onClose={() => setOpeningFlow(undefined)}
-          onOpen={openNewDraft}
-        />
       )}
       {uploading && (
         <UploadFlowModal onClose={() => setUploading(false)} onUploaded={(created) => openNewDraft(created.id)} />

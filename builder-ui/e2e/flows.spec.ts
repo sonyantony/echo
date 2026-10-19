@@ -59,6 +59,16 @@ test('Ctrl+S saves and Ctrl+O opens a template', async ({ page }) => {
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Open Template' })).toBeVisible();
 });
 
+// File > Open Flow goes to the Flows list, asking first about unsaved changes.
+test('File > Open Flow shows the Flows list', async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('openflow'));
+  await addStep(page, 1, 'setBody');
+  await fileMenu(page, /^Open Flow/);
+  await page.getByRole('dialog').getByRole('button', { name: 'Leave' }).click();
+  await expect(page.getByRole('heading', { name: 'Flows', exact: true })).toBeVisible();
+});
+
 test('warns before leaving with unsaved changes', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('unsaved'));
