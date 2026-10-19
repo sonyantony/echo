@@ -99,3 +99,8 @@
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
 }
+
+/* File reads like a desktop menu bar entry: no dropdown arrow. */
+.echo-tab-actions .echo-file-menu .pf-v6-c-menu-toggle__controls {
+  display: none;
+}
