@@ -20,6 +20,11 @@ test('logs in and lands on a blank canvas', async ({ page }) => {
   // Our own message replaces Kaoto's "There are no routes defined" on the blank canvas.
   await expect(page.getByRole('heading', { name: 'No flow is open' })).toBeVisible();
   await expect(page.getByText('There are no routes defined')).toBeHidden();
+  await expect(page.locator('.echo-untitled__empty').getByRole('button')).toHaveCount(0);
+  // Greyed out until there is a saved flow.
+  for (const item of [/^Save As(?! Template)/, /^Save As Template/, /^Download \.zip/]) {
+    await expect(page.getByRole('menuitem', { name: item })).toBeDisabled();
+  }
   await expect(page.getByTestId('current-user')).toHaveText('designer');
   await expect(page.getByRole('banner')).toContainText('User: designer');
   await expect(page.getByRole('banner').getByAltText('Company logo')).toBeVisible();

@@ -7,9 +7,7 @@ import {
   DropdownItem,
   DropdownList,
   EmptyState,
-  EmptyStateActions,
   EmptyStateBody,
-  EmptyStateFooter,
   Flex,
   FlexItem,
   MenuToggle,
@@ -171,7 +169,17 @@ export function UntitledFlowPage() {
             Save
             <Shortcut keys="Ctrl+S" />
           </DropdownItem>
+          {/* Shown greyed out so the menu matches the flow editor's; they need a saved flow. */}
+          <DropdownItem key="save-as" isDisabled description="Save the flow first">
+            Save As
+          </DropdownItem>
+          <DropdownItem key="save-as-template" isDisabled description="Save the flow first">
+            Save As Template
+          </DropdownItem>
           <Divider component="li" key="save-divider" />
+          <DropdownItem key="zip" isDisabled description="Save the flow first">
+            Download .zip
+          </DropdownItem>
           <DropdownItem key="png" onClick={downloadDiagram} description="A picture of the whole flow diagram">
             Download diagram (.png)
           </DropdownItem>
@@ -209,16 +217,6 @@ export function UntitledFlowPage() {
           <div className="echo-untitled__empty">
             <EmptyState titleText="No flow is open" headingLevel="h2" variant="sm">
               <EmptyStateBody>Start a new flow, or open an existing one, from the File menu.</EmptyStateBody>
-              <EmptyStateFooter>
-                <EmptyStateActions>
-                  <Button variant="primary" onClick={() => setCreating(true)}>
-                    New Flow
-                  </Button>
-                  <Button variant="secondary" onClick={() => navigate(OPEN_FLOW_PATH, { state: openFlowState })}>
-                    Open Flow
-                  </Button>
-                </EmptyStateActions>
-              </EmptyStateFooter>
             </EmptyState>
           </div>
         )}

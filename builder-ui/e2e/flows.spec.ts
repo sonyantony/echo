@@ -193,7 +193,7 @@ test('saves the blank canvas as a new flow', async ({ page }) => {
   expect(created).toHaveLength(0);
 
   const name = uniqueName('canvas');
-  await fileMenu(page, /^Save/);
+  await fileMenu(page, /^Save(?! As)/);
   await page.getByRole('dialog').getByLabel(/Name/).fill(name);
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
   await expect(page).toHaveURL(/\/flows\/\d+$/);
