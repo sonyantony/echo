@@ -67,7 +67,7 @@ test('Save As Template and Open Template', async ({ page }) => {
   await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toHaveCount(0);
 
-  // Open Template from the editor's File menu (the Flows page has the same button).
+  // Open Template from the editor's File menu.
   await fileMenu(page, /^Open Template/);
   const open = page.getByRole('dialog');
   await open.getByRole('combobox', { name: 'Template' }).selectOption(template);

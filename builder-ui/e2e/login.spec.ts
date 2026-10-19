@@ -15,7 +15,7 @@ test('logs in and sees the flow list', async ({ page }) => {
 
   await page.getByLabel('Password').fill('designer');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('heading', { name: 'Flows', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
   await expect(page.getByTestId('current-user')).toHaveText('designer');
   await expect(page.getByRole('banner')).toContainText('User: designer');
   await expect(page.getByRole('banner').getByAltText('Company logo')).toBeVisible();
@@ -23,7 +23,7 @@ test('logs in and sees the flow list', async ({ page }) => {
 
   // The session survives a reload; logging out returns to the login page.
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Flows', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
 });

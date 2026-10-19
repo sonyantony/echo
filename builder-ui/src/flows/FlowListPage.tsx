@@ -24,7 +24,7 @@ import { TrashIcon } from '@patternfly/react-icons';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   downloadFlow,
   downloadPublishedFlow,
@@ -72,9 +72,15 @@ export function StatusLabel({ status }: { status: FlowSummary['status'] }) {
   return status === 'PUBLISHED' ? <Label color="green">Published</Label> : <Label color="blue">Draft</Label>;
 }
 
+/** Router state the editor passes when it sends you here, so Cancel can take you back. */
+export interface OpenFlowState {
+  from?: string;
+}
+
 export function FlowListPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const cameFrom = (useLocation().state as OpenFlowState | null)?.from;
   const flows = useQuery({ queryKey: FLOWS_KEY, queryFn: flowsApi.list });
   const published = useQuery({ queryKey: PUBLISHED_KEY, queryFn: publishedFlowsApi.list, retry: false });
   const [creating, setCreating] = useState(false);
@@ -141,7 +147,7 @@ export function FlowListPage() {
   return (
     <>
       <PageSection>
-        <Title headingLevel="h1">Flows</Title>
+        <Title headingLevel="h1">Open Flow</Title>
       </PageSection>
       <PageSection isFilled>
         {flows.isPending && <Spinner aria-label="Loading flows" />}
@@ -170,10 +176,7 @@ export function FlowListPage() {
           <>
             <Toolbar>
               <ToolbarContent>
-                <ToolbarItem>{newButton}</ToolbarItem>
-                <ToolbarItem>{templateButton}</ToolbarItem>
-                <ToolbarItem>{uploadButton}</ToolbarItem>
-                <ToolbarGroup align={{ default: 'alignEnd' }} alignItems="center">
+                <ToolbarGroup alignItems="center">
                   <ToolbarItem>
                     <SearchInput
                       aria-label="Search flows"
@@ -199,6 +202,13 @@ export function FlowListPage() {
                       onChange={(_e, checked) => setShowUnpublished(checked)}
                     />
                   </ToolbarItem>
+                  {cameFrom && (
+                    <ToolbarItem>
+                      <Button variant="secondary" onClick={() => navigate(cameFrom)}>
+                        Cancel
+                      </Button>
+                    </ToolbarItem>
+                  )}
                 </ToolbarGroup>
               </ToolbarContent>
             </Toolbar>

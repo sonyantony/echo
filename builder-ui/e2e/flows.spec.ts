@@ -66,7 +66,7 @@ test('File > Open Flow shows the Flows list', async ({ page }) => {
   await addStep(page, 1, 'setBody');
   await fileMenu(page, /^Open Flow/);
   await page.getByRole('dialog').getByRole('button', { name: 'Leave' }).click();
-  await expect(page.getByRole('heading', { name: 'Flows', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
 });
 
 test('warns before leaving with unsaved changes', async ({ page }) => {
@@ -132,8 +132,7 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
   const zip = testInfo.outputPath(`${name}.zip`);
   await download.saveAs(zip);
 
-  await page.getByRole('link', { name: 'Flows' }).click();
-  await page.getByRole('button', { name: 'Upload flow' }).click();
+  await fileMenu(page, /^Upload Flow/);
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(/Flow file/).setInputFiles(zip);
   await dialog.getByLabel('Name').fill(`${name}-copy`);
@@ -142,7 +141,7 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: `${name}-copy` })).toBeVisible();
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 
-  // The editor's File menu uploads too, and opens the new draft.
+  // Uploading again from the new draft's File menu opens another draft.
   await fileMenu(page, /^Upload Flow/);
   const again = page.getByRole('dialog');
   await again.getByLabel(/Flow file/).setInputFiles(zip);

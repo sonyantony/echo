@@ -128,6 +128,25 @@ describe('Flow list', () => {
     expect(screen.getByText('No flows match')).toBeInTheDocument();
   });
 
+  it('is titled Open Flow, with no create buttons once there are flows, and Cancel only when coming from a flow', async () => {
+    mockFetch({ ...loggedIn, 'GET /api/flows': { status: 200, body: [flow(1, 'orders'), flow(2, 'refunds')] } });
+    render(<App queryClient={createQueryClient()} />);
+    expect(await screen.findByRole('heading', { name: 'Open Flow' })).toBeInTheDocument();
+    await screen.findByRole('link', { name: 'orders' });
+    for (const name of ['New flow', 'Open Template', 'Upload flow', 'Cancel']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+
+    // The editor's File > Open Flow passes where you came from; Cancel goes back there.
+    await userEvent.click(screen.getByRole('link', { name: 'orders' }));
+    expect(await screen.findByText('Flow editor')).toBeInTheDocument();
+    window.history.pushState({ usr: { from: '/flows/2' }, key: 'x', idx: 2 }, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByText('Flow editor')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/flows/2');
+  });
+
   it('opens a flow that is only in Git as a new draft', async () => {
     const { calls } = mockFetch({
       ...loggedIn,
@@ -236,7 +255,7 @@ describe('Flow list', () => {
   it('uploads a saved flow zip and opens it', async () => {
     const { fn } = mockFetch({
       ...loggedIn,
-      'GET /api/flows': { status: 200, body: [flow(1, 'orders')] },
+      'GET /api/flows': { status: 200, body: [] }, // with flows listed, Upload is in the editor's File menu
       'POST /api/flows/upload': { status: 201, body: { ...flow(3, 'orders-copy'), routeFile: 'orders-copy.camel.yaml' } },
     });
     render(<App queryClient={createQueryClient()} />);

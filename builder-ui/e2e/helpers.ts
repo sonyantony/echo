@@ -5,15 +5,28 @@ export async function login(page: Page) {
   await page.getByLabel('Username').fill('designer');
   await page.getByLabel('Password').fill('designer');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('heading', { name: 'Flows', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
 }
 
 export function uniqueName(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}`;
 }
 
+/**
+ * Creates a flow and opens it. New Flow is in the editor's File menu; from the Open Flow page that
+ * means opening a flow first, unless there are none yet (then the page offers New flow itself).
+ */
 export async function createFlow(page: Page, name: string, description = '') {
-  await page.getByRole('button', { name: 'New flow' }).click();
+  const fileButton = page.getByRole('button', { name: 'File', exact: true });
+  const newButton = page.getByRole('button', { name: 'New flow' });
+  const firstFlow = page.getByRole('row').getByRole('link').first();
+  await expect(fileButton.or(newButton).or(firstFlow).first()).toBeVisible();
+  if (await newButton.isVisible()) {
+    await newButton.click();
+  } else {
+    if (!(await fileButton.isVisible())) await firstFlow.click();
+    await fileMenu(page, /^New Flow/);
+  }
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(/Name/).fill(name);
   if (description) await dialog.getByLabel('Description').fill(description);
