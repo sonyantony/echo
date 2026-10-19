@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useBlocker, useParams } from 'react-router-dom';
 import { editorSettings, flowsApi } from '../api/flows';
 import { FLOWS_KEY, StatusLabel } from '../flows/FlowListPage';
+import { OPEN_FLOW_PATH } from '../flows/FlowListPage';
 import { useAutosave } from '../flows/useAutosave';
 import { ApicurioEditorHost } from './ApicurioEditorHost';
 import { newApiSpec, OPENAPI_FILE } from './apiSpec';
@@ -94,7 +95,7 @@ export function ApiSpecPage() {
     return (
       <PageSection>
         <Alert variant="danger" isInline title="Could not open this flow's API spec">
-          <Link to="/">Back to flows</Link>
+          <Link to={OPEN_FLOW_PATH}>Back to flows</Link>
         </Alert>
       </PageSection>
     );
@@ -112,7 +113,7 @@ export function ApiSpecPage() {
       <PageSection className="echo-api-spec__header" padding={{ default: 'noPadding' }}>
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
           <FlexItem>
-            <Link to="/" state={{ from: `/flows/${id}/api` }}>Flows</Link> / <Link to={`/flows/${id}`}>{flow.data.name}</Link> /
+            <Link to={OPEN_FLOW_PATH} state={{ from: `/flows/${id}/api` }}>Flows</Link> / <Link to={`/flows/${id}`}>{flow.data.name}</Link> /
           </FlexItem>
           <FlexItem>
             <Title headingLevel="h1" size="lg">

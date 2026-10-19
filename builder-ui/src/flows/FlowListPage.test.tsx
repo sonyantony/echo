@@ -5,6 +5,7 @@ import { mockFetch } from '../test/fetchMock';
 
 // The editor pulls in Kaoto, which does not load under jsdom; these tests only check navigation.
 vi.mock('./FlowEditorPage', () => ({ FlowEditorPage: () => <p>Flow editor</p> }));
+vi.mock('./UntitledFlowPage', () => ({ UntitledFlowPage: () => <p>Untitled canvas</p> }));
 
 const flow = (id: number, name: string, status = 'DRAFT') => ({
   id,
@@ -28,10 +29,12 @@ const loggedIn = { 'GET /api/auth/me': { status: 200, body: { username: 'designe
 
 beforeEach(() => {
   document.cookie = 'XSRF-TOKEN=abc';
+  window.history.pushState({}, '', '/flows');
 });
 afterEach(() => {
   vi.unstubAllGlobals();
   window.history.pushState({}, '', '/');
+  localStorage.clear();
 });
 
 describe('Flow list', () => {
@@ -39,6 +42,7 @@ describe('Flow list', () => {
     mockFetch({ ...loggedIn, 'GET /api/flows': { status: 200, body: [] } });
     render(<App queryClient={createQueryClient()} />);
     expect(await screen.findByText('No flows yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'New flow' })).toBeInTheDocument();
   });
 
@@ -128,19 +132,37 @@ describe('Flow list', () => {
     expect(screen.getByText('No flows match')).toBeInTheDocument();
   });
 
-  it('is titled Open Flow, with no create buttons once there are flows, and Cancel only when coming from a flow', async () => {
+  it('is titled Open Flow, with no create buttons once there are flows, and Cancel goes back (or to the last flow, or the canvas)', async () => {
     mockFetch({ ...loggedIn, 'GET /api/flows': { status: 200, body: [flow(1, 'orders'), flow(2, 'refunds')] } });
     render(<App queryClient={createQueryClient()} />);
     expect(await screen.findByRole('heading', { name: 'Open Flow' })).toBeInTheDocument();
     await screen.findByRole('link', { name: 'orders' });
-    for (const name of ['New flow', 'Open Template', 'Upload flow', 'Cancel']) {
+    for (const name of ['New flow', 'Open Template', 'Upload flow']) {
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
     }
 
-    // The editor's File > Open Flow passes where you came from; Cancel goes back there.
-    await userEvent.click(screen.getByRole('link', { name: 'orders' }));
+    // With no previous screen and no flow worked on, Cancel goes to the blank canvas.
+    localStorage.clear();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByText('Untitled canvas')).toBeInTheDocument();
+
+    // A flow worked on earlier (remembered by the editor) that has since been deleted: the canvas too.
+    localStorage.setItem('echo.lastFlowId', '99');
+    window.history.pushState({}, '', '/flows');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByText('Untitled canvas')).toBeInTheDocument();
+
+    // ...and one that still exists: back to it.
+    localStorage.setItem('echo.lastFlowId', '1');
+    window.history.pushState({}, '', '/flows');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
     expect(await screen.findByText('Flow editor')).toBeInTheDocument();
-    window.history.pushState({ usr: { from: '/flows/2' }, key: 'x', idx: 2 }, '', '/');
+    expect(window.location.pathname).toBe('/flows/1');
+
+    // The editor's File > Open Flow passes where you came from; Cancel goes back there.
+    window.history.pushState({ usr: { from: '/flows/2' }, key: 'x', idx: 2 }, '', '/flows');
     window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
     await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
     expect(await screen.findByText('Flow editor')).toBeInTheDocument();

@@ -5,7 +5,9 @@ export async function login(page: Page) {
   await page.getByLabel('Username').fill('designer');
   await page.getByLabel('Password').fill('designer');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
+  // Logging in lands on a blank canvas with the File menu open.
+  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^New Flow/ })).toBeVisible();
 }
 
 export function uniqueName(prefix: string) {
@@ -13,8 +15,9 @@ export function uniqueName(prefix: string) {
 }
 
 /**
- * Creates a flow and opens it. New Flow is in the editor's File menu; from the Open Flow page that
- * means opening a flow first, unless there are none yet (then the page offers New flow itself).
+ * Creates a flow and opens it, through File > New Flow (on the blank canvas or in the editor). From
+ * the Open Flow page that means opening a flow first, unless there are none yet (then the page
+ * offers New flow itself).
  */
 export async function createFlow(page: Page, name: string, description = '') {
   const fileButton = page.getByRole('button', { name: 'File', exact: true });
@@ -35,10 +38,11 @@ export async function createFlow(page: Page, name: string, description = '') {
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
 }
 
-/** Picks an item from the flow editor's File menu. */
+/** Picks an item from the flow editor's File menu (opening it first unless it is open already). */
 export async function fileMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'File', exact: true }).click();
-  await page.getByRole('menuitem', { name: item }).click();
+  const menuItem = page.getByRole('menuitem', { name: item });
+  if (!(await menuItem.isVisible())) await page.getByRole('button', { name: 'File', exact: true }).click();
+  await menuItem.click();
 }
 
 /** Adds a processor (e.g. "setBody") at the end of the route through Kaoto's catalog. */

@@ -38,7 +38,7 @@ test('lists a published flow and deletes it from Git', async ({ page }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
 
-  await page.goto('/');
+  await page.goto('/flows');
   const row = page.getByRole('row').filter({ hasText: name });
   await expect(row).toHaveCount(1);
   await expect(row.getByText('Published v1')).toBeVisible();

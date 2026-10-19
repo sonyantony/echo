@@ -178,3 +178,46 @@ test('downloads the flow diagram as a PNG', async ({ page }, testInfo) => {
   expect(height).toBeLessThan(1000);
   await expect(page.getByTestId('unsaved')).toBeVisible(); // nothing was saved
 });
+
+// The blank canvas after login stores nothing until Save, which names it and opens the new draft.
+test('saves the blank canvas as a new flow', async ({ page }) => {
+  const created: string[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && new URL(r.url()).pathname === '/api/flows') created.push(r.url());
+  });
+  await login(page);
+  await page.getByRole('button', { name: 'File', exact: true }).click(); // close the menu
+  await page.getByRole('button', { name: 'New', exact: true }).first().click();
+  await page.getByRole('menuitem', { name: /^Route/ }).click();
+  await expect(page.getByTestId(/^custom-node__route/).first()).toBeVisible();
+  expect(created).toHaveLength(0);
+
+  const name = uniqueName('canvas');
+  await fileMenu(page, /^Save/);
+  await page.getByRole('dialog').getByLabel(/Name/).fill(name);
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+  await expect(page).toHaveURL(/\/flows\/\d+$/);
+  await expect(page.getByRole('heading', { name })).toBeVisible();
+  await expect(page.getByTestId(/^custom-node__route/).first()).toBeVisible();
+  expect(created).toHaveLength(1);
+});
+
+// Cancel on Open Flow goes back to where you were; with no history, to the flow last worked on, or
+// to the canvas if there is none.
+test('Cancel on Open Flow goes back', async ({ page }) => {
+  await login(page);
+  await fileMenu(page, /^Open Flow/);
+  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+
+  await page.goto('/flows');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+
+  const name = uniqueName('last');
+  await createFlow(page, name);
+  await page.goto('/flows');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name })).toBeVisible();
+});

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-// M3: log in with the demo user from application.yaml and see the flow list.
-test('logs in and sees the flow list', async ({ page }) => {
+// M3: log in with the demo user from application.yaml and land on a blank canvas.
+test('logs in and lands on a blank canvas', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
   // Default branding from application.yaml.
@@ -15,7 +15,8 @@ test('logs in and sees the flow list', async ({ page }) => {
 
   await page.getByLabel('Password').fill('designer');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^New Flow/ })).toBeVisible(); // File menu open
   await expect(page.getByTestId('current-user')).toHaveText('designer');
   await expect(page.getByRole('banner')).toContainText('User: designer');
   await expect(page.getByRole('banner').getByAltText('Company logo')).toBeVisible();
@@ -23,7 +24,7 @@ test('logs in and sees the flow list', async ({ page }) => {
 
   // The session survives a reload; logging out returns to the login page.
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
   await page.getByRole('button', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
