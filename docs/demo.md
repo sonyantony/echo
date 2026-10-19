@@ -52,6 +52,7 @@ Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}
 The editor's controls sit on the same line as Kaoto's Design, Beans, Rest, DataMapper and About
 tabs: the **File** menu first (Open Template, Upload Flow, Save, Save As, Save As Template,
 Download .zip, Download diagram), then Validate, Run, API spec, History and Publish at the right.
+**Ctrl+S** saves and **Ctrl+O** opens Open Template (Cmd on a Mac).
 On narrow screens History moves into the **⋮** menu.
 
 **Download .zip** (in the editor's File menu, or Download in a flow's menu on the Flows page) saves the flow folder to your
