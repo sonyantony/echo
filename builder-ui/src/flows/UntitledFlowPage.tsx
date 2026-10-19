@@ -6,6 +6,10 @@ import {
   Dropdown,
   DropdownItem,
   DropdownList,
+  EmptyState,
+  EmptyStateActions,
+  EmptyStateBody,
+  EmptyStateFooter,
   Flex,
   FlexItem,
   MenuToggle,
@@ -28,6 +32,7 @@ import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { UploadFlowModal } from './UploadFlowModal';
 import './FlowEditorPage.css';
+import './UntitledFlowPage.css';
 
 const UNTITLED_PATH = 'untitled.camel.yaml';
 
@@ -198,7 +203,25 @@ export function UntitledFlowPage() {
           />
         )}
       </PageSection>
-      <div className="echo-flow-editor__canvas">
+      <div className="echo-flow-editor__canvas echo-untitled">
+        {/* Replaces Kaoto's "There are no routes defined" card (hidden in UntitledFlowPage.css). */}
+        {!dirty && (
+          <div className="echo-untitled__empty">
+            <EmptyState titleText="No flow is open" headingLevel="h2" variant="sm">
+              <EmptyStateBody>Start a new flow, or open an existing one, from the File menu.</EmptyStateBody>
+              <EmptyStateFooter>
+                <EmptyStateActions>
+                  <Button variant="primary" onClick={() => setCreating(true)}>
+                    New Flow
+                  </Button>
+                  <Button variant="secondary" onClick={() => navigate(OPEN_FLOW_PATH, { state: openFlowState })}>
+                    Open Flow
+                  </Button>
+                </EmptyStateActions>
+              </EmptyStateFooter>
+            </EmptyState>
+          </div>
+        )}
         <KaotoEditorHost
           ref={editor}
           path={UNTITLED_PATH}
