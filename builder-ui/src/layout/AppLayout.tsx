@@ -33,7 +33,9 @@ export function AppLayout() {
           <ToolbarContent>
             <ToolbarGroup align={{ default: 'alignEnd' }}>
               <ToolbarItem>
-                <span data-testid="current-user">{user?.username}</span>
+                <span>
+                  <strong>User:</strong> <span data-testid="current-user">{user?.username}</span>
+                </span>
               </ToolbarItem>
               <ToolbarItem>
                 <Button

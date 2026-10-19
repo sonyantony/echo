@@ -48,5 +48,6 @@ describe('Login', () => {
 
     expect(await screen.findByRole('heading', { name: 'Flows' })).toBeInTheDocument();
     expect(screen.getByTestId('current-user')).toHaveTextContent('designer');
+    expect(screen.getByTestId('current-user').parentElement).toHaveTextContent('User: designer');
   });
 });
