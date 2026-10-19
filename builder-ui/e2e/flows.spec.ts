@@ -99,7 +99,8 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
   await expect(page.getByTestId('documentationPreviewButton')).toBeHidden();
 
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download .zip' }).click();
+  await page.getByRole('button', { name: 'Download', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Download \.zip/ }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toBe(`${name}.zip`);
   await expect(page.getByTestId('unsaved')).toHaveCount(0); // saved first
@@ -129,7 +130,8 @@ test('downloads the flow diagram as a PNG', async ({ page }, testInfo) => {
   // Works from another Kaoto tab too: it switches back to the canvas.
   await page.getByRole('tab', { name: /DataMapper/ }).click();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download diagram (.png)' }).click();
+  await page.getByRole('button', { name: 'Download', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Download diagram \(\.png\)/ }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toBe(`${name}.png`);
   const file = testInfo.outputPath(`${name}.png`);

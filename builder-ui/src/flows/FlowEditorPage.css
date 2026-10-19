@@ -29,3 +29,65 @@
     min-height: 0;
   }
 }
+
+/* The editor's controls sit in Kaoto's tab bar and look like its tabs: text, no boxes. */
+.echo-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.echo-tab-actions > .pf-v6-c-button.pf-m-plain,
+.echo-tab-actions > .pf-v6-c-menu-toggle {
+  --pf-v6-c-button--m-plain--Color: var(--pf-t--global--text--color--subtle);
+  --pf-v6-c-menu-toggle--m-plain--Color: var(--pf-t--global--text--color--subtle);
+  --pf-v6-c-menu-toggle--m-plain--BackgroundColor: transparent;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: 600;
+}
+.echo-tab-actions > .pf-v6-c-button.pf-m-plain {
+  --pf-v6-c-button--PaddingInlineStart: 12px;
+  --pf-v6-c-button--PaddingInlineEnd: 12px;
+}
+.echo-tab-actions > .pf-v6-c-button.pf-m-plain:hover,
+.echo-tab-actions > .pf-v6-c-menu-toggle:hover {
+  color: var(--pf-t--global--text--color--regular);
+}
+.echo-tab-actions .pf-v6-c-button__icon,
+.echo-tab-actions .pf-v6-c-menu-toggle__icon {
+  color: var(--pf-t--global--icon--color--brand--default, currentColor);
+}
+.echo-tab-actions__divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 8px 8px;
+  background: var(--pf-t--global--border--color--default);
+}
+.echo-tab-actions__more {
+  display: none;
+}
+@media (max-width: 1250px) {
+  .echo-tab-actions .echo-tab-actions__wide {
+    display: none;
+  }
+  .echo-tab-actions .echo-tab-actions__more {
+    display: inline-flex;
+  }
+}
+.echo-tab-actions .pf-v6-c-menu-toggle__button {
+  color: inherit;
+  font-weight: inherit;
+  padding-inline: 12px 4px;
+}
+.echo-tab-actions .pf-v6-c-menu-toggle__button:last-child {
+  padding-inline: 2px 8px;
+}
+.echo-tab-actions .pf-v6-c-menu-toggle__controls,
+.echo-tab-actions .pf-v6-c-menu-toggle__toggle-icon {
+  color: var(--pf-t--global--text--color--subtle);
+}
+.echo-tab-actions .echo-tab-actions__more,
+.echo-tab-actions .echo-tab-actions__more .pf-v6-c-menu-toggle__icon {
+  color: var(--pf-t--global--text--color--subtle);
+}

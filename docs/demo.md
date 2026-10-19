@@ -49,7 +49,11 @@ To skip the drawing, zip the `samples/flows/orders/` folder and choose **Upload 
 Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}`), as
 `demo.spec.ts` does.
 
-**Download .zip** (in the editor header, or Download in a flow's menu on the Flows page) saves the flow folder to your
+The editor's controls (Validate, Run, Save, Download, API spec, History, Publish) sit on the same
+line as Kaoto's Design, Beans, Rest, DataMapper and About tabs. On narrow screens Download and
+History move into the **⋮** menu.
+
+**Download .zip** (in the editor's Download menu, or Download in a flow's menu on the Flows page) saves the flow folder to your
 computer as `<name>.zip`; **Upload flow** opens such a zip again as a new draft. An upload never
 overwrites an existing flow: give it a new name if the name is taken.
 
@@ -60,7 +64,7 @@ page starts a new draft from one of those templates. Both Save As choices warn a
 replacing an existing draft or template. Pipelines build only `flows/`, so templates never become
 images.
 
-**Download diagram (.png)** saves a picture of the whole flow as `<name>.png`, as it is on the
+**Download diagram (.png)** (also in the Download menu) saves a picture of the whole flow as `<name>.png`, as it is on the
 canvas (unsaved edits included).
 
 ## 3. Validate

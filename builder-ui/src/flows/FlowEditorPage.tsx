@@ -18,7 +18,7 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { CodeIcon, DownloadIcon, ImageIcon, PlayIcon } from '@patternfly/react-icons';
+import { CodeIcon, DownloadIcon, EllipsisVIcon, PlayIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
@@ -88,6 +88,8 @@ function FlowEditor() {
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
   /** Set when Save As moves to the new flow, so leaving this one does not ask about unsaved edits. */
   const leavingAfterSaveAs = useRef(false);
@@ -232,6 +234,147 @@ function FlowEditor() {
     );
   }
 
+  const downloadItems = (
+    <>
+      <DropdownItem
+        key="zip"
+        onClick={download}
+        isDisabled={saving}
+        description="The flow as a .zip you can upload again later"
+      >
+        Download .zip
+      </DropdownItem>
+      <DropdownItem
+        key="png"
+        onClick={downloadDiagram}
+        isDisabled={drawing}
+        description="A picture of the whole flow diagram"
+      >
+        Download diagram (.png)
+      </DropdownItem>
+    </>
+  );
+
+  // Shown at the right end of Kaoto's tab bar, styled like its tabs. On narrow screens Download and
+  // History move into the More menu (FlowEditorPage.css).
+  const actions = (
+    <div className="echo-tab-actions echo-no-print">
+      <Button variant="plain" onClick={validate} isLoading={validating} isDisabled={validating || saving}>
+        Validate
+      </Button>
+      {runEnabled && (
+        <Button
+          variant="plain"
+          icon={<PlayIcon />}
+          onClick={startRun}
+          isLoading={starting}
+          isDisabled={starting || saving || validating}
+          title={run.data ? 'Restart the flow with your latest changes' : 'Run this flow inside the Builder and send it test requests'}
+        >
+          {run.data ? 'Restart' : 'Run'}
+        </Button>
+      )}
+      <Dropdown
+        isOpen={saveMenuOpen}
+        onOpenChange={setSaveMenuOpen}
+        onSelect={() => setSaveMenuOpen(false)}
+        popperProps={{ position: 'end', appendTo: () => document.body }}
+        toggle={(toggleRef) => (
+          <MenuToggle
+            ref={toggleRef}
+            variant="plainText"
+            isDisabled={saving}
+            isExpanded={saveMenuOpen}
+            onClick={() => setSaveMenuOpen((open) => !open)}
+            aria-label="Saving options"
+            splitButtonItems={[
+              <MenuToggleAction key="save" onClick={() => save()} aria-label="Save">
+                Save
+              </MenuToggleAction>,
+            ]}
+          />
+        )}
+      >
+        <DropdownList>
+          <DropdownItem
+            key="save-as"
+            onClick={() => setSavingAs('flow')}
+            description="Save this flow under another name and continue there"
+          >
+            Save As
+          </DropdownItem>
+          <DropdownItem
+            key="save-as-template"
+            onClick={() => setSavingAs('template')}
+            description="Store this flow in Git's templates folder for Open Template"
+          >
+            Save As Template
+          </DropdownItem>
+        </DropdownList>
+      </Dropdown>
+      <Dropdown
+        isOpen={downloadMenuOpen}
+        onOpenChange={setDownloadMenuOpen}
+        onSelect={() => setDownloadMenuOpen(false)}
+        popperProps={{ position: 'end', appendTo: () => document.body }}
+        toggle={(toggleRef) => (
+          <MenuToggle
+            ref={toggleRef}
+            className="echo-tab-actions__wide"
+            variant="plainText"
+            icon={<DownloadIcon />}
+            isExpanded={downloadMenuOpen}
+            onClick={() => setDownloadMenuOpen((open) => !open)}
+          >
+            Download
+          </MenuToggle>
+        )}
+      >
+        <DropdownList>{downloadItems}</DropdownList>
+      </Dropdown>
+      <Button
+        variant="plain"
+        icon={<CodeIcon />}
+        onClick={() => navigate(`/flows/${id}/api`)}
+        isDisabled={saving}
+        title="Design the REST API this flow offers, as an OpenAPI spec"
+      >
+        API spec
+      </Button>
+      <Button variant="plain" className="echo-tab-actions__wide" onClick={() => setShowHistory(true)}>
+        History
+      </Button>
+      <Dropdown
+        isOpen={moreMenuOpen}
+        onOpenChange={setMoreMenuOpen}
+        onSelect={() => setMoreMenuOpen(false)}
+        popperProps={{ position: 'end', appendTo: () => document.body }}
+        toggle={(toggleRef) => (
+          <MenuToggle
+            ref={toggleRef}
+            className="echo-tab-actions__more"
+            variant="plain"
+            isExpanded={moreMenuOpen}
+            onClick={() => setMoreMenuOpen((open) => !open)}
+            aria-label="More actions"
+            icon={<EllipsisVIcon />}
+          />
+        )}
+      >
+        <DropdownList>
+          {downloadItems}
+          <DropdownItem key="history" onClick={() => setShowHistory(true)}>
+            History
+          </DropdownItem>
+        </DropdownList>
+      </Dropdown>
+      <span className="echo-tab-actions__divider" />
+      <Button variant="primary" size="sm" onClick={() => setPublishing(true)} isDisabled={saving || validating}>
+        Publish
+      </Button>
+    </div>
+  );
+
   return (
     <div className="echo-flow-editor">
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
@@ -256,101 +399,6 @@ function FlowEditor() {
               </FlexItem>
             )
           )}
-          <FlexItem className="echo-no-print" align={{ default: 'alignRight' }}>
-            <Flex gap={{ default: 'gapSm' }}>
-              <Button variant="secondary" onClick={validate} isLoading={validating} isDisabled={validating || saving}>
-                Validate
-              </Button>
-              {runEnabled && (
-                <Button
-                  variant="secondary"
-                  icon={<PlayIcon />}
-                  onClick={startRun}
-                  isLoading={starting}
-                  isDisabled={starting || saving || validating}
-                  title={
-                    run.data
-                      ? 'Restart the flow with your latest changes'
-                      : 'Run this flow inside the Builder and send it test requests'
-                  }
-                >
-                  {run.data ? 'Restart' : 'Run'}
-                </Button>
-              )}
-              <Dropdown
-                isOpen={saveMenuOpen}
-                onOpenChange={setSaveMenuOpen}
-                onSelect={() => setSaveMenuOpen(false)}
-                popperProps={{ position: 'end' }}
-                toggle={(toggleRef) => (
-                  <MenuToggle
-                    ref={toggleRef}
-                    variant="secondary"
-                    isDisabled={saving}
-                    isExpanded={saveMenuOpen}
-                    onClick={() => setSaveMenuOpen((open) => !open)}
-                    aria-label="Saving options"
-                    splitButtonItems={[
-                      <MenuToggleAction key="save" onClick={() => save()} aria-label="Save">
-                        Save
-                      </MenuToggleAction>,
-                    ]}
-                  />
-                )}
-              >
-                <DropdownList>
-                  <DropdownItem
-                    key="save-as"
-                    onClick={() => setSavingAs('flow')}
-                    description="Save this flow under another name and continue there"
-                  >
-                    Save As
-                  </DropdownItem>
-                  <DropdownItem
-                    key="save-as-template"
-                    onClick={() => setSavingAs('template')}
-                    description="Store this flow in Git's templates folder for Open Template"
-                  >
-                    Save As Template
-                  </DropdownItem>
-                </DropdownList>
-              </Dropdown>
-              <Button
-                variant="secondary"
-                icon={<DownloadIcon />}
-                onClick={download}
-                isDisabled={saving}
-                title="Save this flow to your computer as a .zip you can upload again later"
-              >
-                Download .zip
-              </Button>
-              <Button
-                variant="secondary"
-                icon={<ImageIcon />}
-                onClick={downloadDiagram}
-                isLoading={drawing}
-                isDisabled={drawing}
-                title="Save a picture of the whole flow diagram to your computer"
-              >
-                Download diagram (.png)
-              </Button>
-              <Button
-                variant="secondary"
-                icon={<CodeIcon />}
-                onClick={() => navigate(`/flows/${id}/api`)}
-                isDisabled={saving}
-                title="Design the REST API this flow offers, as an OpenAPI spec"
-              >
-                API spec
-              </Button>
-              <Button variant="primary" onClick={() => setPublishing(true)} isDisabled={saving || validating}>
-                Publish
-              </Button>
-              <Button variant="link" onClick={() => setShowHistory(true)}>
-                History
-              </Button>
-            </Flex>
-          </FlexItem>
         </Flex>
         {message && (
           <Alert
@@ -381,6 +429,7 @@ function FlowEditor() {
           initialContent={route.data ?? ''}
           files={files}
           onChange={onChange}
+          tabBarActions={actions}
         />
       </div>
 
