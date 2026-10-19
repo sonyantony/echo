@@ -46,7 +46,7 @@ describe('Login', () => {
     await userEvent.type(screen.getByLabelText(/Password/), 'designer');
     await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
 
-    expect(await screen.findByRole('heading', { name: 'Flows' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Open Flow' })).toBeInTheDocument();
     expect(screen.getByTestId('current-user')).toHaveTextContent('designer');
     expect(screen.getByTestId('current-user').parentElement).toHaveTextContent('User: designer');
   });

@@ -112,7 +112,7 @@ export function ApiSpecPage() {
       <PageSection className="echo-api-spec__header" padding={{ default: 'noPadding' }}>
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
           <FlexItem>
-            <Link to="/">Flows</Link> / <Link to={`/flows/${id}`}>{flow.data.name}</Link> /
+            <Link to="/" state={{ from: `/flows/${id}/api` }}>Flows</Link> / <Link to={`/flows/${id}`}>{flow.data.name}</Link> /
           </FlexItem>
           <FlexItem>
             <Title headingLevel="h1" size="lg">

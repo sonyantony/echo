@@ -34,7 +34,8 @@ import {
 } from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
-import { FLOWS_KEY, StatusLabel } from './FlowListPage';
+import { FlowFormModal } from './FlowFormModal';
+import { FLOWS_KEY, StatusLabel, type OpenFlowState } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { PublishModal } from './PublishModal';
@@ -94,6 +95,7 @@ function FlowEditor() {
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [creating, setCreating] = useState(false);
   /** Set when Save As moves to the new flow, so leaving this one does not ask about unsaved edits. */
   const leavingAfterSaveAs = useRef(false);
 
@@ -256,13 +258,17 @@ function FlowEditor() {
     );
   }
 
-  /** Opens a draft just made by Open Template or Upload Flow (leaving this one asks about unsaved edits). */
+  /** Opens a draft just made by New Flow, Open Template or Upload Flow (leaving this one asks about unsaved edits). */
   const openNewDraft = async (newId: number) => {
+    setCreating(false);
     setOpeningTemplate(false);
     setUploading(false);
     await queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
     navigate(`/flows/${newId}`);
   };
+
+  /** Lets Cancel on the Open Flow page come back to this flow. */
+  const openFlowState: OpenFlowState = { from: `/flows/${flow.data.id}` };
 
   // The File menu, first on the line with Kaoto's tabs as in most desktop software.
   const fileMenu = (
@@ -285,6 +291,9 @@ function FlowEditor() {
         )}
       >
         <DropdownList>
+          <DropdownItem key="new" onClick={() => setCreating(true)} description="Start a new, empty flow">
+            New Flow
+          </DropdownItem>
           <DropdownItem
             key="open-template"
             onClick={() => setOpeningTemplate(true)}
@@ -296,8 +305,8 @@ function FlowEditor() {
           </DropdownItem>
           <DropdownItem
             key="open-flow"
-            onClick={() => navigate('/')}
-            description="Pick a flow from the Flows list"
+            onClick={() => navigate('/', { state: openFlowState })}
+            description="Pick a flow from the list of flows"
           >
             Open Flow
           </DropdownItem>
@@ -415,7 +424,10 @@ function FlowEditor() {
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
           <FlexItem>
-            <Link to="/">Flows</Link> /
+            <Link to="/" state={openFlowState}>
+              Flows
+            </Link>{' '}
+            /
           </FlexItem>
           <FlexItem>
             <Title headingLevel="h1" size="lg">
@@ -527,6 +539,14 @@ function FlowEditor() {
             setMessage({ variant: 'success', text: `Saved as template ${name}.` });
             await queryClient.invalidateQueries({ queryKey: ['templates'] });
           }}
+        />
+      )}
+      {creating && (
+        <FlowFormModal
+          title="New flow"
+          submitLabel="Create"
+          onClose={() => setCreating(false)}
+          onSubmit={async (name, description) => openNewDraft((await flowsApi.create(name, description)).id)}
         />
       )}
       {openingTemplate && (
