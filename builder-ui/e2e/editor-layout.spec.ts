@@ -63,3 +63,33 @@ test('the About tab shows EY ECHO and its developer', async ({ page }) => {
   await expect(page.getByText('Developed By : Sony Antony', { exact: true })).toBeVisible();
   await expect(page.getByAltText('Kaoto about page logo')).toHaveCount(0);
 });
+
+test('Advanced > Java Beans opens the Beans view, before About; Design is called Flow Design', async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('advanced'));
+  await expect(page.getByRole('tab', { name: /Design/ })).toHaveText('Flow Design');
+  await expect(page.getByRole('tab', { name: /Beans/ })).toBeHidden();
+  const advanced = page.getByRole('button', { name: 'Advanced', exact: true });
+  const advancedBox = (await advanced.boundingBox())!;
+  const about = (await page.getByRole('tab', { name: /About/ }).boundingBox())!;
+  const dataMapper = (await page.getByRole('tab', { name: /DataMapper/ }).boundingBox())!;
+  expect(advancedBox.x).toBeGreaterThanOrEqual(dataMapper.x + dataMapper.width);
+  expect(advancedBox.x + advancedBox.width).toBeLessThanOrEqual(about.x);
+  await advanced.click();
+  await page.getByRole('menuitem', { name: /^Java Beans/ }).click();
+  await expect(page).toHaveURL(/#\/beans$/);
+  await expect(page.locator('.shell__tab-content--scrollable')).toBeVisible();
+  await page.getByRole('tab', { name: /Design/ }).click();
+  await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
+});
+
+test('the canvas New menu shows Route without its long description', async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('newmenu'));
+  await page.getByTestId('new-entity-list-dropdown').click();
+  const route = page.getByTestId('new-entity-route');
+  await expect(route).toBeVisible();
+  await expect(route.locator('.pf-v6-c-menu__item-description')).toBeHidden();
+  await expect(page.getByTestId('new-entity-list').getByText('Configuration')).toBeVisible();
+  await expect(page.getByTestId('new-entity-list').getByText('Error Handling')).toBeVisible();
+});

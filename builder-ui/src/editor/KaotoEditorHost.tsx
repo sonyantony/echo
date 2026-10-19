@@ -2,6 +2,7 @@ import { KaotoEditorFactory } from '@kaoto/kaoto';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
+import { AdvancedMenu } from './AdvancedMenu';
 import type { FlowFiles } from './flowFiles';
 import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
@@ -23,7 +24,7 @@ export interface KaotoEditorHostProps {
   onChange?(content: string): void;
   /** Defaults to the Builder's catalog, cut down to what flows may use (CamelCatalogController). */
   catalogUrl?: string;
-  /** Builder controls shown at the right end of Kaoto's tab bar (Design, Beans, ...), on the same line. */
+  /** Builder controls shown at the right end of Kaoto's tab bar (Design, Rest, ...), on the same line. */
   tabBarActions?: ReactNode;
   /** Builder controls shown at the left end of Kaoto's tab bar, before its first tab (e.g. a File menu). */
   tabBarStart?: ReactNode;
@@ -54,6 +55,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const [error, setError] = useState<string>();
   const [tabBarSlot, setTabBarSlot] = useState<HTMLElement>();
   const [tabBarStartSlot, setTabBarStartSlot] = useState<HTMLElement>();
+  const [advancedSlot, setAdvancedSlot] = useState<HTMLElement>();
 
   useImperativeHandle(ref, () => ({
     getContent: async () => (editorRef.current ? editorRef.current.getContent() : initialContent),
@@ -117,7 +119,8 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   }, []);
 
   // Kaoto renders its tab bar when it starts; put slots for the Builder's controls at its start and
-  // end, and put them back should Kaoto ever render the tab bar again.
+  // end, and the Advanced menu's just before Kaoto's About tab; and call the Design tab "Flow Design".
+  // Put them back should Kaoto ever render the tab bar again.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -125,6 +128,8 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     slot.className = 'echo-kaoto-host__tab-actions';
     const startSlot = document.createElement('div');
     startSlot.className = 'echo-kaoto-host__tab-start';
+    const advanced = document.createElement('li');
+    advanced.className = 'echo-kaoto-host__tab-advanced';
     const attach = () => {
       const tabBar = container.querySelector(":scope > .shell > div[role='region']");
       if (!tabBar) return;
@@ -136,6 +141,17 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
         tabBar.prepend(startSlot);
         setTabBarStartSlot(startSlot);
       }
+      const designText = tabBar.querySelector("[data-testid='design-tab'] .pf-v6-c-tabs__item-text");
+      if (designText && designText.textContent !== 'Flow Design') designText.textContent = 'Flow Design';
+      const tabList = tabBar.querySelector(':scope > .pf-v6-c-tabs__list');
+      if (tabList) {
+        // Kaoto wraps each tab's <li> in a link, so the list's children are the links.
+        const about = tabList.querySelector(":scope > [data-testid='about-tab']");
+        if (advanced.parentElement !== tabList || advanced.nextElementSibling !== about) {
+          tabList.insertBefore(advanced, about);
+          setAdvancedSlot(advanced);
+        }
+      }
     };
     const observer = new MutationObserver(attach);
     observer.observe(container, { childList: true, subtree: true });
@@ -144,6 +160,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       observer.disconnect();
       slot.remove();
       startSlot.remove();
+      advanced.remove();
     };
   }, []);
 
@@ -161,6 +178,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       <div ref={containerRef} className="echo-kaoto-host__editor" />
       {tabBarStartSlot && tabBarStart && createPortal(tabBarStart, tabBarStartSlot)}
       {tabBarSlot && tabBarActions && createPortal(tabBarActions, tabBarSlot)}
+      {advancedSlot && createPortal(<AdvancedMenu />, advancedSlot)}
       <input
         ref={fileInputRef}
         type="file"
