@@ -72,6 +72,9 @@ export function StatusLabel({ status }: { status: FlowSummary['status'] }) {
   return status === 'PUBLISHED' ? <Label color="green">Published</Label> : <Label color="blue">Draft</Label>;
 }
 
+/** Address of the Open Flow page (the list of flows). */
+export const OPEN_FLOW_PATH = '/flows';
+
 /** Router state the editor passes when it sends you here, so Cancel can take you back. */
 export interface OpenFlowState {
   from?: string;
@@ -202,13 +205,12 @@ export function FlowListPage() {
                       onChange={(_e, checked) => setShowUnpublished(checked)}
                     />
                   </ToolbarItem>
-                  {cameFrom && (
-                    <ToolbarItem>
-                      <Button variant="secondary" onClick={() => navigate(cameFrom)}>
-                        Cancel
-                      </Button>
-                    </ToolbarItem>
-                  )}
+                  <ToolbarItem>
+                    {/* Back to where you came from; with no history, to the blank canvas. */}
+                    <Button variant="secondary" onClick={() => navigate(cameFrom ?? '/')}>
+                      Cancel
+                    </Button>
+                  </ToolbarItem>
                 </ToolbarGroup>
               </ToolbarContent>
             </Toolbar>

@@ -22,7 +22,9 @@ function createRouter() {
         </RequireAuth>
       ),
       children: [
-        { index: true, element: <FlowListPage /> },
+        // After login: a blank canvas with the File menu open (nothing is stored until it is saved).
+        { index: true, lazy: async () => ({ Component: (await import('./flows/UntitledFlowPage')).UntitledFlowPage }) },
+        { path: 'flows', element: <FlowListPage /> },
         // Loaded on demand: the editor bundles Kaoto, which is large.
         { path: 'flows/:id/api', lazy: async () => ({ Component: (await import('./apispec/ApiSpecPage')).ApiSpecPage }) },
         { path: 'flows/:id', lazy: async () => ({ Component: (await import('./flows/FlowEditorPage')).FlowEditorPage }) },

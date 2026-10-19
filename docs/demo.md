@@ -32,7 +32,7 @@ java -jar target/echo-builder-backend-*.jar --echo.git.url=file:///tmp/echo-flow
 
 ## 2. Create the flow
 
-1. Choose **New flow**, name it `orders` and add a description.
+1. After logging in you land on a blank canvas with the File menu open. Choose **New Flow**, name it `orders` and add a description.
 2. The editor opens with a starter route (`platform-http` → `log`). Build the route on the
    canvas: a `platform-http` consumer on `/orders`, a **Kaoto DataMapper** step, an `http`
    call to `{{fulfilment.url}}`, and a second DataMapper step for the response.
@@ -57,7 +57,7 @@ Download .zip, Download diagram), then Validate, Run, API spec, History and Publ
 On narrow screens History moves into the **⋮** menu.
 
 **Download .zip** (in the editor's File menu, or Download in a flow's menu on the Flows page) saves the flow folder to your
-computer as `<name>.zip`; **Upload flow** (on the Flows page or in the editor's File menu) opens such a zip again as a new draft. An upload never
+computer as `<name>.zip`; **Upload Flow** (in the editor's File menu) opens such a zip again as a new draft. An upload never
 overwrites an existing flow: give it a new name if the name is taken.
 
 **Save As** (in the File menu) saves what is on screen as a draft with another name and

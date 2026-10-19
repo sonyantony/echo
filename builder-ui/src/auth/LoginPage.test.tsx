@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { App, createQueryClient } from '../App';
 import { mockFetch } from '../test/fetchMock';
 
+// The blank canvas pulls in Kaoto, which does not load under jsdom.
+vi.mock('../flows/UntitledFlowPage', () => ({ UntitledFlowPage: () => <p>Untitled canvas</p> }));
+
 afterEach(() => {
   vi.unstubAllGlobals();
   window.history.pushState({}, '', '/');
@@ -34,7 +37,7 @@ describe('Login', () => {
     expect(login.headers.get('X-XSRF-TOKEN')).toBe('abc');
   });
 
-  it('opens the flow list after logging in', async () => {
+  it('opens the blank canvas after logging in', async () => {
     document.cookie = 'XSRF-TOKEN=abc';
     mockFetch({
       'GET /api/auth/me': { status: 401 },
@@ -46,7 +49,7 @@ describe('Login', () => {
     await userEvent.type(screen.getByLabelText(/Password/), 'designer');
     await userEvent.click(screen.getByRole('button', { name: 'Log in' }));
 
-    expect(await screen.findByRole('heading', { name: 'Open Flow' })).toBeInTheDocument();
+    expect(await screen.findByText('Untitled canvas')).toBeInTheDocument();
     expect(screen.getByTestId('current-user')).toHaveTextContent('designer');
     expect(screen.getByTestId('current-user').parentElement).toHaveTextContent('User: designer');
   });

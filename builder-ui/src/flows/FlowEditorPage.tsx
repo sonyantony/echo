@@ -35,7 +35,7 @@ import {
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { FlowFormModal } from './FlowFormModal';
-import { FLOWS_KEY, StatusLabel, type OpenFlowState } from './FlowListPage';
+import { FLOWS_KEY, OPEN_FLOW_PATH, StatusLabel, type OpenFlowState } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { PublishModal } from './PublishModal';
@@ -245,7 +245,7 @@ function FlowEditor() {
     return (
       <PageSection>
         <Alert variant="danger" isInline title="Could not open this flow">
-          <Link to="/">Back to flows</Link>
+          <Link to={OPEN_FLOW_PATH}>Back to flows</Link>
         </Alert>
       </PageSection>
     );
@@ -305,7 +305,7 @@ function FlowEditor() {
           </DropdownItem>
           <DropdownItem
             key="open-flow"
-            onClick={() => navigate('/', { state: openFlowState })}
+            onClick={() => navigate(OPEN_FLOW_PATH, { state: openFlowState })}
             description="Pick a flow from the list of flows"
           >
             Open Flow
@@ -424,7 +424,7 @@ function FlowEditor() {
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
           <FlexItem>
-            <Link to="/" state={openFlowState}>
+            <Link to={OPEN_FLOW_PATH} state={openFlowState}>
               Flows
             </Link>{' '}
             /
@@ -576,7 +576,7 @@ function FlowEditor() {
 }
 
 /** The keyboard shortcut shown at the right of a menu item (not part of its name for screen readers). */
-function Shortcut({ keys }: { keys: string }) {
+export function Shortcut({ keys }: { keys: string }) {
   return (
     <span className="echo-menu-shortcut" aria-hidden>
       {keys}
