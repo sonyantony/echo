@@ -30,7 +30,7 @@ export function PublishModal({ flowId, flowName, beforePublish, onPublished, onI
   const [targets, setTargets] = useState<PublishTarget[]>();
 
   useEffect(() => {
-    publishTargets().then(setTargets, () => setTargets(undefined)); // only informative
+    publishTargets().then(setTargets, () => setTargets(undefined)); // only used to warn when none is enabled
   }, []);
 
   const publish = async () => {
@@ -59,20 +59,11 @@ export function PublishModal({ flowId, flowName, beforePublish, onPublished, onI
       <ModalBody>
         <Form onSubmit={(e) => e.preventDefault()}>
           <p>The flow is validated, then published to every enabled target. Your pipeline builds it from there.</p>
-          {targets && targets.length > 0 && (
-            <ul aria-label="Publish targets">
-              {targets.map((t) => (
-                <li key={t.id}>
-                  <strong>{t.name}</strong>: {t.location}
-                </li>
-              ))}
-            </ul>
-          )}
           {targets?.length === 0 && (
             <Alert variant="warning" isInline isPlain title="No publish target is enabled in application.yaml." />
           )}
           {error && <Alert variant="danger" isInline isPlain title={error} />}
-          <FormGroup label="What changed?" fieldId="publish-message">
+          <FormGroup label="Description" fieldId="publish-message">
             <TextArea
               id="publish-message"
               value={message}

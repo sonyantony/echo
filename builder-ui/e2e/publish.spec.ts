@@ -13,7 +13,7 @@ test('publishes a flow to Git', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('What changed?').fill(`First version of ${name}`);
+  await dialog.getByLabel('Description').fill(`First version of ${name}`);
   await dialog.getByRole('button', { name: 'Publish' }).click();
 
   await expect(page.getByText(/Published to Git \(main, [0-9a-f]{8}\)\./)).toBeVisible();
