@@ -1,6 +1,7 @@
 import {
   Alert,
   Button,
+  Checkbox,
   EmptyState,
   EmptyStateActions,
   EmptyStateBody,
@@ -11,10 +12,12 @@ import {
   ModalFooter,
   ModalHeader,
   PageSection,
+  SearchInput,
   Spinner,
   Title,
   Toolbar,
   ToolbarContent,
+  ToolbarGroup,
   ToolbarItem,
 } from '@patternfly/react-core';
 import { TrashIcon } from '@patternfly/react-icons';
@@ -55,6 +58,16 @@ function listRows(flows: FlowSummary[], published: PublishedFlowSummary[]): Row[
   return rows.sort((a, b) => name(a).localeCompare(name(b)) || (a.kind === 'published' ? -1 : 1));
 }
 
+/** True when the row shows as Published (a Published row, or a draft that matches what was published). */
+const isPublished = (r: Row) => r.kind === 'published' || r.flow.status === 'PUBLISHED';
+
+/** Case-insensitive match on the flow's name or description. */
+function matches(r: Row, search: string) {
+  const { name, description } = r.kind === 'draft' ? r.flow : r.published;
+  const text = search.trim().toLowerCase();
+  return !text || name.toLowerCase().includes(text) || (description ?? '').toLowerCase().includes(text);
+}
+
 export function StatusLabel({ status }: { status: FlowSummary['status'] }) {
   return status === 'PUBLISHED' ? <Label color="green">Published</Label> : <Label color="blue">Draft</Label>;
 }
@@ -69,6 +82,9 @@ export function FlowListPage() {
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [renaming, setRenaming] = useState<FlowSummary>();
   const [deleting, setDeleting] = useState<Row>();
+  const [search, setSearch] = useState('');
+  const [showPublished, setShowPublished] = useState(true);
+  const [showUnpublished, setShowUnpublished] = useState(true);
   const refresh = () => queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
 
   const remove = useMutation({
@@ -88,6 +104,7 @@ export function FlowListPage() {
   });
 
   const rows = flows.data ? listRows(flows.data, published.data ?? []) : undefined;
+  const shownRows = rows?.filter((r) => (isPublished(r) ? showPublished : showUnpublished) && matches(r, search)) ?? [];
   const publishedFor = (flowId: number) => published.data?.find((p) => p.flowId === flowId);
   const deleteButton = (row: Row, name: string) => (
     <Button
@@ -156,87 +173,124 @@ export function FlowListPage() {
                 <ToolbarItem>{newButton}</ToolbarItem>
                 <ToolbarItem>{templateButton}</ToolbarItem>
                 <ToolbarItem>{uploadButton}</ToolbarItem>
+                <ToolbarGroup align={{ default: 'alignEnd' }} alignItems="center">
+                  <ToolbarItem>
+                    <SearchInput
+                      aria-label="Search flows"
+                      placeholder="Search flows"
+                      value={search}
+                      onChange={(_e, value) => setSearch(value)}
+                      onClear={() => setSearch('')}
+                    />
+                  </ToolbarItem>
+                  <ToolbarItem>
+                    <Checkbox
+                      id="filter-published"
+                      label="Published"
+                      isChecked={showPublished}
+                      onChange={(_e, checked) => setShowPublished(checked)}
+                    />
+                  </ToolbarItem>
+                  <ToolbarItem>
+                    <Checkbox
+                      id="filter-unpublished"
+                      label="Unpublished"
+                      isChecked={showUnpublished}
+                      onChange={(_e, checked) => setShowUnpublished(checked)}
+                    />
+                  </ToolbarItem>
+                </ToolbarGroup>
               </ToolbarContent>
             </Toolbar>
-            <Table aria-label="Flows" variant="compact">
-              <Thead>
-                <Tr>
-                  <Th>Name</Th>
-                  <Th>Description</Th>
-                  <Th>Status</Th>
-                  <Th>Last changed</Th>
-                  <Th screenReaderText="Delete" />
-                  <Th screenReaderText="Actions" />
-                </Tr>
-              </Thead>
-              <Tbody>
-                {rows.map((row) =>
-                  row.kind === 'draft' ? (
-                    <Tr key={`draft-${row.flow.id}`}>
-                      <Td dataLabel="Name">
-                        <Link to={`/flows/${row.flow.id}`}>{row.flow.name}</Link>
-                      </Td>
-                      <Td dataLabel="Description">{row.flow.description}</Td>
-                      <Td dataLabel="Status">
-                        <StatusLabel status={row.flow.status} />
-                      </Td>
-                      <Td dataLabel="Last changed">
-                        {new Date(row.flow.updatedAt).toLocaleString()} by {row.flow.updatedBy}
-                      </Td>
-                      <Td isActionCell>{deleteButton(row, row.flow.name)}</Td>
-                      <Td
-                        isActionCell
-                        actions={{
-                          items: [
-                            { title: 'Open', onClick: () => navigate(`/flows/${row.flow.id}`) },
-                            { title: 'Download', onClick: () => downloadFlow(row.flow.id) },
-                            { title: 'Rename', onClick: () => setRenaming(row.flow) },
-                          ],
-                        }}
-                      />
-                    </Tr>
-                  ) : (
-                    <Tr key={`published-${row.published.name}`}>
-                      <Td dataLabel="Name">
-                        {row.published.flowId != null && !row.published.draftChanged ? (
-                          <Link to={`/flows/${row.published.flowId}`}>{row.published.name}</Link>
-                        ) : (
-                          row.published.name
-                        )}
-                      </Td>
-                      <Td dataLabel="Description">{row.published.description}</Td>
-                      <Td dataLabel="Status">
-                        <Label color="green">
-                          Published{row.published.version != null && ` v${row.published.version}`}
-                        </Label>
-                      </Td>
-                      <Td dataLabel="Last changed">
-                        {row.published.publishedAt
-                          ? `${new Date(row.published.publishedAt).toLocaleString()} by ${row.published.publishedBy ?? 'unknown'}`
-                          : 'Added outside the Builder'}
-                      </Td>
-                      <Td isActionCell>{deleteButton(row, row.published.name)}</Td>
-                      <Td
-                        isActionCell
-                        actions={{
-                          items: [
-                            ...(row.published.draftChanged
-                              ? []
-                              : [
-                                  {
-                                    title: row.published.flowId != null ? 'Open' : 'Edit as draft',
-                                    onClick: () => openPublished.mutate(row.published),
-                                  },
-                                ]),
-                            { title: 'Download', onClick: () => downloadPublishedFlow(row.published.name) },
-                          ],
-                        }}
-                      />
-                    </Tr>
-                  ),
-                )}
-              </Tbody>
-            </Table>
+            {shownRows.length === 0 ? (
+              <EmptyState titleText="No flows match" headingLevel="h2" variant="sm">
+                <EmptyStateBody>
+                  {showPublished || showUnpublished
+                    ? 'Try a different search.'
+                    : 'Tick Published or Unpublished to see flows.'}
+                </EmptyStateBody>
+              </EmptyState>
+            ) : (
+              <Table aria-label="Flows" variant="compact">
+                <Thead>
+                  <Tr>
+                    <Th>Name</Th>
+                    <Th>Description</Th>
+                    <Th>Status</Th>
+                    <Th>Last changed</Th>
+                    <Th screenReaderText="Delete" />
+                    <Th screenReaderText="Actions" />
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {shownRows.map((row) =>
+                    row.kind === 'draft' ? (
+                      <Tr key={`draft-${row.flow.id}`}>
+                        <Td dataLabel="Name">
+                          <Link to={`/flows/${row.flow.id}`}>{row.flow.name}</Link>
+                        </Td>
+                        <Td dataLabel="Description">{row.flow.description}</Td>
+                        <Td dataLabel="Status">
+                          <StatusLabel status={row.flow.status} />
+                        </Td>
+                        <Td dataLabel="Last changed">
+                          {new Date(row.flow.updatedAt).toLocaleString()} by {row.flow.updatedBy}
+                        </Td>
+                        <Td isActionCell>{deleteButton(row, row.flow.name)}</Td>
+                        <Td
+                          isActionCell
+                          actions={{
+                            items: [
+                              { title: 'Open', onClick: () => navigate(`/flows/${row.flow.id}`) },
+                              { title: 'Download', onClick: () => downloadFlow(row.flow.id) },
+                              { title: 'Rename', onClick: () => setRenaming(row.flow) },
+                            ],
+                          }}
+                        />
+                      </Tr>
+                    ) : (
+                      <Tr key={`published-${row.published.name}`}>
+                        <Td dataLabel="Name">
+                          {row.published.flowId != null && !row.published.draftChanged ? (
+                            <Link to={`/flows/${row.published.flowId}`}>{row.published.name}</Link>
+                          ) : (
+                            row.published.name
+                          )}
+                        </Td>
+                        <Td dataLabel="Description">{row.published.description}</Td>
+                        <Td dataLabel="Status">
+                          <Label color="green">
+                            Published{row.published.version != null && ` v${row.published.version}`}
+                          </Label>
+                        </Td>
+                        <Td dataLabel="Last changed">
+                          {row.published.publishedAt
+                            ? `${new Date(row.published.publishedAt).toLocaleString()} by ${row.published.publishedBy ?? 'unknown'}`
+                            : 'Added outside the Builder'}
+                        </Td>
+                        <Td isActionCell>{deleteButton(row, row.published.name)}</Td>
+                        <Td
+                          isActionCell
+                          actions={{
+                            items: [
+                              ...(row.published.draftChanged
+                                ? []
+                                : [
+                                    {
+                                      title: row.published.flowId != null ? 'Open' : 'Edit as draft',
+                                      onClick: () => openPublished.mutate(row.published),
+                                    },
+                                  ]),
+                              { title: 'Download', onClick: () => downloadPublishedFlow(row.published.name) },
+                            ],
+                          }}
+                        />
+                      </Tr>
+                    ),
+                  )}
+                </Tbody>
+              </Table>
+            )}
           </>
         )}
       </PageSection>
