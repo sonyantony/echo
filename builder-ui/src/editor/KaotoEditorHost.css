@@ -69,3 +69,19 @@
   padding-inline: 8px;
   min-width: 0;
 }
+
+/* Kaoto's Beans view opens from Advanced > Java Beans (AdvancedMenu.tsx), not its own tab. */
+.echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='beans-tab'] {
+  display: none;
+}
+.echo-kaoto-host__tab-advanced {
+  display: flex;
+  align-items: center;
+  list-style: none;
+}
+
+/* Kaoto's "+ New" menu: Route without its long description line under it. The menu may be
+   rendered outside the host, so this is not scoped to it. */
+[data-testid='new-entity-route'] .pf-v6-c-menu__item-description {
+  display: none;
+}

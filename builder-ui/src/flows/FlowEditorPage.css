@@ -100,7 +100,14 @@
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
-/* File reads like a desktop menu bar entry: no dropdown arrow. */
-.echo-tab-actions .echo-file-menu .pf-v6-c-menu-toggle__controls {
+/* File and Advanced read like desktop menu bar entries: no dropdown arrow. */
+.echo-tab-actions .echo-file-menu .pf-v6-c-menu-toggle__controls,
+.echo-tab-actions .echo-advanced-menu .pf-v6-c-menu-toggle__controls {
   display: none;
+}
+/* Advanced shows as the open tab while its Java Beans view is open. */
+.echo-tab-actions > .pf-v6-c-menu-toggle.echo-advanced-menu--current {
+  color: var(--pf-t--global--text--color--regular);
+  box-shadow: inset 0 calc(-1 * var(--pf-v6-c-tabs__item--m-current__link--after--BorderWidth, 3px)) 0
+    var(--pf-v6-c-tabs__item--m-current__link--after--BorderColor, var(--pf-t--global--color--brand--accent--default));
 }
