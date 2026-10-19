@@ -208,6 +208,25 @@ function FlowEditor() {
     save: () => save(true),
   });
 
+  // Ctrl+S saves and Ctrl+O opens a template (Cmd on a Mac), instead of the browser's own save and
+  // open. Caught before Kaoto's editors see them, and left alone while a dialog is open.
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+      const key = e.key.toLowerCase();
+      if (key !== 's' && key !== 'o') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (document.querySelector('.pf-v6-c-modal-box')) return;
+      if (key === 's') void saveRef.current();
+      else setOpeningTemplate(true);
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, []);
+
   // Warn before leaving with unsaved changes, inside the app and when closing the tab.
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
@@ -269,8 +288,10 @@ function FlowEditor() {
             key="open-template"
             onClick={() => setOpeningTemplate(true)}
             description="Start a new flow from a template stored in Git"
+            aria-keyshortcuts="Control+O"
           >
             Open Template
+            <Shortcut keys="Ctrl+O" />
           </DropdownItem>
           <DropdownItem
             key="upload"
@@ -280,8 +301,9 @@ function FlowEditor() {
             Upload Flow
           </DropdownItem>
           <Divider component="li" key="open-divider" />
-          <DropdownItem key="save" onClick={() => save()} isDisabled={saving}>
+          <DropdownItem key="save" onClick={() => save()} isDisabled={saving} aria-keyshortcuts="Control+S">
             Save
+            <Shortcut keys="Ctrl+S" />
           </DropdownItem>
           <DropdownItem
             key="save-as"
@@ -522,5 +544,14 @@ function FlowEditor() {
         </Modal>
       )}
     </div>
+  );
+}
+
+/** The keyboard shortcut shown at the right of a menu item (not part of its name for screen readers). */
+function Shortcut({ keys }: { keys: string }) {
+  return (
+    <span className="echo-menu-shortcut" aria-hidden>
+      {keys}
+    </span>
   );
 }

@@ -91,3 +91,11 @@
 .echo-tab-actions .echo-tab-actions__more .pf-v6-c-menu-toggle__icon {
   color: var(--pf-t--global--text--color--subtle);
 }
+
+/* Keyboard shortcuts in the File menu, at the right of the item's name. */
+.echo-menu-shortcut {
+  float: right;
+  margin-inline-start: 32px;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}

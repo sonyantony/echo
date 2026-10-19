@@ -43,6 +43,22 @@ test('adds a step on the canvas and keeps it after saving', async ({ page }) => 
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 });
 
+// Ctrl+S saves and Ctrl+O opens Open Template, instead of the browser's own save and open.
+test('Ctrl+S saves and Ctrl+O opens a template', async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('keys'));
+  await addStep(page, 1, 'setBody');
+  await expect(page.getByTestId('unsaved')).toBeVisible();
+
+  await page.getByTestId('custom-node__route.from').click();
+  await page.keyboard.press('Control+s');
+  await expect(page.getByText('Saved.')).toBeVisible();
+  await expect(page.getByTestId('unsaved')).toHaveCount(0);
+
+  await page.keyboard.press('Control+o');
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Open Template' })).toBeVisible();
+});
+
 test('warns before leaving with unsaved changes', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('unsaved'));
