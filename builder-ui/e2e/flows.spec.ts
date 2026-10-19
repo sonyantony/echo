@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { addStep, createFlow, login, uniqueName } from './helpers';
+import { addStep, createFlow, fileMenu, login, uniqueName } from './helpers';
 
 // M4: create, list, rename and delete flow drafts.
 test('creates, renames and deletes a flow', async ({ page }) => {
@@ -35,7 +35,7 @@ test('adds a step on the canvas and keeps it after saving', async ({ page }) => 
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
   await expect(page.getByTestId('unsaved')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Save' }).click();
+  await fileMenu(page, /^Save$/);
   await expect(page.getByText('Saved.')).toBeVisible();
   await expect(page.getByTestId('unsaved')).toHaveCount(0);
 
@@ -99,8 +99,7 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
   await expect(page.getByTestId('documentationPreviewButton')).toBeHidden();
 
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Download \.zip/ }).click();
+  await fileMenu(page, /Download \.zip/);
   const download = await downloading;
   expect(download.suggestedFilename()).toBe(`${name}.zip`);
   await expect(page.getByTestId('unsaved')).toHaveCount(0); // saved first
@@ -116,6 +115,15 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
 
   await expect(page.getByRole('heading', { name: `${name}-copy` })).toBeVisible();
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
+
+  // The editor's File menu uploads too, and opens the new draft.
+  await fileMenu(page, /^Upload Flow/);
+  const again = page.getByRole('dialog');
+  await again.getByLabel(/Flow file/).setInputFiles(zip);
+  await again.getByLabel('Name').fill(`${name}-copy2`);
+  await again.getByRole('button', { name: 'Upload' }).click();
+  await expect(page.getByRole('heading', { name: `${name}-copy2` })).toBeVisible();
+  await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 });
 
 // Download the diagram on the canvas as a PNG named after the flow.
@@ -130,8 +138,7 @@ test('downloads the flow diagram as a PNG', async ({ page }, testInfo) => {
   // Works from another Kaoto tab too: it switches back to the canvas.
   await page.getByRole('tab', { name: /DataMapper/ }).click();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Download diagram \(\.png\)/ }).click();
+  await fileMenu(page, /Download diagram \(\.png\)/);
   const download = await downloading;
   expect(download.suggestedFilename()).toBe(`${name}.png`);
   const file = testInfo.outputPath(`${name}.png`);

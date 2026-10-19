@@ -31,18 +31,26 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   const tabBar = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"]');
   const top = async (name: string) => (await page.getByRole('button', { name, exact: true }).boundingBox())!.y;
   const tabBox = (await tabBar.boundingBox())!;
-  for (const name of ['Validate', 'Save', 'Download', 'API spec', 'History', 'Publish']) {
+  for (const name of ['File', 'Validate', 'API spec', 'History', 'Publish']) {
     const y = await top(name);
     expect(y).toBeGreaterThanOrEqual(tabBox.y);
     expect(y).toBeLessThan(tabBox.y + tabBox.height);
   }
+  // File comes first, before Kaoto's Design tab, as in most desktop software.
+  const file = (await page.getByRole('button', { name: 'File', exact: true }).boundingBox())!;
+  const design = (await page.getByRole('tab', { name: /Design/ }).boundingBox())!;
+  expect(file.x + file.width).toBeLessThanOrEqual(design.x);
+  await page.getByRole('button', { name: 'File', exact: true }).click();
+  for (const item of [/^Open Template/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/, /Download \.zip/, /Download diagram/]) {
+    await expect(page.getByRole('menuitem', { name: item })).toBeVisible();
+  }
+  await page.keyboard.press('Escape');
 
-  // On a narrow screen Download and History move into the More menu.
+  // On a narrow screen History moves into the More menu.
   await page.setViewportSize({ width: 1100, height: 900 });
   await expect(page.getByRole('button', { name: 'History', exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'More actions' }).click();
   await expect(page.getByRole('menuitem', { name: 'History' })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /Download \.zip/ })).toBeVisible();
   const publish = (await page.getByRole('button', { name: 'Publish', exact: true }).boundingBox())!;
   expect(publish.x + publish.width).toBeLessThanOrEqual(1100);
 });

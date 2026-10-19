@@ -49,22 +49,23 @@ To skip the drawing, zip the `samples/flows/orders/` folder and choose **Upload 
 Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}`), as
 `demo.spec.ts` does.
 
-The editor's controls (Validate, Run, Save, Download, API spec, History, Publish) sit on the same
-line as Kaoto's Design, Beans, Rest, DataMapper and About tabs. On narrow screens Download and
-History move into the **⋮** menu.
+The editor's controls sit on the same line as Kaoto's Design, Beans, Rest, DataMapper and About
+tabs: the **File** menu first (Open Template, Upload Flow, Save, Save As, Save As Template,
+Download .zip, Download diagram), then Validate, Run, API spec, History and Publish at the right.
+On narrow screens History moves into the **⋮** menu.
 
-**Download .zip** (in the editor's Download menu, or Download in a flow's menu on the Flows page) saves the flow folder to your
-computer as `<name>.zip`; **Upload flow** opens such a zip again as a new draft. An upload never
+**Download .zip** (in the editor's File menu, or Download in a flow's menu on the Flows page) saves the flow folder to your
+computer as `<name>.zip`; **Upload flow** (on the Flows page or in the editor's File menu) opens such a zip again as a new draft. An upload never
 overwrites an existing flow: give it a new name if the name is taken.
 
-**Save As** (in the Save button's menu) saves what is on screen as a draft with another name and
+**Save As** (in the File menu) saves what is on screen as a draft with another name and
 opens it; the original keeps its last saved version. **Save As Template** saves it to the
-`templates/` folder of the flow repository (next to `flows/`). **Open Template** on the Flows
-page starts a new draft from one of those templates. Both Save As choices warn and ask before
+`templates/` folder of the flow repository (next to `flows/`). **Open Template** (on the Flows
+page or in the editor's File menu) starts a new draft from one of those templates. Both Save As choices warn and ask before
 replacing an existing draft or template. Pipelines build only `flows/`, so templates never become
 images.
 
-**Download diagram (.png)** (also in the Download menu) saves a picture of the whole flow as `<name>.png`, as it is on the
+**Download diagram (.png)** (also in the File menu) saves a picture of the whole flow as `<name>.png`, as it is on the
 canvas (unsaved edits included).
 
 ## 3. Validate

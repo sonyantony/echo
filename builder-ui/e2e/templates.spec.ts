@@ -1,9 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addStep, createFlow, login, uniqueName } from './helpers';
+import { addStep, createFlow, fileMenu, login, uniqueName } from './helpers';
 
 async function saveMenu(page: Page, item: 'Save As' | 'Save As Template') {
-  await page.getByRole('button', { name: 'Saving options' }).click();
-  await page.getByRole('menuitem', { name: new RegExp(`^${item}(?! Template)`) }).click();
+  await fileMenu(page, new RegExp(`^${item}(?! Template)`));
 }
 
 async function saveAs(page: Page, item: 'Save As' | 'Save As Template', name: string) {
@@ -65,11 +64,11 @@ test('Save As Template and Open Template', async ({ page }) => {
 
   // Saving a template leaves the draft's own unsaved edits as they are.
   await expect(page.getByTestId('unsaved')).toBeVisible();
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toHaveCount(0);
 
-  await page.getByRole('link', { name: 'Flows', exact: true }).click();
-  await page.getByRole('button', { name: 'Open Template' }).click();
+  // Open Template from the editor's File menu (the Flows page has the same button).
+  await fileMenu(page, /^Open Template/);
   const open = page.getByRole('dialog');
   await open.getByRole('combobox', { name: 'Template' }).selectOption(template);
   const flow = uniqueName('fromtpl');
