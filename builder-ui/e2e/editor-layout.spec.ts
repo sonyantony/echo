@@ -94,7 +94,7 @@ test('the canvas New menu shows Route without its long description', async ({ pa
   await expect(page.getByTestId('new-entity-list').getByText('Error Handling')).toBeVisible();
 });
 
-test('the Run menu, just before Advanced, holds Run <flow>, Validate and Publish', async ({ page }) => {
+test('the Run menu, just before Advanced, holds Run, Validate and Publish <flow>', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
   await createFlow(page, name);
@@ -107,8 +107,8 @@ test('the Run menu, just before Advanced, holds Run <flow>, Validate and Publish
   for (const gone of ['Validate', 'Publish']) await expect(page.getByRole('button', { name: gone, exact: true })).toHaveCount(0);
   await run.click();
   await expect(page.getByRole('menuitem', { name: new RegExp(`^Run ${name}`) })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /^Validate/ })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /^Publish/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: new RegExp(`^Validate ${name}`) })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: new RegExp(`^Publish ${name}`) })).toBeVisible();
   await page.getByRole('menuitem', { name: /^Validate/ }).click();
   await expect(page.getByTestId('validation-result')).toBeVisible();
 });
