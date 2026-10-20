@@ -28,6 +28,8 @@ export interface KaotoEditorHostProps {
   tabBarActions?: ReactNode;
   /** Builder menus shown among Kaoto's tabs, just before the Advanced menu (e.g. a Run menu). */
   tabBarMenus?: ReactNode;
+  /** Builder controls shown on Kaoto's Design canvas toolbar, right after its copy to clipboard button. */
+  canvasToolbarActions?: ReactNode;
   /** Builder controls shown at the left end of Kaoto's tab bar, before its first tab (e.g. a File menu). */
   tabBarStart?: ReactNode;
 }
@@ -45,7 +47,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,6 +60,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const [tabBarSlot, setTabBarSlot] = useState<HTMLElement>();
   const [tabBarStartSlot, setTabBarStartSlot] = useState<HTMLElement>();
   const [advancedSlot, setAdvancedSlot] = useState<HTMLElement>();
+  const [canvasSlot, setCanvasSlot] = useState<HTMLElement>();
 
   useImperativeHandle(ref, () => ({
     getContent: async () => (editorRef.current ? editorRef.current.getContent() : initialContent),
@@ -132,7 +135,15 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     startSlot.className = 'echo-kaoto-host__tab-start';
     const advanced = document.createElement('li');
     advanced.className = 'echo-kaoto-host__tab-advanced';
+    const canvas = document.createElement('div');
+    canvas.className = 'pf-v6-c-toolbar__item echo-kaoto-host__canvas-actions';
     const attach = () => {
+      // The canvas toolbar comes and goes with the Design tab; the same slot moves into each one.
+      const clipboardItem = container.querySelector(".context-toolbar [data-testid='clipboardButton']")?.closest('.pf-v6-c-toolbar__item');
+      if (clipboardItem && clipboardItem.nextElementSibling !== canvas) {
+        clipboardItem.after(canvas);
+        setCanvasSlot(canvas);
+      }
       const tabBar = container.querySelector(":scope > .shell > div[role='region']");
       if (!tabBar) return;
       if (slot.parentElement !== tabBar) {
@@ -163,6 +174,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       slot.remove();
       startSlot.remove();
       advanced.remove();
+      canvas.remove();
     };
   }, []);
 
@@ -180,6 +192,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       <div ref={containerRef} className="echo-kaoto-host__editor" />
       {tabBarStartSlot && tabBarStart && createPortal(tabBarStart, tabBarStartSlot)}
       {tabBarSlot && tabBarActions && createPortal(tabBarActions, tabBarSlot)}
+      {canvasSlot && canvasToolbarActions && createPortal(canvasToolbarActions, canvasSlot)}
       {advancedSlot &&
         createPortal(
           <>

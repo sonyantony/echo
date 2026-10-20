@@ -86,3 +86,10 @@
 [data-testid='new-entity-route'] .pf-v6-c-menu__item-description {
   display: none;
 }
+
+/* The Builder's Validate and Publish, next to Kaoto's copy to clipboard on the canvas toolbar. */
+.echo-canvas-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

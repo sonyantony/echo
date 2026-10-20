@@ -45,12 +45,6 @@ export async function fileMenu(page: Page, item: string | RegExp) {
   await menuItem.click();
 }
 
-/** Picks an item from the flow editor's Run menu (Run, Validate and Publish <flow>). */
-export async function runMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
-  await page.getByRole('menuitem', { name: item }).click();
-}
-
 /** Adds a processor (e.g. "setBody") at the end of the route through Kaoto's catalog. */
 export async function addStep(page: Page, placeholderIndex: number, processor: string) {
   await page.getByTestId(`placeholder-node__route.from.steps.${placeholderIndex}.placeholder`).click();

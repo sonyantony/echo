@@ -18,7 +18,7 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { CodeIcon, EllipsisVIcon, PlayIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon, CodeIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
@@ -364,8 +364,8 @@ function FlowEditor() {
     </div>
   );
 
-  // The Run menu, among Kaoto's tabs just before Advanced: run, validate and publish the flow, each named.
-  const runMenu = (
+  // The Run menu, among Kaoto's tabs just before Advanced: runs the flow inside the Builder.
+  const runMenu = runEnabled && (
     <div className="echo-tab-actions echo-no-print">
       <Dropdown
         isOpen={runMenuOpen}
@@ -385,8 +385,7 @@ function FlowEditor() {
         )}
       >
         <DropdownList>
-          {runEnabled && (
-            <DropdownItem
+          <DropdownItem
               key="run"
               icon={<PlayIcon />}
               onClick={startRun}
@@ -395,26 +394,33 @@ function FlowEditor() {
             >
               {run.data ? 'Restart' : 'Run'} {flow.data.name}
             </DropdownItem>
-          )}
-          <DropdownItem
-            key="validate"
-            onClick={validate}
-            isDisabled={validating || saving}
-            description="Check the flow for problems before publishing it"
-          >
-            Validate {flow.data.name}
-          </DropdownItem>
-          <Divider component="li" key="publish-divider" />
-          <DropdownItem
-            key="publish"
-            onClick={() => setPublishing(true)}
-            isDisabled={saving || validating}
-            description="Publish this flow so the pipeline can build it"
-          >
-            Publish {flow.data.name}
-          </DropdownItem>
         </DropdownList>
       </Dropdown>
+    </div>
+  );
+
+  // Validate and Publish, on the Flow Design canvas toolbar right after Kaoto's copy to clipboard.
+  const canvasActions = (
+    <div className="echo-canvas-actions echo-no-print">
+      <Button
+        variant="secondary"
+        icon={<CheckCircleIcon />}
+        onClick={validate}
+        isLoading={validating}
+        isDisabled={validating || saving}
+        title={`Validate ${flow.data.name}: check the flow for problems before publishing it`}
+      >
+        Validate
+      </Button>
+      <Button
+        variant="primary"
+        icon={<UploadIcon />}
+        onClick={() => setPublishing(true)}
+        isDisabled={saving || validating}
+        title={`Publish ${flow.data.name} so the pipeline can build it`}
+      >
+        Publish
+      </Button>
     </div>
   );
 
@@ -519,6 +525,7 @@ function FlowEditor() {
           onChange={onChange}
           tabBarStart={fileMenu}
           tabBarMenus={runMenu}
+          canvasToolbarActions={canvasActions}
           tabBarActions={actions}
         />
       </div>
