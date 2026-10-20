@@ -100,8 +100,8 @@
 .echo-tab-actions .echo-tab-menu .pf-v6-c-menu-toggle__controls {
   display: none;
 }
-/* Flow Design and Advanced show as the open tab while their view is open: the tab's text colour
-   here, and Kaoto's own tab underline moved under them (KaotoTabMenu.tsx). */
-.echo-tab-actions > .pf-v6-c-menu-toggle.echo-tab-menu--current {
+/* The menu with Kaoto's tab underline (the last one clicked, or the one whose view is open) has the
+   open tab's text colour too (tabUnderline.ts). */
+.echo-tab-actions > .pf-v6-c-menu-toggle.echo-tab-menu--underlined {
   color: var(--pf-t--global--text--color--regular);
 }

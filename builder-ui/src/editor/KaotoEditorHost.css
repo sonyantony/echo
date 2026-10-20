@@ -61,7 +61,9 @@
   flex: none;
 }
 .echo-kaoto-host__tab-start {
-  flex: none;
+  display: flex;
+  align-items: center;
+  list-style: none;
   padding-inline-start: 8px;
 }
 .echo-kaoto-host__tab-actions {

@@ -7,6 +7,7 @@ import { KaotoTabMenu } from './KaotoTabMenu';
 import type { FlowFiles } from './flowFiles';
 import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
+import { trackTabUnderline } from './tabUnderline';
 import './KaotoEditorHost.css';
 
 export interface KaotoEditorHandle {
@@ -136,7 +137,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     if (!container) return;
     const slot = document.createElement('div');
     slot.className = 'echo-kaoto-host__tab-actions';
-    const startSlot = document.createElement('div');
+    const startSlot = document.createElement('li');
     startSlot.className = 'echo-kaoto-host__tab-start';
     const advanced = document.createElement('li');
     advanced.className = 'echo-kaoto-host__tab-advanced';
@@ -157,12 +158,13 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
         tabBar.appendChild(slot);
         setTabBarSlot(slot);
       }
-      if (tabBar.firstElementChild !== startSlot) {
-        tabBar.prepend(startSlot);
-        setTabBarStartSlot(startSlot);
-      }
       const tabList = tabBar.querySelector(':scope > .pf-v6-c-tabs__list');
       if (tabList) {
+        // Inside the tab list, so the File menu can carry the tab underline too (tabUnderline.ts).
+        if (tabList.firstElementChild !== startSlot) {
+          tabList.prepend(startSlot);
+          setTabBarStartSlot(startSlot);
+        }
         const designTab = tabList.querySelector(":scope > [data-testid='design-tab']");
         if (designTab && designTab.previousElementSibling !== design) {
           designTab.before(design);
@@ -179,8 +181,10 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     const observer = new MutationObserver(attach);
     observer.observe(container, { childList: true, subtree: true });
     attach();
+    const stopUnderline = trackTabUnderline(container);
     return () => {
       observer.disconnect();
+      stopUnderline();
       slot.remove();
       startSlot.remove();
       advanced.remove();
