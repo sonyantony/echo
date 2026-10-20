@@ -19,7 +19,7 @@ test('editor fits the page and prints the whole open tab', async ({ page }) => {
   await page.emulateMedia({ media: 'print' });
   const clipped = await tab.evaluate((el) => el.scrollHeight - el.clientHeight);
   expect(clipped).toBeLessThanOrEqual(1);
-  await expect(page.getByRole('button', { name: 'Publish' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'API spec' })).toBeHidden();
   const pdf = await page.pdf({ format: 'A4' });
   const pages = pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? [];
   expect(pages.length).toBeGreaterThan(1);
@@ -31,7 +31,7 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   const tabBar = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"]');
   const top = async (name: string) => (await page.getByRole('button', { name, exact: true }).boundingBox())!.y;
   const tabBox = (await tabBar.boundingBox())!;
-  for (const name of ['File', 'Validate', 'API spec', 'History', 'Publish']) {
+  for (const name of ['File', 'Run', 'Advanced', 'API spec', 'History']) {
     const y = await top(name);
     expect(y).toBeGreaterThanOrEqual(tabBox.y);
     expect(y).toBeLessThan(tabBox.y + tabBox.height);
@@ -51,8 +51,8 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   await expect(page.getByRole('button', { name: 'History', exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'More actions' }).click();
   await expect(page.getByRole('menuitem', { name: 'History' })).toBeVisible();
-  const publish = (await page.getByRole('button', { name: 'Publish', exact: true }).boundingBox())!;
-  expect(publish.x + publish.width).toBeLessThanOrEqual(1100);
+  const more = (await page.getByRole('button', { name: 'More actions' }).boundingBox())!;
+  expect(more.x + more.width).toBeLessThanOrEqual(1100);
 });
 
 test('the About tab shows EY ECHO and its developer', async ({ page }) => {
@@ -92,4 +92,23 @@ test('the canvas New menu shows Route without its long description', async ({ pa
   await expect(route.locator('.pf-v6-c-menu__item-description')).toBeHidden();
   await expect(page.getByTestId('new-entity-list').getByText('Configuration')).toBeVisible();
   await expect(page.getByTestId('new-entity-list').getByText('Error Handling')).toBeVisible();
+});
+
+test('the Run menu, just before Advanced, holds Run <flow>, Validate and Publish', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('runmenu');
+  await createFlow(page, name);
+  const run = page.getByRole('button', { name: 'Run', exact: true });
+  const runBox = (await run.boundingBox())!;
+  const advanced = (await page.getByRole('button', { name: 'Advanced', exact: true }).boundingBox())!;
+  const dataMapper = (await page.getByRole('tab', { name: /DataMapper/ }).boundingBox())!;
+  expect(runBox.x).toBeGreaterThanOrEqual(dataMapper.x + dataMapper.width);
+  expect(runBox.x + runBox.width).toBeLessThanOrEqual(advanced.x);
+  for (const gone of ['Validate', 'Publish']) await expect(page.getByRole('button', { name: gone, exact: true })).toHaveCount(0);
+  await run.click();
+  await expect(page.getByRole('menuitem', { name: new RegExp(`^Run ${name}`) })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^Validate/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^Publish/ })).toBeVisible();
+  await page.getByRole('menuitem', { name: /^Validate/ }).click();
+  await expect(page.getByTestId('validation-result')).toBeVisible();
 });

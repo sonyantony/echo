@@ -81,7 +81,7 @@ echo:
     # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.
     autosave-seconds: 10
   run:
-    # The editor's Run button: runs a draft inside the Builder so users can send it requests.
+    # The editor's Run > Run <flow>: runs a draft inside the Builder so users can send it requests.
     enabled: true
     # Each running flow listens on its own port from this range (publish them in docker-compose).
     first-port: 8081

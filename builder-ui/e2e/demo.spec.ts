@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { login, uniqueName } from './helpers';
+import { login, runMenu, uniqueName } from './helpers';
 
 // M10 (Builder part of the demo): the golden "orders" flow, with its two DataMapper mappings,
 // opens in the editor, validates and publishes. docs/demo.md continues with the pipeline.
@@ -43,10 +43,10 @@ test('the orders flow with DataMapper validates and publishes', async ({ page })
   await expect(page.locator('[data-testid^="node-target-fj-array-lines"]')).toBeVisible();
   await page.evaluate(() => (window.location.hash = '#/'));
 
-  await page.getByRole('button', { name: 'Validate' }).click();
+  await runMenu(page, /^Validate/);
   await expect(page.getByTestId('validation-result')).toContainText('The flow is valid.');
 
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await runMenu(page, /^Publish/);
   await page.getByRole('dialog').getByLabel('Description').fill('Orders flow for the demo');
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();

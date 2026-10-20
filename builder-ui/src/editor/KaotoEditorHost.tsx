@@ -26,6 +26,8 @@ export interface KaotoEditorHostProps {
   catalogUrl?: string;
   /** Builder controls shown at the right end of Kaoto's tab bar (Design, Rest, ...), on the same line. */
   tabBarActions?: ReactNode;
+  /** Builder menus shown among Kaoto's tabs, just before the Advanced menu (e.g. a Run menu). */
+  tabBarMenus?: ReactNode;
   /** Builder controls shown at the left end of Kaoto's tab bar, before its first tab (e.g. a File menu). */
   tabBarStart?: ReactNode;
 }
@@ -43,7 +45,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -178,7 +180,14 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       <div ref={containerRef} className="echo-kaoto-host__editor" />
       {tabBarStartSlot && tabBarStart && createPortal(tabBarStart, tabBarStartSlot)}
       {tabBarSlot && tabBarActions && createPortal(tabBarActions, tabBarSlot)}
-      {advancedSlot && createPortal(<AdvancedMenu />, advancedSlot)}
+      {advancedSlot &&
+        createPortal(
+          <>
+            {tabBarMenus}
+            <AdvancedMenu />
+          </>,
+          advancedSlot,
+        )}
       <input
         ref={fileInputRef}
         type="file"

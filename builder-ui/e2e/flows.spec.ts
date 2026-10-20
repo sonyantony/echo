@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { addStep, createFlow, fileMenu, login, uniqueName } from './helpers';
+import { addStep, createFlow, fileMenu, login, runMenu, uniqueName } from './helpers';
 
 // M4: create, list, rename and delete flow drafts.
 test('creates, renames and deletes a flow', async ({ page }) => {
@@ -110,7 +110,7 @@ test('validates a flow from the editor', async ({ page }) => {
   await createFlow(page, uniqueName('valid'));
   await addStep(page, 1, 'setBody');
 
-  await page.getByRole('button', { name: 'Validate' }).click();
+  await runMenu(page, /^Validate/);
   await expect(page.getByTestId('validation-result')).toContainText('The flow is valid.');
   await expect(page.getByTestId('unsaved')).toHaveCount(0);
 });
