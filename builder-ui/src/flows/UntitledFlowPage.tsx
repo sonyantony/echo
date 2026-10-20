@@ -24,6 +24,7 @@ import { useBlocker, useNavigate } from 'react-router-dom';
 import { flowsApi } from '../api/flows';
 import { InMemoryFlowFiles } from '../editor/flowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
+import { useKaotoTabSelected } from '../editor/KaotoTabMenu';
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { Shortcut } from './FlowEditorPage';
 import { FlowFormModal } from './FlowFormModal';
@@ -49,6 +50,8 @@ export function UntitledFlowPage() {
   const files = useMemo(() => new InMemoryFlowFiles(), []);
   const editor = useRef<KaotoEditorHandle>(null);
   const [dirty, setDirty] = useState(false);
+  // The "No flow is open" card belongs to the canvas; About, Rest and the other views show as usual.
+  const designOpen = useKaotoTabSelected('design-tab', true);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -207,7 +210,7 @@ export function UntitledFlowPage() {
       </PageSection>
       <div className="echo-flow-editor__canvas echo-untitled">
         {/* Replaces Kaoto's "There are no routes defined" card (hidden in UntitledFlowPage.css). */}
-        {!dirty && (
+        {!dirty && designOpen && (
           <div className="echo-untitled__empty">
             <EmptyState titleText="No flow is open" headingLevel="h2" variant="sm">
               <EmptyStateBody>Start a new flow, or open an existing one, from the File menu.</EmptyStateBody>

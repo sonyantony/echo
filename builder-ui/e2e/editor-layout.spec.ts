@@ -55,7 +55,7 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   expect(more.x + more.width).toBeLessThanOrEqual(1100);
 });
 
-test('the tab underline sits under Flow Design and Advanced while their view is open', async ({ page }) => {
+test('the tab underline moves to the menu clicked, and to Flow Design and Advanced while their view is open', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('underline'));
   const list = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"] > .pf-v6-c-tabs__list');
@@ -82,6 +82,18 @@ test('the tab underline sits under Flow Design and Advanced while their view is 
   await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
   await page.keyboard.press('Escape');
   await under('Flow Design');
+
+  // Clicking File, Run or Advanced moves it there, and it stays after Escape closes the menu.
+  for (const menu of ['File', 'Run', 'Advanced']) {
+    await page.getByRole('button', { name: menu, exact: true }).click();
+    await under(menu);
+    await page.keyboard.press('Escape');
+    await under(menu);
+  }
+  // A Kaoto tab takes it back.
+  await page.getByRole('tab', { name: /About/ }).click();
+  await expect.poll(() => list.evaluate((el) => el.style.getPropertyValue('--pf-v6-c-tabs--link-accent--length'))).toBe('');
+  await expect(page.getByRole('button', { name: 'Advanced', exact: true })).not.toHaveClass(/echo-tab-menu--underlined/);
 });
 
 test('the About tab shows EY ECHO and its developer', async ({ page }) => {
@@ -91,6 +103,16 @@ test('the About tab shows EY ECHO and its developer', async ({ page }) => {
   await expect(page.getByText('EY ECHO (V2.0).', { exact: true })).toBeVisible();
   await expect(page.getByText('Developed By : Sony Antony', { exact: true })).toBeVisible();
   await expect(page.getByAltText('Kaoto about page logo')).toHaveCount(0);
+});
+
+test('About opens on the blank canvas after login', async ({ page }) => {
+  await login(page);
+  await expect(page.getByRole('menuitem', { name: /New Flow/ })).toBeVisible();
+  await page.getByRole('tab', { name: /About/ }).click();
+  await expect(page.getByText('EY ECHO (V2.0).', { exact: true })).toBeVisible();
+  await expect(page.getByText('No flow is open')).toBeHidden();
+  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await expect(page.getByText('No flow is open')).toBeVisible();
 });
 
 test('Advanced > Java Beans opens the Beans view, before About; Flow Design takes the Design tab\'s place', async ({ page }) => {
