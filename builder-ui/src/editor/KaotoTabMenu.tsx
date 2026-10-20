@@ -1,5 +1,5 @@
 import { Dropdown, DropdownList, MenuToggle } from '@patternfly/react-core';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 const tabButton = (testId: string) =>
   document.querySelector<HTMLElement>(`.echo-kaoto-host [data-testid='${testId}'] [role='tab']`);
@@ -24,6 +24,47 @@ function useKaotoTabSelected(testId: string) {
   return selected;
 }
 
+const ACCENT_PROPERTIES = [
+  '--pf-v6-c-tabs--link-accent--start',
+  '--pf-v6-c-tabs--link-accent--TranslateX',
+  '--pf-v6-c-tabs--link-accent--length',
+];
+
+/**
+ * While a menu's view is open, moves Kaoto's tab underline (PatternFly's animated accent, drawn by the
+ * tab list) under the menu, so it looks exactly like a tab's. PatternFly sets the accent's position on
+ * the tabs element; these values on the list itself take precedence, and are removed again once
+ * another tab is open.
+ */
+function useTabAccent(wrapper: React.RefObject<HTMLElement | null>, current: boolean, label: string) {
+  useLayoutEffect(() => {
+    const item = wrapper.current?.closest('li');
+    const list = item?.parentElement;
+    if (!item || !list) return;
+    if (!current) {
+      if (list.dataset.echoAccent === label) {
+        for (const name of ACCENT_PROPERTIES) list.style.removeProperty(name);
+        delete list.dataset.echoAccent;
+      }
+      return;
+    }
+    const place = () => {
+      const toggle = wrapper.current?.querySelector('.pf-v6-c-menu-toggle') ?? item;
+      const box = toggle.getBoundingClientRect();
+      const start = box.left - list.getBoundingClientRect().left + list.scrollLeft;
+      list.style.setProperty('--pf-v6-c-tabs--link-accent--start', `${start}px`);
+      // PatternFly derives TranslateX from start on the tabs element, so it is set here too.
+      list.style.setProperty('--pf-v6-c-tabs--link-accent--TranslateX', `${start}px`);
+      list.style.setProperty('--pf-v6-c-tabs--link-accent--length', `${box.width}px`);
+      list.dataset.echoAccent = label;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [wrapper, current, label]);
+}
+
 export interface KaotoTabMenuProps {
   label: string;
   /** Kaoto's tab this menu stands in for: it shows as current while that view is open. */
@@ -41,9 +82,11 @@ export interface KaotoTabMenuProps {
 export function KaotoTabMenu({ label, tabTestId, opensTab, className, children }: KaotoTabMenuProps) {
   const [open, setOpen] = useState(false);
   const current = useKaotoTabSelected(tabTestId);
+  const wrapper = useRef<HTMLDivElement>(null);
+  useTabAccent(wrapper, current, label);
 
   return (
-    <div className="echo-tab-actions echo-no-print">
+    <div ref={wrapper} className="echo-tab-actions echo-no-print">
       <Dropdown
         isOpen={open}
         onOpenChange={setOpen}

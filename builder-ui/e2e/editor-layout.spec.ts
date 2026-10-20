@@ -55,6 +55,35 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   expect(more.x + more.width).toBeLessThanOrEqual(1100);
 });
 
+test('the tab underline sits under Flow Design and Advanced while their view is open', async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('underline'));
+  const list = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"] > .pf-v6-c-tabs__list');
+  // Where the underline is drawn (PatternFly's accent), relative to the left of the tab list.
+  const underline = () =>
+    list.evaluate((el) => {
+      const accent = getComputedStyle(el, '::after');
+      return { start: parseFloat(accent.translate), length: parseFloat(accent.width) };
+    });
+  const under = async (name: string) => {
+    const listBox = (await list.boundingBox())!;
+    const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!;
+    await expect.poll(async () => Math.round((await underline()).start)).toBe(Math.round(box.x - listBox.x));
+    await expect.poll(async () => Math.round((await underline()).length)).toBe(Math.round(box.width));
+  };
+
+  await under('Flow Design');
+  // From About straight to Advanced > Java Beans: the underline leaves About for Advanced.
+  await page.getByRole('tab', { name: /About/ }).click();
+  await expect(page.getByRole('button', { name: 'Flow Design', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
+  await page.getByRole('button', { name: 'Advanced', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^Java Beans/ }).click();
+  await under('Advanced');
+  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await under('Flow Design');
+});
+
 test('the About tab shows EY ECHO and its developer', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('about'));
