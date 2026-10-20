@@ -39,7 +39,7 @@ echo:
 ```
 
 The CSS is in `builder-ui/src/branding/themes.css`; Kaoto itself is not modified. Diagrams
-downloaded with **Download diagram (.png)** always use light colours on white, whatever the
+downloaded with **Download <flow> As Image** always use light colours on white, whatever the
 theme. The API spec editor (Apicurio) keeps its own look. Kaoto's step icons are Camel's own.
 
 ## Using your own logo

@@ -24,7 +24,7 @@ import { useBlocker, useNavigate } from 'react-router-dom';
 import { flowsApi } from '../api/flows';
 import { InMemoryFlowFiles } from '../editor/flowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
-import { DownloadFlowMenu } from './DownloadFlowMenu';
+import { DownloadButtons, downloadMenuItems } from './downloads';
 import { Shortcut } from './FlowEditorPage';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
@@ -221,9 +221,10 @@ export function UntitledFlowPage() {
           files={files}
           onChange={onChange}
           tabBarStart={fileMenu}
+          designMenuItems={downloadMenuItems({ name: 'Untitled flow', onDownloadImage: downloadDiagram })}
           canvasToolbarActions={
             <div className="echo-canvas-actions echo-no-print">
-              <DownloadFlowMenu name="Untitled flow" onDownloadImage={downloadDiagram} />
+              <DownloadButtons onDownloadImage={downloadDiagram} />
             </div>
           }
         />

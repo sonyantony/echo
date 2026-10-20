@@ -25,7 +25,13 @@ test('logs in and lands on a blank canvas', async ({ page }) => {
   for (const item of [/^Save As(?! Template)/, /^Save As Template/]) {
     await expect(page.getByRole('menuitem', { name: item })).toBeDisabled();
   }
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Download Flow', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Download Flow As Image', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: /^Download Untitled flow(?! As)/ })).toBeDisabled();
+  await expect(page.getByRole('menuitem', { name: /^Download Untitled flow As Image/ })).toBeEnabled();
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('current-user')).toHaveText('designer');
   await expect(page.getByRole('banner')).toContainText('User: designer');
   await expect(page.getByRole('banner').getByAltText('Company logo')).toBeVisible();

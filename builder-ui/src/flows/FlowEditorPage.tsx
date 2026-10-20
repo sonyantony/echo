@@ -34,7 +34,7 @@ import {
 } from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
-import { DownloadFlowMenu } from './DownloadFlowMenu';
+import { DownloadButtons, downloadMenuItems } from './downloads';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
@@ -383,16 +383,10 @@ function FlowEditor() {
     </div>
   );
 
-  // Download Flow (in place of Kaoto's copy to clipboard), Validate and Publish on the Flow Design canvas toolbar.
+  // Downloads, Validate and Publish on the Flow Design canvas toolbar, where Kaoto's copy to clipboard was.
   const canvasActions = (
     <div className="echo-canvas-actions echo-no-print">
-      <DownloadFlowMenu
-        name={flow.data.name}
-        onDownloadZip={download}
-        onDownloadImage={downloadDiagram}
-        zipBusy={saving}
-        imageBusy={drawing}
-      />
+      <DownloadButtons onDownloadZip={download} onDownloadImage={downloadDiagram} zipBusy={saving} imageBusy={drawing} />
       <Button
         variant="secondary"
         icon={<CheckCircleIcon />}
@@ -517,6 +511,13 @@ function FlowEditor() {
           tabBarStart={fileMenu}
           tabBarMenus={runMenu}
           canvasToolbarActions={canvasActions}
+          designMenuItems={downloadMenuItems({
+            name: flow.data.name,
+            onDownloadZip: download,
+            onDownloadImage: downloadDiagram,
+            zipBusy: saving,
+            imageBusy: drawing,
+          })}
           tabBarActions={actions}
         />
       </div>

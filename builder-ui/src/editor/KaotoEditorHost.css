@@ -70,9 +70,16 @@
   min-width: 0;
 }
 
-/* Kaoto's Beans view opens from Advanced > Java Beans (AdvancedMenu.tsx), not its own tab. */
+/* Kaoto's Design and Beans views open from the Flow Design and Advanced menus (KaotoTabMenu.tsx),
+   not their own tabs. */
+.echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='design-tab'],
 .echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='beans-tab'] {
   display: none;
+}
+.echo-kaoto-host__tab-design {
+  display: flex;
+  align-items: center;
+  list-style: none;
 }
 .echo-kaoto-host__tab-advanced {
   display: flex;
@@ -87,12 +94,12 @@
   display: none;
 }
 
-/* Kaoto's copy to clipboard: the Builder's Download Flow takes its place. Only the button is hidden;
-   its toolbar item stays as the anchor for the Builder's controls (KaotoEditorHost.tsx). */
+/* Kaoto's copy to clipboard: the Builder's Validate and Publish take its place. Only the button is
+   hidden; its toolbar item stays as the anchor for the Builder's controls (KaotoEditorHost.tsx). */
 .echo-kaoto-host__editor .context-toolbar .pf-v6-c-toolbar__item:has(> [data-testid='clipboardButton']) {
   display: none;
 }
-/* The Builder's Download Flow, Validate and Publish, where Kaoto's copy to clipboard was. */
+/* The Builder's Validate and Publish, where Kaoto's copy to clipboard was. */
 .echo-canvas-actions {
   display: flex;
   align-items: center;

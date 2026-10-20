@@ -3,6 +3,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type Reac
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { AdvancedMenu } from './AdvancedMenu';
+import { KaotoTabMenu } from './KaotoTabMenu';
 import type { FlowFiles } from './flowFiles';
 import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
@@ -28,6 +29,8 @@ export interface KaotoEditorHostProps {
   tabBarActions?: ReactNode;
   /** Builder menus shown among Kaoto's tabs, just before the Advanced menu (e.g. a Run menu). */
   tabBarMenus?: ReactNode;
+  /** Items of the Flow Design menu, which stands in for Kaoto's Design tab (e.g. downloads). */
+  designMenuItems?: ReactNode;
   /** Builder controls shown on Kaoto's Design canvas toolbar, right after its copy to clipboard button. */
   canvasToolbarActions?: ReactNode;
   /** Builder controls shown at the left end of Kaoto's tab bar, before its first tab (e.g. a File menu). */
@@ -47,7 +50,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,6 +64,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const [tabBarStartSlot, setTabBarStartSlot] = useState<HTMLElement>();
   const [advancedSlot, setAdvancedSlot] = useState<HTMLElement>();
   const [canvasSlot, setCanvasSlot] = useState<HTMLElement>();
+  const [designSlot, setDesignSlot] = useState<HTMLElement>();
 
   useImperativeHandle(ref, () => ({
     getContent: async () => (editorRef.current ? editorRef.current.getContent() : initialContent),
@@ -124,7 +128,8 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   }, []);
 
   // Kaoto renders its tab bar when it starts; put slots for the Builder's controls at its start and
-  // end, and the Advanced menu's just before Kaoto's About tab; and call the Design tab "Flow Design".
+  // end, the Flow Design menu's in place of Kaoto's Design tab, and the Advanced menu's just before
+  // Kaoto's About tab.
   // Put them back should Kaoto ever render the tab bar again.
   useEffect(() => {
     const container = containerRef.current;
@@ -135,6 +140,8 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     startSlot.className = 'echo-kaoto-host__tab-start';
     const advanced = document.createElement('li');
     advanced.className = 'echo-kaoto-host__tab-advanced';
+    const design = document.createElement('li');
+    design.className = 'echo-kaoto-host__tab-design';
     const canvas = document.createElement('div');
     canvas.className = 'pf-v6-c-toolbar__item echo-kaoto-host__canvas-actions';
     const attach = () => {
@@ -154,10 +161,13 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
         tabBar.prepend(startSlot);
         setTabBarStartSlot(startSlot);
       }
-      const designText = tabBar.querySelector("[data-testid='design-tab'] .pf-v6-c-tabs__item-text");
-      if (designText && designText.textContent !== 'Flow Design') designText.textContent = 'Flow Design';
       const tabList = tabBar.querySelector(':scope > .pf-v6-c-tabs__list');
       if (tabList) {
+        const designTab = tabList.querySelector(":scope > [data-testid='design-tab']");
+        if (designTab && designTab.previousElementSibling !== design) {
+          designTab.before(design);
+          setDesignSlot(design);
+        }
         // Kaoto wraps each tab's <li> in a link, so the list's children are the links.
         const about = tabList.querySelector(":scope > [data-testid='about-tab']");
         if (advanced.parentElement !== tabList || advanced.nextElementSibling !== about) {
@@ -175,6 +185,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       startSlot.remove();
       advanced.remove();
       canvas.remove();
+      design.remove();
     };
   }, []);
 
@@ -192,6 +203,13 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       <div ref={containerRef} className="echo-kaoto-host__editor" />
       {tabBarStartSlot && tabBarStart && createPortal(tabBarStart, tabBarStartSlot)}
       {tabBarSlot && tabBarActions && createPortal(tabBarActions, tabBarSlot)}
+      {designSlot &&
+        createPortal(
+          <KaotoTabMenu label="Flow Design" tabTestId="design-tab" opensTab className="echo-design-menu">
+            {designMenuItems}
+          </KaotoTabMenu>,
+          designSlot,
+        )}
       {canvasSlot && canvasToolbarActions && createPortal(canvasToolbarActions, canvasSlot)}
       {advancedSlot &&
         createPortal(
