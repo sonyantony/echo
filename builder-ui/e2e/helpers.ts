@@ -45,6 +45,12 @@ export async function fileMenu(page: Page, item: string | RegExp) {
   await menuItem.click();
 }
 
+/** Picks an item from the Flow Design menu (which also opens the canvas). */
+export async function designMenu(page: Page, item: string | RegExp) {
+  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await page.getByRole('menuitem', { name: item }).click();
+}
+
 /** Adds a processor (e.g. "setBody") at the end of the route through Kaoto's catalog. */
 export async function addStep(page: Page, placeholderIndex: number, processor: string) {
   await page.getByTestId(`placeholder-node__route.from.steps.${placeholderIndex}.placeholder`).click();

@@ -38,7 +38,7 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   }
   // File comes first, before Kaoto's Design tab, as in most desktop software.
   const file = (await page.getByRole('button', { name: 'File', exact: true }).boundingBox())!;
-  const design = (await page.getByRole('tab', { name: /Design/ }).boundingBox())!;
+  const design = (await page.getByRole('button', { name: 'Flow Design', exact: true }).boundingBox())!;
   expect(file.x + file.width).toBeLessThanOrEqual(design.x);
   await page.getByRole('button', { name: 'File', exact: true }).click();
   for (const item of [/^Open Template/, /^Open Flow/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/]) {
@@ -64,10 +64,11 @@ test('the About tab shows EY ECHO and its developer', async ({ page }) => {
   await expect(page.getByAltText('Kaoto about page logo')).toHaveCount(0);
 });
 
-test('Advanced > Java Beans opens the Beans view, before About; Design is called Flow Design', async ({ page }) => {
+test('Advanced > Java Beans opens the Beans view, before About; Flow Design takes the Design tab\'s place', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('advanced'));
-  await expect(page.getByRole('tab', { name: /Design/ })).toHaveText('Flow Design');
+  await expect(page.getByRole('tab', { name: /Design/ })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Flow Design', exact: true })).toHaveClass(/echo-tab-menu--current/);
   await expect(page.getByRole('tab', { name: /Beans/ })).toBeHidden();
   const advanced = page.getByRole('button', { name: 'Advanced', exact: true });
   const advancedBox = (await advanced.boundingBox())!;
@@ -79,8 +80,13 @@ test('Advanced > Java Beans opens the Beans view, before About; Design is called
   await page.getByRole('menuitem', { name: /^Java Beans/ }).click();
   await expect(page).toHaveURL(/#\/beans$/);
   await expect(page.locator('.shell__tab-content--scrollable')).toBeVisible();
-  await page.getByRole('tab', { name: /Design/ }).click();
+  await expect(advanced).toHaveClass(/echo-tab-menu--current/);
+  await expect(page.getByRole('button', { name: 'Flow Design', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
+  // Flow Design opens the canvas and its menu of downloads.
+  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
+  await expect(page.getByRole('menuitem')).toHaveCount(2);
+  await expect(advanced).not.toHaveClass(/echo-tab-menu--current/);
 });
 
 test('the canvas New menu shows Route without its long description', async ({ page }) => {
@@ -94,7 +100,7 @@ test('the canvas New menu shows Route without its long description', async ({ pa
   await expect(page.getByTestId('new-entity-list').getByText('Error Handling')).toBeVisible();
 });
 
-test('the Run menu, just before Advanced, holds Run <flow>; Download Flow, Validate and Publish replace copy to clipboard', async ({ page }) => {
+test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate and Publish replace copy to clipboard', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
   await createFlow(page, name);
@@ -109,9 +115,15 @@ test('the Run menu, just before Advanced, holds Run <flow>; Download Flow, Valid
   await expect(page.getByRole('menuitem')).toHaveCount(1);
   await page.keyboard.press('Escape');
 
-  // Download Flow takes the place of Kaoto's copy to clipboard; Validate and Publish follow it.
+  // Download Flow, Download Flow As Image, Validate and Publish take the place of Kaoto's copy to
+  // clipboard, after undo and redo.
   await expect(page.getByTestId('clipboardButton')).toBeHidden();
-  const clipboard = (await page.getByRole('button', { name: 'Download options' }).boundingBox())!;
+  const redo = (await page.getByRole('button', { name: 'Redo' }).boundingBox())!;
+  const zip = (await page.getByRole('button', { name: 'Download Flow', exact: true }).boundingBox())!;
+  const image = (await page.getByRole('button', { name: 'Download Flow As Image', exact: true }).boundingBox())!;
+  expect(zip.x).toBeGreaterThanOrEqual(redo.x + redo.width);
+  expect(image.x).toBeGreaterThanOrEqual(zip.x + zip.width);
+  const clipboard = image;
   const validate = page.getByRole('button', { name: 'Validate', exact: true });
   const publish = page.getByRole('button', { name: 'Publish', exact: true });
   const validateBox = (await validate.boundingBox())!;
@@ -125,7 +137,8 @@ test('the Run menu, just before Advanced, holds Run <flow>; Download Flow, Valid
   // They come back with the canvas after another tab.
   await page.getByRole('tab', { name: /Rest/ }).click();
   await expect(validate).toBeHidden();
-  await page.getByRole('tab', { name: /Design/ }).click();
+  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await page.keyboard.press('Escape');
   await expect(validate).toBeVisible();
   await expect(publish).toBeVisible();
 });

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { addStep, createFlow, fileMenu, login, uniqueName } from './helpers';
+import { addStep, createFlow, designMenu, fileMenu, login, uniqueName } from './helpers';
 
 // M4: create, list, rename and delete flow drafts.
 test('creates, renames and deletes a flow', async ({ page }) => {
@@ -160,12 +160,10 @@ test('downloads the flow diagram as a PNG', async ({ page }, testInfo) => {
   // Kaoto's own image button is hidden; the Builder's button presses it.
   await expect(page.getByTestId('exportImageButton')).toBeHidden();
 
-  // Kaoto's copy to clipboard is replaced by Download Flow, whose menu also offers the picture.
-  await expect(page.getByTestId('clipboardButton')).toBeHidden();
+  // Works from another Kaoto tab too: Flow Design opens the canvas as well as its menu.
+  await page.getByRole('tab', { name: /DataMapper/ }).click();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download options' }).click();
-  await expect(page.getByRole('menuitem', { name: new RegExp(`^Download ${name}(?! As)`) })).toBeVisible();
-  await page.getByRole('menuitem', { name: new RegExp(`^Download ${name} As Image`) }).click();
+  await designMenu(page, new RegExp(`^Download ${name} As Image`));
   const download = await downloading;
   expect(download.suggestedFilename()).toBe(`${name}.png`);
   const file = testInfo.outputPath(`${name}.png`);
