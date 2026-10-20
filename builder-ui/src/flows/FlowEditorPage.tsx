@@ -18,7 +18,7 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { CodeIcon, EllipsisVIcon, PlayIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon, CodeIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
@@ -34,6 +34,7 @@ import {
 } from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
+import { DownloadFlowMenu } from './DownloadFlowMenu';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
@@ -342,30 +343,13 @@ function FlowEditor() {
           >
             Save As Template
           </DropdownItem>
-          <Divider component="li" key="save-divider" />
-          <DropdownItem
-            key="zip"
-            onClick={download}
-            isDisabled={saving}
-            description="The flow as a .zip you can upload again later"
-          >
-            Download .zip
-          </DropdownItem>
-          <DropdownItem
-            key="png"
-            onClick={downloadDiagram}
-            isDisabled={drawing}
-            description="A picture of the whole flow diagram"
-          >
-            Download diagram (.png)
-          </DropdownItem>
         </DropdownList>
       </Dropdown>
     </div>
   );
 
-  // The Run menu, among Kaoto's tabs just before Advanced: run, validate and publish the flow, each named.
-  const runMenu = (
+  // The Run menu, among Kaoto's tabs just before Advanced: runs the flow inside the Builder.
+  const runMenu = runEnabled && (
     <div className="echo-tab-actions echo-no-print">
       <Dropdown
         isOpen={runMenuOpen}
@@ -385,8 +369,7 @@ function FlowEditor() {
         )}
       >
         <DropdownList>
-          {runEnabled && (
-            <DropdownItem
+          <DropdownItem
               key="run"
               icon={<PlayIcon />}
               onClick={startRun}
@@ -395,26 +378,40 @@ function FlowEditor() {
             >
               {run.data ? 'Restart' : 'Run'} {flow.data.name}
             </DropdownItem>
-          )}
-          <DropdownItem
-            key="validate"
-            onClick={validate}
-            isDisabled={validating || saving}
-            description="Check the flow for problems before publishing it"
-          >
-            Validate {flow.data.name}
-          </DropdownItem>
-          <Divider component="li" key="publish-divider" />
-          <DropdownItem
-            key="publish"
-            onClick={() => setPublishing(true)}
-            isDisabled={saving || validating}
-            description="Publish this flow so the pipeline can build it"
-          >
-            Publish {flow.data.name}
-          </DropdownItem>
         </DropdownList>
       </Dropdown>
+    </div>
+  );
+
+  // Download Flow (in place of Kaoto's copy to clipboard), Validate and Publish on the Flow Design canvas toolbar.
+  const canvasActions = (
+    <div className="echo-canvas-actions echo-no-print">
+      <DownloadFlowMenu
+        name={flow.data.name}
+        onDownloadZip={download}
+        onDownloadImage={downloadDiagram}
+        zipBusy={saving}
+        imageBusy={drawing}
+      />
+      <Button
+        variant="secondary"
+        icon={<CheckCircleIcon />}
+        onClick={validate}
+        isLoading={validating}
+        isDisabled={validating || saving}
+        title={`Validate ${flow.data.name}: check the flow for problems before publishing it`}
+      >
+        Validate
+      </Button>
+      <Button
+        variant="primary"
+        icon={<UploadIcon />}
+        onClick={() => setPublishing(true)}
+        isDisabled={saving || validating}
+        title={`Publish ${flow.data.name} so the pipeline can build it`}
+      >
+        Publish
+      </Button>
     </div>
   );
 
@@ -519,6 +516,7 @@ function FlowEditor() {
           onChange={onChange}
           tabBarStart={fileMenu}
           tabBarMenus={runMenu}
+          canvasToolbarActions={canvasActions}
           tabBarActions={actions}
         />
       </div>

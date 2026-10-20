@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { createFlow, login, runMenu, uniqueName } from './helpers';
+import { createFlow, login, uniqueName } from './helpers';
 
 const git = (...args: string[]) =>
   execFileSync('git', ['--git-dir', process.env.ECHO_E2E_GIT_REPO!, ...args], { encoding: 'utf8' });
@@ -11,7 +11,7 @@ test('publishes a flow to Git', async ({ page }) => {
   const name = uniqueName('pub');
   await createFlow(page, name);
 
-  await runMenu(page, /^Publish/);
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Description').fill(`First version of ${name}`);
   await dialog.getByRole('button', { name: 'Publish' }).click();
@@ -34,7 +34,7 @@ test('lists a published flow and deletes it from Git', async ({ page }) => {
   await login(page);
   const name = uniqueName('del');
   await createFlow(page, name);
-  await runMenu(page, /^Publish/);
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
 

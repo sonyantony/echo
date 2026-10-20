@@ -41,7 +41,7 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   const design = (await page.getByRole('tab', { name: /Design/ }).boundingBox())!;
   expect(file.x + file.width).toBeLessThanOrEqual(design.x);
   await page.getByRole('button', { name: 'File', exact: true }).click();
-  for (const item of [/^Open Template/, /^Open Flow/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/, /Download \.zip/, /Download diagram/]) {
+  for (const item of [/^Open Template/, /^Open Flow/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/]) {
     await expect(page.getByRole('menuitem', { name: item })).toBeVisible();
   }
   await page.keyboard.press('Escape');
@@ -94,7 +94,7 @@ test('the canvas New menu shows Route without its long description', async ({ pa
   await expect(page.getByTestId('new-entity-list').getByText('Error Handling')).toBeVisible();
 });
 
-test('the Run menu, just before Advanced, holds Run, Validate and Publish <flow>', async ({ page }) => {
+test('the Run menu, just before Advanced, holds Run <flow>; Download Flow, Validate and Publish replace copy to clipboard', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
   await createFlow(page, name);
@@ -104,11 +104,28 @@ test('the Run menu, just before Advanced, holds Run, Validate and Publish <flow>
   const dataMapper = (await page.getByRole('tab', { name: /DataMapper/ }).boundingBox())!;
   expect(runBox.x).toBeGreaterThanOrEqual(dataMapper.x + dataMapper.width);
   expect(runBox.x + runBox.width).toBeLessThanOrEqual(advanced.x);
-  for (const gone of ['Validate', 'Publish']) await expect(page.getByRole('button', { name: gone, exact: true })).toHaveCount(0);
   await run.click();
   await expect(page.getByRole('menuitem', { name: new RegExp(`^Run ${name}`) })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: new RegExp(`^Validate ${name}`) })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: new RegExp(`^Publish ${name}`) })).toBeVisible();
-  await page.getByRole('menuitem', { name: /^Validate/ }).click();
+  await expect(page.getByRole('menuitem')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+
+  // Download Flow takes the place of Kaoto's copy to clipboard; Validate and Publish follow it.
+  await expect(page.getByTestId('clipboardButton')).toBeHidden();
+  const clipboard = (await page.getByRole('button', { name: 'Download options' }).boundingBox())!;
+  const validate = page.getByRole('button', { name: 'Validate', exact: true });
+  const publish = page.getByRole('button', { name: 'Publish', exact: true });
+  const validateBox = (await validate.boundingBox())!;
+  const publishBox = (await publish.boundingBox())!;
+  expect(validateBox.x).toBeGreaterThanOrEqual(clipboard.x + clipboard.width);
+  expect(publishBox.x).toBeGreaterThanOrEqual(validateBox.x + validateBox.width);
+  expect(Math.abs(validateBox.y + validateBox.height / 2 - (clipboard.y + clipboard.height / 2))).toBeLessThan(4);
+  await validate.click();
   await expect(page.getByTestId('validation-result')).toBeVisible();
+
+  // They come back with the canvas after another tab.
+  await page.getByRole('tab', { name: /Rest/ }).click();
+  await expect(validate).toBeHidden();
+  await page.getByRole('tab', { name: /Design/ }).click();
+  await expect(validate).toBeVisible();
+  await expect(publish).toBeVisible();
 });
