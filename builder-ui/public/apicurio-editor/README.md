@@ -1,7 +1,8 @@
 # Apicurio OpenAPI editor (prebuilt, vendored)
 
 The Builder's **API spec** page (`src/apispec/`) shows this editor in a frame. It is the prebuilt
-Apicurio Studio editors app that Apicurio Registry ships in its UI image, unmodified, minus
+Apicurio Registry editors app (Registry 3.x's built-in API editor, which replaced the archived
+standalone Apicurio Studio) from the Registry UI image, unmodified, minus
 unused font formats and login background images.
 
 - Source: `apicurio/apicurio-registry-ui:3.3` (Docker Hub, published 2026-09-08), folder
