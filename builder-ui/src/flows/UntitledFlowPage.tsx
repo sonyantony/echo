@@ -24,6 +24,7 @@ import { useBlocker, useNavigate } from 'react-router-dom';
 import { flowsApi } from '../api/flows';
 import { InMemoryFlowFiles } from '../editor/flowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
+import { DownloadFlowMenu } from './DownloadFlowMenu';
 import { Shortcut } from './FlowEditorPage';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
@@ -176,13 +177,6 @@ export function UntitledFlowPage() {
           <DropdownItem key="save-as-template" isDisabled description="Save the flow first">
             Save As Template
           </DropdownItem>
-          <Divider component="li" key="save-divider" />
-          <DropdownItem key="zip" isDisabled description="Save the flow first">
-            Download .zip
-          </DropdownItem>
-          <DropdownItem key="png" onClick={downloadDiagram} description="A picture of the whole flow diagram">
-            Download diagram (.png)
-          </DropdownItem>
         </DropdownList>
       </Dropdown>
     </div>
@@ -227,6 +221,11 @@ export function UntitledFlowPage() {
           files={files}
           onChange={onChange}
           tabBarStart={fileMenu}
+          canvasToolbarActions={
+            <div className="echo-canvas-actions echo-no-print">
+              <DownloadFlowMenu name="Untitled flow" onDownloadImage={downloadDiagram} />
+            </div>
+          }
         />
       </div>
 

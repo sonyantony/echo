@@ -125,7 +125,7 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
   await expect(page.getByTestId('documentationPreviewButton')).toBeHidden();
 
   const downloading = page.waitForEvent('download');
-  await fileMenu(page, /Download \.zip/);
+  await page.getByRole('button', { name: 'Download Flow', exact: true }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toBe(`${name}.zip`);
   await expect(page.getByTestId('unsaved')).toHaveCount(0); // saved first
@@ -160,10 +160,12 @@ test('downloads the flow diagram as a PNG', async ({ page }, testInfo) => {
   // Kaoto's own image button is hidden; the Builder's button presses it.
   await expect(page.getByTestId('exportImageButton')).toBeHidden();
 
-  // Works from another Kaoto tab too: it switches back to the canvas.
-  await page.getByRole('tab', { name: /DataMapper/ }).click();
+  // Kaoto's copy to clipboard is replaced by Download Flow, whose menu also offers the picture.
+  await expect(page.getByTestId('clipboardButton')).toBeHidden();
   const downloading = page.waitForEvent('download');
-  await fileMenu(page, /Download diagram \(\.png\)/);
+  await page.getByRole('button', { name: 'Download options' }).click();
+  await expect(page.getByRole('menuitem', { name: new RegExp(`^Download ${name}(?! As)`) })).toBeVisible();
+  await page.getByRole('menuitem', { name: new RegExp(`^Download ${name} As Image`) }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toBe(`${name}.png`);
   const file = testInfo.outputPath(`${name}.png`);

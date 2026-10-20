@@ -41,7 +41,7 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   const design = (await page.getByRole('tab', { name: /Design/ }).boundingBox())!;
   expect(file.x + file.width).toBeLessThanOrEqual(design.x);
   await page.getByRole('button', { name: 'File', exact: true }).click();
-  for (const item of [/^Open Template/, /^Open Flow/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/, /Download \.zip/, /Download diagram/]) {
+  for (const item of [/^Open Template/, /^Open Flow/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/]) {
     await expect(page.getByRole('menuitem', { name: item })).toBeVisible();
   }
   await page.keyboard.press('Escape');
@@ -94,7 +94,7 @@ test('the canvas New menu shows Route without its long description', async ({ pa
   await expect(page.getByTestId('new-entity-list').getByText('Error Handling')).toBeVisible();
 });
 
-test('the Run menu, just before Advanced, holds Run <flow>; Validate and Publish follow copy to clipboard', async ({ page }) => {
+test('the Run menu, just before Advanced, holds Run <flow>; Download Flow, Validate and Publish replace copy to clipboard', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
   await createFlow(page, name);
@@ -109,8 +109,9 @@ test('the Run menu, just before Advanced, holds Run <flow>; Validate and Publish
   await expect(page.getByRole('menuitem')).toHaveCount(1);
   await page.keyboard.press('Escape');
 
-  // Validate and Publish sit on the canvas toolbar, right after Kaoto's copy to clipboard.
-  const clipboard = (await page.getByTestId('clipboardButton').boundingBox())!;
+  // Download Flow takes the place of Kaoto's copy to clipboard; Validate and Publish follow it.
+  await expect(page.getByTestId('clipboardButton')).toBeHidden();
+  const clipboard = (await page.getByRole('button', { name: 'Download options' }).boundingBox())!;
   const validate = page.getByRole('button', { name: 'Validate', exact: true });
   const publish = page.getByRole('button', { name: 'Publish', exact: true });
   const validateBox = (await validate.boundingBox())!;

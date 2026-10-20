@@ -34,6 +34,7 @@ import {
 } from '../api/flows';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
+import { DownloadFlowMenu } from './DownloadFlowMenu';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
 import { HistoryModal } from './HistoryModal';
@@ -342,23 +343,6 @@ function FlowEditor() {
           >
             Save As Template
           </DropdownItem>
-          <Divider component="li" key="save-divider" />
-          <DropdownItem
-            key="zip"
-            onClick={download}
-            isDisabled={saving}
-            description="The flow as a .zip you can upload again later"
-          >
-            Download .zip
-          </DropdownItem>
-          <DropdownItem
-            key="png"
-            onClick={downloadDiagram}
-            isDisabled={drawing}
-            description="A picture of the whole flow diagram"
-          >
-            Download diagram (.png)
-          </DropdownItem>
         </DropdownList>
       </Dropdown>
     </div>
@@ -399,9 +383,16 @@ function FlowEditor() {
     </div>
   );
 
-  // Validate and Publish, on the Flow Design canvas toolbar right after Kaoto's copy to clipboard.
+  // Download Flow (in place of Kaoto's copy to clipboard), Validate and Publish on the Flow Design canvas toolbar.
   const canvasActions = (
     <div className="echo-canvas-actions echo-no-print">
+      <DownloadFlowMenu
+        name={flow.data.name}
+        onDownloadZip={download}
+        onDownloadImage={downloadDiagram}
+        zipBusy={saving}
+        imageBusy={drawing}
+      />
       <Button
         variant="secondary"
         icon={<CheckCircleIcon />}

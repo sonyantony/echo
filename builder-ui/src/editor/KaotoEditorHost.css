@@ -87,7 +87,12 @@
   display: none;
 }
 
-/* The Builder's Validate and Publish, next to Kaoto's copy to clipboard on the canvas toolbar. */
+/* Kaoto's copy to clipboard: the Builder's Download Flow takes its place. Only the button is hidden;
+   its toolbar item stays as the anchor for the Builder's controls (KaotoEditorHost.tsx). */
+.echo-kaoto-host__editor .context-toolbar .pf-v6-c-toolbar__item:has(> [data-testid='clipboardButton']) {
+  display: none;
+}
+/* The Builder's Download Flow, Validate and Publish, where Kaoto's copy to clipboard was. */
 .echo-canvas-actions {
   display: flex;
   align-items: center;
