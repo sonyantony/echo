@@ -45,7 +45,7 @@ export async function fileMenu(page: Page, item: string | RegExp) {
   await menuItem.click();
 }
 
-/** Picks an item from the flow editor's Run menu (Run <flow>, Validate, Publish). */
+/** Picks an item from the flow editor's Run menu (Run, Validate and Publish <flow>). */
 export async function runMenu(page: Page, item: string | RegExp) {
   await page.getByRole('button', { name: 'Run', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();

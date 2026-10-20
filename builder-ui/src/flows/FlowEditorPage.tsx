@@ -364,7 +364,7 @@ function FlowEditor() {
     </div>
   );
 
-  // The Run menu, among Kaoto's tabs just before Advanced: run the flow, validate it, publish it.
+  // The Run menu, among Kaoto's tabs just before Advanced: run, validate and publish the flow, each named.
   const runMenu = (
     <div className="echo-tab-actions echo-no-print">
       <Dropdown
@@ -402,7 +402,7 @@ function FlowEditor() {
             isDisabled={validating || saving}
             description="Check the flow for problems before publishing it"
           >
-            Validate
+            Validate {flow.data.name}
           </DropdownItem>
           <Divider component="li" key="publish-divider" />
           <DropdownItem
@@ -411,7 +411,7 @@ function FlowEditor() {
             isDisabled={saving || validating}
             description="Publish this flow so the pipeline can build it"
           >
-            Publish
+            Publish {flow.data.name}
           </DropdownItem>
         </DropdownList>
       </Dropdown>
