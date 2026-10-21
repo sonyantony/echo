@@ -34,11 +34,11 @@ import org.springframework.web.server.ResponseStatusException;
  * too, and the REST OpenApi step's Specification Uri and Operation Id become drop-downs of the
  * approved specs and their allowed operations.
  *
- * <p>The REST configuration form leaves out {@link #HIDDEN_REST_CONFIGURATION} and the Consumer
- * (Advanced) settings other than {@link #SHOWN_CONSUMER_ADVANCED}: flows always serve REST on
- * platform-http (the only REST transport bundled), on the address the runtime listens on, with no
- * generated API docs (they need camel-openapi-java) and binding off, so bodies stay plain JSON
- * text for DataMapper and http steps.
+ * <p>The REST configuration form shows only {@link #SHOWN_REST_CONFIGURATION}, in that order and
+ * with no collapsible groups: flows always serve REST on platform-http (the only REST transport
+ * bundled), on the address the runtime listens on, with no generated API docs (they need
+ * camel-openapi-java) and binding off, so bodies stay plain JSON text for DataMapper and http
+ * steps. The other settings stay at Camel's defaults.
  *
  * <p>The catalog is the one copied by builder-ui/scripts/copy-camel-catalog.mjs. Its file names
  * are hashed, so which file is which comes from the runtime index (catalogs.components.file and
@@ -49,10 +49,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class CamelCatalogController {
 
     static final String PREFIX = "/api/camel-catalog/";
-    static final List<String> HIDDEN_REST_CONFIGURATION = List.of("component", "scheme", "host", "port",
-            "apiContextPath", "bindingMode", "inlineRoutes");
-    /** Of the REST configuration's Consumer (Advanced) settings, only these are shown. */
-    static final List<String> SHOWN_CONSUMER_ADVANCED = List.of("enableCORS", "clientRequestValidation");
+    static final List<String> SHOWN_REST_CONFIGURATION = List.of("contextPath", "clientRequestValidation", "enableCORS");
+    /** Kaoto shows properties of this group at the top level of the form, not in a collapsible section. */
+    private static final String TOP_LEVEL_GROUP = "consumer";
 
     static final String OPENAPI_DEFINITION = "org.apache.camel.model.rest.OpenApiDefinition";
     static final String OPENAPI_SPECIFICATION_TITLE = "Openapi Specification";
@@ -153,9 +152,9 @@ public class CamelCatalogController {
     }
 
     /**
-     * The entities catalog with the hidden settings left out of restConfiguration's form, and the
-     * Rest service's Open Api "Specification" called {@value #OPENAPI_SPECIFICATION_TITLE} (the Builder
-     * shows a drop-down of the flows' specs in its place, see builder-ui SpecificationPicker).
+     * The entities catalog with restConfiguration's form cut down to {@link #SHOWN_REST_CONFIGURATION},
+     * and the Rest service's Open Api "Specification" called {@value #OPENAPI_SPECIFICATION_TITLE} (the
+     * Builder shows a drop-down of the flows' specs in its place, see builder-ui SpecificationPicker).
      */
     private byte[] restForms(Resource file) {
         var entities = (ObjectNode) read(file);
@@ -166,16 +165,21 @@ public class CamelCatalogController {
             }
         });
         if (entities.get("restConfiguration") instanceof ObjectNode rest) {
-            var hidden = new java.util.HashSet<>(HIDDEN_REST_CONFIGURATION);
-            rest.path("properties").properties().forEach(e -> {
-                if (e.getValue().path("group").asText().equals("consumer (advanced)")
-                        && !SHOWN_CONSUMER_ADVANCED.contains(e.getKey())) {
-                    hidden.add(e.getKey());
+            for (JsonNode node : List.of(rest, rest.path("propertiesSchema"))) {
+                if (!(node instanceof ObjectNode owner && owner.get("properties") instanceof ObjectNode all)) {
+                    continue;
                 }
-            });
-            for (JsonNode properties : List.of(rest.path("properties"), rest.path("propertiesSchema").path("properties"))) {
-                if (properties instanceof ObjectNode p) {
-                    p.remove(hidden);
+                var shown = owner.putObject("properties"); // in SHOWN_REST_CONFIGURATION's order
+                for (String name : SHOWN_REST_CONFIGURATION) {
+                    if (all.get(name) instanceof ObjectNode property) {
+                        if (property.has("group")) {
+                            property.put("group", TOP_LEVEL_GROUP).put("label", TOP_LEVEL_GROUP);
+                        }
+                        if (property.has("$comment")) {
+                            property.put("$comment", "group:" + TOP_LEVEL_GROUP);
+                        }
+                        shown.set(name, property);
+                    }
                 }
             }
         }
