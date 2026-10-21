@@ -49,7 +49,7 @@ describe('Openapi Design panel', () => {
     const frame = (await screen.findByTitle('OpenAPI editor')) as HTMLIFrameElement;
     expect(frame).toHaveAttribute('src', '/apicurio-editor/index.html');
     expect(onNameChange).toHaveBeenLastCalledWith(null);
-    expect(screen.getByRole('radio', { name: 'YAML' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Yaml' })).toBeChecked();
 
     // Once the frame has loaded, the spec (a starter one named after the flow) is sent to it.
     const posted = vi.spyOn(frame.contentWindow!, 'postMessage');
@@ -99,10 +99,10 @@ describe('Openapi Design panel', () => {
 
     await screen.findByTitle('OpenAPI editor');
     await waitFor(() => expect(onNameChange).toHaveBeenLastCalledWith('orders.yml'));
-    expect(screen.getByRole('radio', { name: 'YAML' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Yaml' })).toBeChecked();
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
 
-    await userEvent.click(screen.getByRole('radio', { name: 'JSON' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Json' }));
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onNameChange).toHaveBeenLastCalledWith('orders.json'));
     const put = calls.find((c) => c.method === 'PUT');

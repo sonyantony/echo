@@ -16,7 +16,7 @@ from the spec, then Rest, then Flow Design) opens the flow's spec in the Apicuri
 - **Download Openapi File As Yaml** / **As Json**: the spec on screen, unsaved edits included,
   named after the spec (or the flow while the spec has no name).
 
-The bar above the editor holds the format (**YAML** or **JSON**; YAML for a new spec), **Save**,
+The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Yaml for a new spec), **Save**,
 **Save As** and **Discard**. It takes the place of Apicurio's title bar with the API's name
 (hidden by `apicurioTheme.css`); Apicurio's undo, redo and Issues stay at its right, and
 **API info** opens the spec's own details (info, servers, security...), which a click on that
