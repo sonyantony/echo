@@ -15,7 +15,12 @@ interface Props {
   initialContent: string;
   /** Called with the whole spec, as formatted JSON text, after every edit. */
   onChange(content: string): void;
+  /** Called when one of Apicurio's full-page dialogs (e.g. Define a New Data Type) opens or closes. */
+  onDialogChange?(open: boolean): void;
 }
+
+/** Apicurio's full-page dialogs (new data type, path, response...), which cover its editor. */
+const DIALOG_SELECTOR = '.entity-editor';
 
 export interface ApicurioEditorHandle {
   /**
@@ -26,9 +31,12 @@ export interface ApicurioEditorHandle {
 }
 
 export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(function ApicurioEditorHost(
-  { initialContent, onChange },
+  { initialContent, onChange, onDialogChange },
   ref,
 ) {
+  const onDialogChangeRef = useRef(onDialogChange);
+  onDialogChangeRef.current = onDialogChange;
+  const stopDialogs = useRef<() => void>(undefined);
   const frame = useRef<HTMLIFrameElement>(null);
   useImperativeHandle(ref, () => ({
     showApiInfo: () => frame.current?.contentDocument?.querySelector<HTMLElement>('.editor-title-bar > h1')?.click(),
@@ -50,6 +58,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
       window.removeEventListener('message', listener);
       window.clearInterval(timer.current);
       stopTheme.current?.();
+      stopDialogs.current?.();
     };
   }, []);
 
@@ -62,7 +71,29 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     stopTheme.current?.();
     const frameDoc = frame.current?.contentDocument;
     stopTheme.current = frameDoc ? followApicurioTheme(frameDoc) : undefined;
+    stopDialogs.current?.();
+    stopDialogs.current = frameDoc ? watchDialogs(frameDoc) : undefined;
     sendContent();
+  };
+
+  /** Tells onDialogChange when a full-page dialog opens or closes (API Info cannot work under one). */
+  const watchDialogs = (doc: Document) => {
+    let open = false;
+    const check = () => {
+      const now = !!doc.querySelector(DIALOG_SELECTOR);
+      if (now !== open) {
+        open = now;
+        onDialogChangeRef.current?.(now);
+      }
+    };
+    // The frame's own MutationObserver: its nodes belong to the frame's window.
+    const observer = new (doc.defaultView?.MutationObserver ?? MutationObserver)(check);
+    try {
+      observer.observe(doc.documentElement, { childList: true, subtree: true });
+    } catch {
+      // A frame document the observer cannot watch (only happens in the jsdom test environment).
+    }
+    return () => observer.disconnect();
   };
 
   const sendContent = () => {
