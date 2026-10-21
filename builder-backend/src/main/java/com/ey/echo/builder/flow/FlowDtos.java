@@ -37,14 +37,17 @@ public final class FlowDtos {
             FlowStatus status,
             String routeFile,
             List<String> files,
+            String apiSpec,
             String createdBy,
             Instant createdAt,
             String updatedBy,
             Instant updatedAt) {
 
-        static FlowDetail of(Flow f) {
+        /** @param apiSpec the flow's OpenAPI spec file ({@link ApiSpecFiles}), or null */
+        static FlowDetail of(Flow f, String apiSpec) {
             return new FlowDetail(f.getId(), f.getName(), f.getDescription(), f.getStatus(),
                     FlowNames.routeFile(f.getName()), f.getFiles().stream().map(FlowFile::getPath).sorted().toList(),
+                    apiSpec,
                     f.getCreatedBy(), f.getCreatedAt(), f.getUpdatedBy(), f.getUpdatedAt());
         }
     }

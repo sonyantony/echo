@@ -19,7 +19,7 @@ test('editor fits the page and prints the whole open tab', async ({ page }) => {
   await page.emulateMedia({ media: 'print' });
   const clipped = await tab.evaluate((el) => el.scrollHeight - el.clientHeight);
   expect(clipped).toBeLessThanOrEqual(1);
-  await expect(page.getByRole('button', { name: 'API spec' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Openapi Design' })).toBeHidden();
   const pdf = await page.pdf({ format: 'A4' });
   const pages = pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? [];
   expect(pages.length).toBeGreaterThan(1);
@@ -31,15 +31,15 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   const tabBar = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"]');
   const top = async (name: string) => (await page.getByRole('button', { name, exact: true }).boundingBox())!.y;
   const tabBox = (await tabBar.boundingBox())!;
-  for (const name of ['File', 'Run', 'Advanced', 'API spec', 'History']) {
+  for (const name of ['File', 'Run', 'Advanced', 'Openapi Design', 'History']) {
     const y = await top(name);
     expect(y).toBeGreaterThanOrEqual(tabBox.y);
     expect(y).toBeLessThan(tabBox.y + tabBox.height);
   }
-  // File comes first, as in most desktop software, then API spec (API-first flows start from the
+  // File comes first, as in most desktop software, then Openapi Design (API-first flows start from the
   // spec), then Kaoto's Design tab.
   const file = (await page.getByRole('button', { name: 'File', exact: true }).boundingBox())!;
-  const spec = (await page.getByRole('button', { name: 'API spec', exact: true }).boundingBox())!;
+  const spec = (await page.getByRole('button', { name: 'Openapi Design', exact: true }).boundingBox())!;
   const design = (await page.getByRole('button', { name: 'Flow Design', exact: true }).boundingBox())!;
   expect(file.x + file.width).toBeLessThanOrEqual(spec.x);
   expect(spec.x + spec.width).toBeLessThanOrEqual(design.x);
@@ -59,7 +59,7 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   // The tab line still fits on one line: no taller than at full width, every item on it.
   const narrowBox = (await tabBar.boundingBox())!;
   expect(narrowBox.height).toBeLessThanOrEqual(tabBox.height + 1);
-  for (const name of ['File', 'API spec', 'Flow Design', 'Run', 'Advanced']) {
+  for (const name of ['File', 'Openapi Design', 'Flow Design', 'Run', 'Advanced']) {
     const y = await top(name);
     expect(y).toBeGreaterThanOrEqual(narrowBox.y);
     expect(y).toBeLessThan(narrowBox.y + narrowBox.height);

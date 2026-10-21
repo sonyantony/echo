@@ -6,7 +6,7 @@ export function mockFetch(routes: Record<string, Handler | { status: number; bod
   const fn = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const url = typeof input === 'string' ? input : input.toString();
     const method = (init.method ?? 'GET').toUpperCase();
-    const body = typeof init.body === 'string' ? JSON.parse(init.body) : undefined;
+    const body = typeof init.body === 'string' ? parseBody(init.body) : undefined;
     calls.push({ method, url, body, headers: new Headers(init.headers) });
     const route = routes[`${method} ${url}`];
     const result = typeof route === 'function' ? route({ ...init, url }) : route;
@@ -18,4 +18,13 @@ export function mockFetch(routes: Record<string, Handler | { status: number; bod
   });
   vi.stubGlobal('fetch', fn);
   return { fn, calls };
+}
+
+/** JSON bodies are parsed; others (e.g. a YAML file) are kept as text. */
+function parseBody(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }

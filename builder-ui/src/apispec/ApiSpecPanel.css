@@ -1,24 +1,13 @@
 .echo-api-spec {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   background-color: var(--pf-t--global--background--color--primary--default);
 }
-.echo-api-spec__header {
-  padding: 8px 16px;
-  flex: none;
-  border-bottom: 1px solid var(--pf-t--global--border--color--default);
-}
-.echo-api-spec__autosaved,
-.echo-api-spec__hint {
-  color: var(--pf-t--global--text--color--subtle);
-}
-.echo-api-spec__hint {
-  font-size: var(--pf-t--global--font--size--sm);
-}
 .echo-api-spec__message {
-  margin-top: 8px;
+  margin: 8px 16px;
 }
 .echo-api-spec__editor {
   flex: 1;
@@ -32,7 +21,51 @@
   height: 100%;
   border: 0;
 }
-/* The tip wraps when space is short; the status next to Save stays on one line. */
-.echo-api-spec__status {
+/*
+ * ECHO's bar lies over the left of Apicurio's title bar (42px high), whose API name is hidden
+ * (apicurioTheme.css), so the two read as one bar: format, Save, Save As, Discard on the left,
+ * Apicurio's undo, redo and Issues on the right.
+ */
+.echo-api-spec__bar {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 240px;
+  height: 41px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
   white-space: nowrap;
+  background-color: var(--pf-t--global--background--color--primary--default);
+}
+.echo-api-spec__formats {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-right: var(--pf-t--global--spacer--sm);
+}
+.echo-api-spec__formats .pf-v6-c-radio {
+  --pf-v6-c-radio__label--FontSize: var(--pf-t--global--font--size--sm);
+  --pf-v6-c-radio__label--LineHeight: 1.2;
+  align-items: center;
+}
+.echo-api-spec__hint,
+.echo-api-spec__status {
+  font-size: var(--pf-t--global--font--size--sm);
+  color: var(--pf-t--global--text--color--subtle);
+}
+.echo-api-spec__hint {
+  cursor: help;
+  margin-left: var(--pf-t--global--spacer--sm);
+}
+.echo-api-spec__status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: var(--pf-t--global--spacer--sm);
+}
+.echo-api-spec__status--danger {
+  color: var(--pf-t--global--text--color--status--danger--default);
 }

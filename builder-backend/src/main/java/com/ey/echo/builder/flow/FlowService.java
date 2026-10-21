@@ -17,10 +17,12 @@ public class FlowService {
 
     private final FlowRepository flows;
     private final Clock clock;
+    private final ApiSpecFiles apiSpecs;
 
-    public FlowService(FlowRepository flows, Clock clock) {
+    public FlowService(FlowRepository flows, Clock clock, ApiSpecFiles apiSpecs) {
         this.flows = flows;
         this.clock = clock;
+        this.apiSpecs = apiSpecs;
     }
 
     @Transactional(readOnly = true)
@@ -41,7 +43,8 @@ public class FlowService {
     /** Flow with its file list, loaded inside the transaction. */
     @Transactional(readOnly = true)
     public FlowDtos.FlowDetail detail(long id) {
-        return FlowDtos.FlowDetail.of(get(id));
+        var flow = get(id);
+        return FlowDtos.FlowDetail.of(flow, apiSpecs.find(flow).orElse(null));
     }
 
     /** All files of a flow, path to content. */
@@ -193,6 +196,27 @@ public class FlowService {
             return; // unchanged: keep the PUBLISHED status
         }
         flow.putFile(path, content);
+        flow.touch(user, now());
+    }
+
+    /**
+     * Saves the flow's OpenAPI spec as {@code name} (the name it was uploaded or saved with, in JSON
+     * or YAML). A flow has one spec, so a spec saved before under another name is removed.
+     */
+    public void saveApiSpec(long id, String name, String content, String user) {
+        var flow = get(id);
+        apiSpecs.checkName(flow, name);
+        apiSpecs.checkContent(content);
+        var previous = apiSpecs.find(flow);
+        boolean renamed = previous.isPresent() && !previous.get().equals(name);
+        if (renamed) {
+            flow.removeFile(previous.get());
+        }
+        var existing = flow.file(name);
+        if (!renamed && existing.isPresent() && existing.get().getContent().equals(content)) {
+            return; // unchanged: keep the PUBLISHED status
+        }
+        flow.putFile(name, content);
         flow.touch(user, now());
     }
 

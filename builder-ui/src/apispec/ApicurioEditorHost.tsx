@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { followApicurioTheme } from './apicurioTheme';
 
 /**
@@ -17,8 +17,22 @@ interface Props {
   onChange(content: string): void;
 }
 
-export function ApicurioEditorHost({ initialContent, onChange }: Props) {
+export interface ApicurioEditorHandle {
+  /**
+   * Opens the spec's own details (info, servers, security...). Apicurio does this when its title
+   * bar is clicked; ECHO hides that bar (apicurioTheme.css), so its title is clicked for it.
+   */
+  showApiInfo(): void;
+}
+
+export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(function ApicurioEditorHost(
+  { initialContent, onChange },
+  ref,
+) {
   const frame = useRef<HTMLIFrameElement>(null);
+  useImperativeHandle(ref, () => ({
+    showApiInfo: () => frame.current?.contentDocument?.querySelector<HTMLElement>('.editor-title-bar > h1')?.click(),
+  }), []);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const timer = useRef<number>(undefined);
@@ -81,4 +95,4 @@ export function ApicurioEditorHost({ initialContent, onChange }: Props) {
       onLoad={onLoad}
     />
   );
-}
+});

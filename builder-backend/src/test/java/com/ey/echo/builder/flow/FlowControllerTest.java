@@ -150,6 +150,56 @@ class FlowControllerTest {
     }
 
     @Test
+    void keepsTheApiSpecUnderItsOwnNameOnePerFlow() throws Exception {
+        long id = create("orders");
+        mvc.perform(as(get("/api/flows/{id}", id))).andExpect(jsonPath("$.apiSpec").doesNotExist());
+
+        String yaml = "openapi: 3.0.3\ninfo:\n  title: Customers\n  version: 1.0.0\npaths: {}\n";
+        mvc.perform(as(put("/api/flows/{id}/api-spec/customer-api.yaml", id)).contentType(MediaType.TEXT_PLAIN).content(yaml))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.apiSpec").value("customer-api.yaml"));
+        mvc.perform(as(get("/api/flows/{id}/files/customer-api.yaml", id))).andExpect(content().string(yaml));
+
+        // Saved under another name (Save As, or JSON instead of YAML): the old file goes.
+        String json = "{\"openapi\":\"3.0.3\",\"info\":{\"title\":\"Customers\",\"version\":\"1.0.0\"},\"paths\":{}}";
+        mvc.perform(as(put("/api/flows/{id}/api-spec/customers.json", id)).contentType(MediaType.TEXT_PLAIN).content(json))
+                .andExpect(jsonPath("$.apiSpec").value("customers.json"));
+        mvc.perform(as(get("/api/flows/{id}/files/customer-api.yaml", id))).andExpect(status().isNotFound());
+        mvc.perform(as(get("/api/flows/{id}", id))).andExpect(jsonPath("$.files", hasSize(3)));
+    }
+
+    @Test
+    void findsTheApiSpecOfOlderFlowsAndIgnoresOtherJsonFiles() throws Exception {
+        long id = create("orders");
+        mvc.perform(as(put("/api/flows/{id}/files/order.schema.json", id)).contentType(MediaType.TEXT_PLAIN)
+                .content("{\"openapi\":\"not really\"}")).andExpect(status().isNoContent());
+        mvc.perform(as(put("/api/flows/{id}/files/sample.json", id)).contentType(MediaType.TEXT_PLAIN)
+                .content("{\"orderId\":\"A1\"}")).andExpect(status().isNoContent());
+        mvc.perform(as(get("/api/flows/{id}", id))).andExpect(jsonPath("$.apiSpec").doesNotExist());
+        mvc.perform(as(put("/api/flows/{id}/files/openapi.json", id)).contentType(MediaType.TEXT_PLAIN)
+                .content("{\"openapi\":\"3.0.3\"}")).andExpect(status().isNoContent());
+        mvc.perform(as(get("/api/flows/{id}", id))).andExpect(jsonPath("$.apiSpec").value("openapi.json"));
+    }
+
+    @Test
+    void rejectsApiSpecNamesAndContentThatCannotBeUsed() throws Exception {
+        long id = create("orders");
+        String spec = "openapi: 3.0.3\n";
+        for (String name : new String[] {"spec.txt", "orders.camel.yaml", "order.schema.json", "../x.yaml"}) {
+            mvc.perform(as(put("/api/flows/{id}/api-spec/" + name, id)).contentType(MediaType.TEXT_PLAIN).content(spec))
+                    .andExpect(status().is4xxClientError());
+        }
+        mvc.perform(as(put("/api/flows/{id}/files/sample.json", id)).contentType(MediaType.TEXT_PLAIN).content("{}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(as(put("/api/flows/{id}/api-spec/sample.json", id)).contentType(MediaType.TEXT_PLAIN).content(spec))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail", containsString("already has a file")));
+        mvc.perform(as(put("/api/flows/{id}/api-spec/x.yaml", id)).contentType(MediaType.TEXT_PLAIN).content("title: x"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail", containsString("not an OpenAPI spec")));
+    }
+
+    @Test
     void rejectsUnsafeFilePathsAndKeepsTheRouteFile() throws Exception {
         long id = create("orders");
         mvc.perform(as(put("/api/flows/{id}/files/a..b/../x", id)).contentType(MediaType.TEXT_PLAIN).content("x"))

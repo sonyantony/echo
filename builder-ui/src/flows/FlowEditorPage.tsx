@@ -18,7 +18,8 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { CheckCircleIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
+import { UNDERLINED_CLASS } from '../editor/tabUnderline';
+import { CheckCircleIcon, DownloadIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -104,6 +105,7 @@ function FlowEditor() {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [runMenuOpen, setRunMenuOpen] = useState(false);
+  const [specMenuOpen, setSpecMenuOpen] = useState(false);
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -112,6 +114,8 @@ function FlowEditor() {
   // unsaved edits survive moving between views.
   const [specOpened, setSpecOpened] = useState(showSpec);
   const [specDirty, setSpecDirty] = useState(false);
+  /** The spec's file name once the panel has it; until then the one the flow has (FlowDetail.apiSpec). */
+  const [specName, setSpecName] = useState<string | null>();
   const specPanel = useRef<ApiSpecPanelHandle>(null);
   useEffect(() => {
     if (showSpec) setSpecOpened(true);
@@ -416,20 +420,61 @@ function FlowEditor() {
     </div>
   );
 
-  // API spec, on the tab line right after File: API-first flows start from the spec, then Rest and
-  // Flow Design. The flow's OpenAPI spec is shown in place of Kaoto's views.
-  const apiSpecTab = (
+  // Openapi Design, on the tab line right after File: API-first flows start from the spec, then Rest
+  // and Flow Design. Like Flow Design it opens its view (the flow's OpenAPI spec, in place of Kaoto's
+  // views) and a menu.
+  const apiSpecMenu = (
     <div className="echo-tab-actions echo-no-print">
-      <MenuToggle
-        variant="plainText"
-        className="echo-tab-menu echo-api-spec-tab"
-        data-echo-tab-current={showSpec ? '' : undefined}
-        aria-current={showSpec ? 'page' : undefined}
-        onClick={() => showView(true)}
-        title="Design the REST API this flow offers, as an OpenAPI spec"
+      <Dropdown
+        isOpen={specMenuOpen}
+        onOpenChange={setSpecMenuOpen}
+        onSelect={() => setSpecMenuOpen(false)}
+        popperProps={{ position: 'start', appendTo: () => document.body }}
+        toggle={(toggleRef) => (
+          <MenuToggle
+            ref={toggleRef}
+            variant="plainText"
+            // The underline class is React's too, or opening the menu (a re-render) would drop it.
+            className={`echo-tab-menu echo-api-spec-tab${showSpec ? ` ${UNDERLINED_CLASS}` : ''}`}
+            data-echo-tab-current={showSpec ? '' : undefined}
+            aria-current={showSpec ? 'page' : undefined}
+            isExpanded={specMenuOpen}
+            onClick={() => {
+              showView(true);
+              setSpecMenuOpen((open) => !open);
+            }}
+          >
+            Openapi Design
+          </MenuToggle>
+        )}
       >
-        API spec
-      </MenuToggle>
+        <DropdownList>
+          <DropdownItem
+            key="upload"
+            icon={<UploadIcon />}
+            onClick={() => specPanel.current?.upload()}
+            description="Store a .yaml or .json OpenAPI file in this flow, under its own name"
+          >
+            Upload
+          </DropdownItem>
+          <DropdownItem
+            key="yaml"
+            icon={<DownloadIcon />}
+            onClick={() => specPanel.current?.download('yaml')}
+            description="The spec on screen, unsaved edits included"
+          >
+            Download Openapi File As Yaml
+          </DropdownItem>
+          <DropdownItem
+            key="json"
+            icon={<DownloadIcon />}
+            onClick={() => specPanel.current?.download('json')}
+            description="The spec on screen, unsaved edits included"
+          >
+            Download Openapi File As Json
+          </DropdownItem>
+        </DropdownList>
+      </Dropdown>
     </div>
   );
 
@@ -496,20 +541,34 @@ function FlowEditor() {
     <div className="echo-flow-editor">
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
-          <FlexItem>
-            <Link to={OPEN_FLOW_PATH} state={openFlowState}>
-              Flows
-            </Link>{' '}
-            /
-          </FlexItem>
-          <FlexItem>
-            <Title headingLevel="h1" size="lg">
-              {flow.data.name}
-            </Title>
-          </FlexItem>
-          <FlexItem>
-            <StatusLabel status={flow.data.status} />
-          </FlexItem>
+          {showSpec ? (
+            // While Openapi Design is open the breadcrumb names the spec: Openapi / <file name>.
+            <>
+              <FlexItem>Openapi /</FlexItem>
+              <FlexItem>
+                <Title headingLevel="h1" size="lg" data-testid="spec-name">
+                  {(specName === undefined ? flow.data.apiSpec : specName) ?? <strong>&lt;new&gt;</strong>}
+                </Title>
+              </FlexItem>
+            </>
+          ) : (
+            <>
+              <FlexItem>
+                <Link to={OPEN_FLOW_PATH} state={openFlowState}>
+                  Flows
+                </Link>{' '}
+                /
+              </FlexItem>
+              <FlexItem>
+                <Title headingLevel="h1" size="lg">
+                  {flow.data.name}
+                </Title>
+              </FlexItem>
+              <FlexItem>
+                <StatusLabel status={flow.data.status} />
+              </FlexItem>
+            </>
+          )}
           {dirty || specDirty ? (
             <FlexItem data-testid="unsaved">Unsaved changes</FlexItem>
           ) : (
@@ -552,7 +611,7 @@ function FlowEditor() {
           tabBarStart={
             <>
               {fileMenu}
-              {apiSpecTab}
+              {apiSpecMenu}
             </>
           }
           tabBarMenus={runMenu}
@@ -573,6 +632,7 @@ function FlowEditor() {
                 flowName={flow.data.name}
                 flowDescription={flow.data.description}
                 onDirtyChange={setSpecDirty}
+                onNameChange={setSpecName}
               />
             )
           }
@@ -661,7 +721,7 @@ function FlowEditor() {
         <Modal isOpen variant="small" onClose={() => blocker.reset()} aria-labelledby="unsaved-title">
           <ModalHeader title="Leave without saving?" titleIconVariant="warning" labelId="unsaved-title" />
           <ModalBody>
-            {dirty ? 'Your changes to this flow have not been saved.' : "Your changes to this flow's API spec have not been saved."}
+            {dirty ? 'Your changes to this flow have not been saved.' : "Your changes to this flow's OpenAPI spec have not been saved."}
           </ModalBody>
           <ModalFooter>
             <Button variant="danger" onClick={() => blocker.proceed()}>
