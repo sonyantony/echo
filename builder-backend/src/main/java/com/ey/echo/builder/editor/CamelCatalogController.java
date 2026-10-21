@@ -34,6 +34,12 @@ import org.springframework.web.server.ResponseStatusException;
  * too, and the REST OpenApi step's Specification Uri and Operation Id become drop-downs of the
  * approved specs and their allowed operations.
  *
+ * <p>The REST configuration form leaves out {@link #HIDDEN_REST_CONFIGURATION} and the Consumer
+ * (Advanced) settings other than {@link #SHOWN_CONSUMER_ADVANCED}: flows always serve REST on
+ * platform-http (the only REST transport bundled), on the address the runtime listens on, with no
+ * generated API docs (they need camel-openapi-java) and binding off, so bodies stay plain JSON
+ * text for DataMapper and http steps.
+ *
  * <p>The catalog is the one copied by builder-ui/scripts/copy-camel-catalog.mjs. Its file names
  * are hashed, so which file is which comes from the runtime index (catalogs.components.file and
  * so on). Public, like the static catalog files: it is Camel's documentation, and the playground
@@ -43,11 +49,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class CamelCatalogController {
 
     static final String PREFIX = "/api/camel-catalog/";
+    static final List<String> HIDDEN_REST_CONFIGURATION = List.of("component", "scheme", "host", "port",
+            "apiContextPath", "bindingMode", "inlineRoutes");
+    /** Of the REST configuration's Consumer (Advanced) settings, only these are shown. */
+    static final List<String> SHOWN_CONSUMER_ADVANCED = List.of("enableCORS", "clientRequestValidation");
 
     private final ObjectMapper json;
     private final Resource root;
     private final Map<String, Predicate<String>> filters;
     private final Set<String> componentFiles = ConcurrentHashMap.newKeySet();
+    private final Set<String> entityFiles = ConcurrentHashMap.newKeySet();
     private final ApiCatalog apis;
     private final Map<String, byte[]> filtered = new ConcurrentHashMap<>();
 
@@ -79,6 +90,9 @@ public class CamelCatalogController {
         var type = path.endsWith(".json") ? MediaType.APPLICATION_JSON
                 : path.endsWith(".xsd") || path.endsWith(".xsl") ? MediaType.APPLICATION_XML
                 : MediaType.APPLICATION_OCTET_STREAM;
+        if (entityFiles.contains(path)) {
+            return ResponseEntity.ok().contentType(type).body(filtered.computeIfAbsent(path, p -> withoutRestTransport(file)));
+        }
         Predicate<String> keep = filters.get(path);
         if (keep == null) {
             return ResponseEntity.ok().contentType(type).body(file);
@@ -101,6 +115,10 @@ public class CamelCatalogController {
             JsonNode catalogs = read(relative(root, index)).path("catalogs");
             put(result, dir, catalogs, "components", components::contains);
             componentFiles.add(dir + catalogs.path("components").path("file").asText(""));
+            String entities = catalogs.path("entities").path("file").asText("");
+            if (!entities.isEmpty()) {
+                entityFiles.add(dir + entities);
+            }
             put(result, dir, catalogs, "languages", languages::contains);
             put(result, dir, catalogs, "patterns",
                     name -> !hiddenProcessors.contains(name) && (kamelets || !name.equals("kamelet")));
@@ -126,6 +144,30 @@ public class CamelCatalogController {
         }
         try {
             return json.writeValueAsBytes(entries);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** The entities catalog with the hidden settings left out of restConfiguration's form. */
+    private byte[] withoutRestTransport(Resource file) {
+        var entities = (ObjectNode) read(file);
+        if (entities.get("restConfiguration") instanceof ObjectNode rest) {
+            var hidden = new java.util.HashSet<>(HIDDEN_REST_CONFIGURATION);
+            rest.path("properties").properties().forEach(e -> {
+                if (e.getValue().path("group").asText().equals("consumer (advanced)")
+                        && !SHOWN_CONSUMER_ADVANCED.contains(e.getKey())) {
+                    hidden.add(e.getKey());
+                }
+            });
+            for (JsonNode properties : List.of(rest.path("properties"), rest.path("propertiesSchema").path("properties"))) {
+                if (properties instanceof ObjectNode p) {
+                    p.remove(hidden);
+                }
+            }
+        }
+        try {
+            return json.writeValueAsBytes(entities);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }

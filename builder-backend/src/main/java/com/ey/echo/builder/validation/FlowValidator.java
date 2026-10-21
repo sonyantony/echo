@@ -36,7 +36,8 @@ import org.yaml.snakeyaml.nodes.SequenceNode;
  *       unknown steps and wrong structure, with line numbers);
  *   <li>only allowed components and expression languages, property
  *       placeholders defined in application.properties, XSLT files present in the flow, REST
- *       OpenApi steps calling allowed operations of approved APIs ({@code echo.apis});
+ *       OpenApi steps calling allowed operations of approved APIs ({@code echo.apis}), REST
+ *       configuration on platform-http with binding off and no API docs;
  *   <li>simple-language expressions parse.
  * </ol>
  */
@@ -181,6 +182,9 @@ public class FlowValidator {
                     headersRemoved = true;
                 }
             }
+            if (key.equals("restConfiguration") && value instanceof MappingNode rest) {
+                checkRestConfiguration(rest);
+            }
             if (key.equals("uri") && value instanceof ScalarNode s) {
                 checkUri(s.getValue(), line);
             } else if (OTHER_LANGUAGES.contains(key)) {
@@ -239,6 +243,31 @@ public class FlowValidator {
                         "The incoming request's headers would change the URL this %s step calls. Add a Remove Headers step with pattern * before it, or turn on Bridge Endpoint in the step."
                                 .formatted(m.group(1))));
             }
+        }
+
+        /**
+         * REST services always run on platform-http, with binding off and no generated API docs;
+         * the editor hides these settings, but an uploaded flow can still name them.
+         */
+        private void checkRestConfiguration(MappingNode rest) {
+            scalarNode(rest, "component").filter(c -> !quietlyResolved(c.getValue().strip()).equals("platform-http"))
+                    .ifPresent(c -> problems.add(new Problem(routeFile, c.getStartMark().getLine() + 1,
+                            "REST services in flows always run on platform-http, so remove 'component: %s' from the REST configuration."
+                                    .formatted(c.getValue()))));
+            scalarNode(rest, "bindingMode").filter(b -> !b.getValue().strip().equals("off"))
+                    .ifPresent(b -> problems.add(new Problem(routeFile, b.getStartMark().getLine() + 1,
+                            "REST binding mode '%s' is not supported in flows (bodies stay plain JSON text), so remove 'bindingMode' from the REST configuration."
+                                    .formatted(b.getValue()))));
+            scalarNode(rest, "apiContextPath").filter(a -> !a.getValue().isBlank())
+                    .ifPresent(a -> problems.add(new Problem(routeFile, a.getStartMark().getLine() + 1,
+                            "Generated API docs are not supported in flows, so remove 'apiContextPath' from the REST configuration.")));
+        }
+
+        private static java.util.Optional<ScalarNode> scalarNode(MappingNode map, String key) {
+            return map.getValue().stream()
+                    .filter(t -> t.getKeyNode() instanceof ScalarNode k && k.getValue().equals(key))
+                    .map(NodeTuple::getValueNode).filter(ScalarNode.class::isInstance).map(ScalarNode.class::cast)
+                    .findFirst();
         }
 
         /**
