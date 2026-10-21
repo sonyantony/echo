@@ -51,8 +51,8 @@ Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}
 
 The editor's controls sit on the same line as Kaoto's tabs: **File** (New Flow, Open Template, Open
 Flow, Upload Flow, Save, Save As, Save As Template), **Flow Design** (opens the canvas; its menu has
-Download <flow> and Download <flow> As Image), Rest, DataMapper, **Run** (Run <flow>), **Advanced**
-(Java Beans) and About, with API spec and History at the right. Validate and Publish are buttons on
+Download <flow> and Download <flow> As Image), Rest, DataMapper, **API spec**, **Run** (Run <flow>),
+**Advanced** (Java Beans) and About, with History at the right. Validate and Publish are buttons on
 the Flow Design toolbar.
 **Ctrl+S** saves and **Ctrl+O** opens Open Template (Cmd on a Mac).
 **Open Flow** goes to the Flows list (asking first about unsaved changes) to pick another flow.

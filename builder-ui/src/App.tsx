@@ -26,8 +26,8 @@ function createRouter() {
         { index: true, lazy: async () => ({ Component: (await import('./flows/UntitledFlowPage')).UntitledFlowPage }) },
         { path: 'flows', element: <FlowListPage /> },
         // Loaded on demand: the editor bundles Kaoto, which is large.
-        { path: 'flows/:id/api', lazy: async () => ({ Component: (await import('./apispec/ApiSpecPage')).ApiSpecPage }) },
-        { path: 'flows/:id', lazy: async () => ({ Component: (await import('./flows/FlowEditorPage')).FlowEditorPage }) },
+        // flows/:id/api: the same editor, with the flow's API spec open in place of Kaoto's views.
+        { path: 'flows/:id/api?', lazy: async () => ({ Component: (await import('./flows/FlowEditorPage')).FlowEditorPage }) },
       ],
     },
   ]);

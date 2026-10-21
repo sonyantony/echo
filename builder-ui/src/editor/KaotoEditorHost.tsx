@@ -36,6 +36,14 @@ export interface KaotoEditorHostProps {
   canvasToolbarActions?: ReactNode;
   /** Builder controls shown at the left end of Kaoto's tab bar, before its first tab (e.g. a File menu). */
   tabBarStart?: ReactNode;
+  /**
+   * A Builder view shown in place of Kaoto's views, below the tab bar (e.g. the API spec). It stays
+   * mounted while hidden, so it keeps its state; `coverVisible` shows it.
+   */
+  cover?: ReactNode;
+  coverVisible?: boolean;
+  /** Called when one of Kaoto's views is picked on the tab line (a tab, or a menu standing in for one). */
+  onKaotoViewPicked?(): void;
 }
 
 interface KaotoEditor {
@@ -51,7 +59,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,6 +74,9 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const [advancedSlot, setAdvancedSlot] = useState<HTMLElement>();
   const [canvasSlot, setCanvasSlot] = useState<HTMLElement>();
   const [designSlot, setDesignSlot] = useState<HTMLElement>();
+  const [tabBarHeight, setTabBarHeight] = useState(0);
+  const onKaotoViewPickedRef = useRef(onKaotoViewPicked);
+  onKaotoViewPickedRef.current = onKaotoViewPicked;
 
   useImperativeHandle(ref, () => ({
     getContent: async () => (editorRef.current ? editorRef.current.getContent() : initialContent),
@@ -152,11 +163,13 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
         clipboardItem.after(canvas);
         setCanvasSlot(canvas);
       }
-      const tabBar = container.querySelector(":scope > .shell > div[role='region']");
+      const tabBar = container.querySelector<HTMLElement>(":scope > .shell > div[role='region']");
       if (!tabBar) return;
       if (slot.parentElement !== tabBar) {
         tabBar.appendChild(slot);
         setTabBarSlot(slot);
+        heights.disconnect();
+        heights.observe(tabBar);
       }
       const tabList = tabBar.querySelector(':scope > .pf-v6-c-tabs__list');
       if (tabList) {
@@ -178,11 +191,21 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
         }
       }
     };
+    // The cover sits just below the tab bar, whose height depends on the theme and font.
+    const heights = new ResizeObserver(([entry]) => setTabBarHeight((entry.target as HTMLElement).offsetHeight));
+    // Kaoto's tabs, and the hidden ones the Flow Design and Advanced menus press, all carry a "-tab" test id.
+    const onClick = (event: MouseEvent) => {
+      const tab = (event.target as Element | null)?.closest("[data-testid$='-tab']");
+      if (tab?.closest(".shell > div[role='region']")) onKaotoViewPickedRef.current?.();
+    };
+    container.addEventListener('click', onClick, true);
     const observer = new MutationObserver(attach);
     observer.observe(container, { childList: true, subtree: true });
     attach();
     const stopUnderline = trackTabUnderline(container);
     return () => {
+      container.removeEventListener('click', onClick, true);
+      heights.disconnect();
       observer.disconnect();
       stopUnderline();
       slot.remove();
@@ -205,6 +228,11 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     <div className="echo-kaoto-host" data-testid="kaoto-editor-host">
       {error && <div role="alert">Could not start the flow editor: {error}</div>}
       <div ref={containerRef} className="echo-kaoto-host__editor" />
+      {cover && (
+        <div className="echo-kaoto-host__cover" hidden={!coverVisible} style={{ top: tabBarHeight }}>
+          {cover}
+        </div>
+      )}
       {tabBarStartSlot && tabBarStart && createPortal(tabBarStart, tabBarStartSlot)}
       {tabBarSlot && tabBarActions && createPortal(tabBarActions, tabBarSlot)}
       {designSlot &&

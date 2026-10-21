@@ -18,10 +18,10 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { CheckCircleIcon, CodeIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom';
+import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import {
   downloadFlow,
@@ -32,6 +32,7 @@ import {
   validateFlow,
   type ValidationResult,
 } from '../api/flows';
+import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { DownloadButtons, downloadMenuItems } from './downloads';
@@ -48,7 +49,15 @@ import { useAutosave } from './useAutosave';
 import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
 
-/** One editor per flow: moving to another flow (e.g. after Save As) starts a fresh editor. */
+/** The flow editor's address with the flow's API spec open in it. */
+export const apiSpecPath = (id: number) => `/flows/${id}/api`;
+/** The editor's address without the view part: moving between its views is not leaving it. */
+const editorPathOf = (pathname: string) => pathname.replace(/\/api$/, '');
+
+/**
+ * One editor per flow: moving to another flow (e.g. after Save As) starts a fresh editor. The same
+ * editor shows the flow's API spec (/flows/:id/api), so the tab line stays.
+ */
 export function FlowEditorPage() {
   const { id } = useParams();
   return <FlowEditor key={id} />;
@@ -58,6 +67,7 @@ function FlowEditor() {
   const id = Number(useParams().id);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const showSpec = useLocation().pathname.endsWith('/api');
   const flow = useQuery({ queryKey: ['flow', id], queryFn: () => flowsApi.get(id) });
   const routeFile = flow.data?.routeFile;
   const route = useQuery({
@@ -98,6 +108,14 @@ function FlowEditor() {
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [creating, setCreating] = useState(false);
+  // The API spec is opened on first use and then kept (hidden while a Kaoto view is open), so its
+  // unsaved edits survive moving between views.
+  const [specOpened, setSpecOpened] = useState(showSpec);
+  const [specDirty, setSpecDirty] = useState(false);
+  const specPanel = useRef<ApiSpecPanelHandle>(null);
+  useEffect(() => {
+    if (showSpec) setSpecOpened(true);
+  }, [showSpec]);
   /** Set when Save As moves to the new flow, so leaving this one does not ask about unsaved edits. */
   const leavingAfterSaveAs = useRef(false);
 
@@ -217,10 +235,15 @@ function FlowEditor() {
     save: () => save(true),
   });
 
+  /** File > Save and Ctrl+S: the flow, and the API spec when it has unsaved edits. */
+  const saveAll = useCallback(async () => {
+    if (await save()) await specPanel.current?.saveIfChanged();
+  }, [save]);
+
   // Ctrl+S saves and Ctrl+O opens a template (Cmd on a Mac), instead of the browser's own save and
   // open. Caught before Kaoto's editors see them, and left alone while a dialog is open.
-  const saveRef = useRef(save);
-  saveRef.current = save;
+  const saveRef = useRef(saveAll);
+  saveRef.current = saveAll;
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
@@ -236,17 +259,27 @@ function FlowEditor() {
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
-  // Warn before leaving with unsaved changes, inside the app and when closing the tab.
+  // Warn before leaving with unsaved changes (the flow's or its API spec's), inside the app and when
+  // closing the tab. Moving between the editor's views is not leaving.
+  const unsaved = dirty || specDirty;
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      dirty && !leavingAfterSaveAs.current && currentLocation.pathname !== nextLocation.pathname,
+      unsaved &&
+      !leavingAfterSaveAs.current &&
+      editorPathOf(currentLocation.pathname) !== editorPathOf(nextLocation.pathname),
   );
   useEffect(() => {
-    if (!dirty) return;
+    if (!unsaved) return;
     const handler = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  }, [unsaved]);
+
+  /** Moves between the editor's views, keeping Kaoto's own place (in the URL hash). */
+  const showView = (spec: boolean) => {
+    if (spec === showSpec) return;
+    navigate({ pathname: spec ? apiSpecPath(id) : `/flows/${id}`, hash: window.location.hash });
+  };
 
   if (flow.isError || route.isError) {
     return (
@@ -325,7 +358,7 @@ function FlowEditor() {
             Upload Flow
           </DropdownItem>
           <Divider component="li" key="open-divider" />
-          <DropdownItem key="save" onClick={() => save()} isDisabled={saving} aria-keyshortcuts="Control+S">
+          <DropdownItem key="save" onClick={() => saveAll()} isDisabled={saving} aria-keyshortcuts="Control+S">
             Save
             <Shortcut keys="Ctrl+S" />
           </DropdownItem>
@@ -383,6 +416,22 @@ function FlowEditor() {
     </div>
   );
 
+  // API spec, on the tab line among Kaoto's views: the flow's OpenAPI spec, shown in place of Kaoto.
+  const apiSpecTab = (
+    <div className="echo-tab-actions echo-no-print">
+      <MenuToggle
+        variant="plainText"
+        className="echo-tab-menu echo-api-spec-tab"
+        data-echo-tab-current={showSpec ? '' : undefined}
+        aria-current={showSpec ? 'page' : undefined}
+        onClick={() => showView(true)}
+        title="Design the REST API this flow offers, as an OpenAPI spec"
+      >
+        API spec
+      </MenuToggle>
+    </div>
+  );
+
   // Downloads, Validate and Publish on the Flow Design canvas toolbar, where Kaoto's copy to clipboard was.
   const canvasActions = (
     <div className="echo-canvas-actions echo-no-print">
@@ -413,15 +462,6 @@ function FlowEditor() {
   // into the More menu (FlowEditorPage.css).
   const actions = (
     <div className="echo-tab-actions echo-no-print">
-      <Button
-        variant="plain"
-        icon={<CodeIcon />}
-        onClick={() => navigate(`/flows/${id}/api`)}
-        isDisabled={saving}
-        title="Design the REST API this flow offers, as an OpenAPI spec"
-      >
-        API spec
-      </Button>
       <Button variant="plain" className="echo-tab-actions__wide" onClick={() => setShowHistory(true)}>
         History
       </Button>
@@ -469,7 +509,7 @@ function FlowEditor() {
           <FlexItem>
             <StatusLabel status={flow.data.status} />
           </FlexItem>
-          {dirty ? (
+          {dirty || specDirty ? (
             <FlexItem data-testid="unsaved">Unsaved changes</FlexItem>
           ) : (
             autosavedAt && (
@@ -509,7 +549,12 @@ function FlowEditor() {
           files={files}
           onChange={onChange}
           tabBarStart={fileMenu}
-          tabBarMenus={runMenu}
+          tabBarMenus={
+            <>
+              {apiSpecTab}
+              {runMenu}
+            </>
+          }
           canvasToolbarActions={canvasActions}
           designMenuItems={downloadMenuItems({
             name: flow.data.name,
@@ -519,6 +564,19 @@ function FlowEditor() {
             imageBusy: drawing,
           })}
           tabBarActions={actions}
+          cover={
+            specOpened && (
+              <ApiSpecPanel
+                ref={specPanel}
+                flowId={id}
+                flowName={flow.data.name}
+                flowDescription={flow.data.description}
+                onDirtyChange={setSpecDirty}
+              />
+            )
+          }
+          coverVisible={showSpec}
+          onKaotoViewPicked={() => showView(false)}
         />
       </div>
 
@@ -601,7 +659,9 @@ function FlowEditor() {
       {blocker.state === 'blocked' && (
         <Modal isOpen variant="small" onClose={() => blocker.reset()} aria-labelledby="unsaved-title">
           <ModalHeader title="Leave without saving?" titleIconVariant="warning" labelId="unsaved-title" />
-          <ModalBody>Your changes to this flow have not been saved.</ModalBody>
+          <ModalBody>
+            {dirty ? 'Your changes to this flow have not been saved.' : "Your changes to this flow's API spec have not been saved."}
+          </ModalBody>
           <ModalFooter>
             <Button variant="danger" onClick={() => blocker.proceed()}>
               Leave

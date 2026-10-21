@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { followApicurioTheme } from './apicurioTheme';
 
 /**
  * Apicurio's OpenAPI editor, the prebuilt build from Apicurio Registry served from
@@ -21,6 +22,7 @@ export function ApicurioEditorHost({ initialContent, onChange }: Props) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const timer = useRef<number>(undefined);
+  const stopTheme = useRef<() => void>(undefined);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -33,6 +35,7 @@ export function ApicurioEditorHost({ initialContent, onChange }: Props) {
     return () => {
       window.removeEventListener('message', listener);
       window.clearInterval(timer.current);
+      stopTheme.current?.();
     };
   }, []);
 
@@ -40,6 +43,14 @@ export function ApicurioEditorHost({ initialContent, onChange }: Props) {
    * The editor only listens once its Angular app has started, and does not say when that is.
    * So we send the spec until the editor shows up in the frame (it ignores repeats).
    */
+  const onLoad = () => {
+    // Same origin, so ECHO's theme can be put into the editor without changing the vendored copy.
+    stopTheme.current?.();
+    const frameDoc = frame.current?.contentDocument;
+    stopTheme.current = frameDoc ? followApicurioTheme(frameDoc) : undefined;
+    sendContent();
+  };
+
   const sendContent = () => {
     const target = frame.current;
     let tries = 0;
@@ -67,7 +78,7 @@ export function ApicurioEditorHost({ initialContent, onChange }: Props) {
       className="echo-api-spec__frame"
       title="OpenAPI editor"
       src={APICURIO_EDITOR_URL}
-      onLoad={sendContent}
+      onLoad={onLoad}
     />
   );
 }
