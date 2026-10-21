@@ -76,7 +76,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     sendContent();
   };
 
-  /** Tells onDialogChange when a full-page dialog opens or closes (API Info cannot work under one). */
+  /** Tells onDialogChange when a full-page dialog opens or closes (API Overview cannot work under one). */
   const watchDialogs = (doc: Document) => {
     let open = false;
     const check = () => {

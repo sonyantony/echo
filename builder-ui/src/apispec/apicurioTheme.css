@@ -69,7 +69,7 @@
 
 /*
  * The API's name is hidden: ECHO's own bar (Openapi format, Save, Save As, Discard) lies over this
- * part of the title bar (ApiSpecPanel.css). The name is still clicked by "API Info" to open the
+ * part of the title bar (ApiSpecPanel.css). The name is still clicked by "API Overview" to open the
  * spec's details. Undo, redo and Issues stay on the right.
  */
 :root[data-echo-theme] .editor-title-bar > h1,
@@ -122,7 +122,7 @@
   color: var(--echo-subtle);
 }
 
-/* ---------- API Info page (the spec's main page) ---------- */
+/* ---------- API Overview page (the spec's main page) ---------- */
 
 /*
  * Only the sections flows need: Info, Tag Definitions and Vendor Extensions. Contact, License,
