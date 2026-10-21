@@ -115,10 +115,10 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           </FlexItem>
           <FlexItem align={{ default: 'alignRight' }}>
             <Flex gap={{ default: 'gapMd' }} alignItems={{ default: 'alignItemsCenter' }} flexWrap={{ default: 'nowrap' }}>
-              {spec.data === null && !dirty && <FlexItem data-testid="new-spec">New: not saved yet</FlexItem>}
+              {spec.data === null && !dirty && <FlexItem data-testid="new-spec" className="echo-api-spec__status">New: not saved yet</FlexItem>}
               {/* Unsaved edits show as the editor's "Unsaved changes", next to the flow's name. */}
               {!dirty && autosavedAt && (
-                <FlexItem className="echo-api-spec__autosaved">
+                <FlexItem className="echo-api-spec__status echo-api-spec__autosaved">
                   Autosaved at {autosavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </FlexItem>
               )}

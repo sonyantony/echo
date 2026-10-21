@@ -36,10 +36,13 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
     expect(y).toBeGreaterThanOrEqual(tabBox.y);
     expect(y).toBeLessThan(tabBox.y + tabBox.height);
   }
-  // File comes first, before Kaoto's Design tab, as in most desktop software.
+  // File comes first, as in most desktop software, then API spec (API-first flows start from the
+  // spec), then Kaoto's Design tab.
   const file = (await page.getByRole('button', { name: 'File', exact: true }).boundingBox())!;
+  const spec = (await page.getByRole('button', { name: 'API spec', exact: true }).boundingBox())!;
   const design = (await page.getByRole('button', { name: 'Flow Design', exact: true }).boundingBox())!;
-  expect(file.x + file.width).toBeLessThanOrEqual(design.x);
+  expect(file.x + file.width).toBeLessThanOrEqual(spec.x);
+  expect(spec.x + spec.width).toBeLessThanOrEqual(design.x);
   await page.getByRole('button', { name: 'File', exact: true }).click();
   for (const item of [/^Open Template/, /^Open Flow/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/]) {
     await expect(page.getByRole('menuitem', { name: item })).toBeVisible();
@@ -53,6 +56,14 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   await expect(page.getByRole('menuitem', { name: 'History' })).toBeVisible();
   const more = (await page.getByRole('button', { name: 'More actions' }).boundingBox())!;
   expect(more.x + more.width).toBeLessThanOrEqual(1100);
+  // The tab line still fits on one line: no taller than at full width, every item on it.
+  const narrowBox = (await tabBar.boundingBox())!;
+  expect(narrowBox.height).toBeLessThanOrEqual(tabBox.height + 1);
+  for (const name of ['File', 'API spec', 'Flow Design', 'Run', 'Advanced']) {
+    const y = await top(name);
+    expect(y).toBeGreaterThanOrEqual(narrowBox.y);
+    expect(y).toBeLessThan(narrowBox.y + narrowBox.height);
+  }
 });
 
 test('the tab underline moves to the menu clicked, and to Flow Design and Advanced while their view is open', async ({ page }) => {
