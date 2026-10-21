@@ -1,0 +1,309 @@
+/*
+ * ECHO's theme for Apicurio's OpenAPI editor (public/apicurio-editor, vendored unmodified).
+ * ApicurioEditorHost injects this stylesheet into the editor's frame and copies the active
+ * theme's colours onto the frame's <html> as the --echo-* values used below (see
+ * apicurioTheme.ts), so this file follows studio, graphite and blueprint, and the install's
+ * brand colours, without knowing them.
+ *
+ * Apicurio is an Angular app on PatternFly 3 (Bootstrap): its colours are hard-coded, many in
+ * component styles that Angular adds after this sheet with long selectors. Rules that must beat
+ * those use !important. Rules start with :root[data-echo-theme] so they apply only once the
+ * colours are in place.
+ */
+@import '@fontsource-variable/inter';
+
+:root[data-echo-theme] {
+  --echo-font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --echo-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  --echo-brand-subtle: color-mix(in srgb, var(--echo-brand) 22%, transparent);
+  --echo-brand-faint: color-mix(in srgb, var(--echo-brand) 12%, transparent);
+  --echo-ink-faint: color-mix(in srgb, var(--echo-text) 6%, transparent);
+  --echo-border-strong: color-mix(in srgb, var(--echo-text) 28%, var(--echo-surface));
+}
+
+/* ---------- Type and page ---------- */
+
+:root[data-echo-theme] body,
+:root[data-echo-theme] .tooltip,
+:root[data-echo-theme] .popover,
+:root[data-echo-theme] .table > thead > tr > th {
+  font-family: var(--echo-font);
+}
+:root[data-echo-theme] body {
+  color: var(--echo-text);
+  background-color: var(--echo-surface);
+  letter-spacing: -0.005em;
+}
+:root[data-echo-theme] code,
+:root[data-echo-theme] pre {
+  font-family: var(--echo-mono);
+}
+
+/* Links and link-buttons ("Add a path", "Switch to simple type"): ECHO's ink with the brand underline. */
+:root[data-echo-theme] a,
+:root[data-echo-theme] a:hover,
+:root[data-echo-theme] a:focus,
+:root[data-echo-theme] .btn-link,
+:root[data-echo-theme] .btn-link:hover,
+:root[data-echo-theme] .btn-link:focus {
+  color: var(--echo-ink) !important;
+}
+:root[data-echo-theme] .api-signpost a,
+:root[data-echo-theme] .section-body a,
+:root[data-echo-theme] .empty a {
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--echo-brand);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/* Icons Apicurio draws in its blue. */
+:root[data-echo-theme] .pficon,
+:root[data-echo-theme] .validation-icon button .icon,
+:root[data-echo-theme] .fa-check-circle {
+  color: var(--echo-subtle) !important;
+}
+
+/* ---------- Title bar: the flow's API name ---------- */
+
+:root[data-echo-theme] .editor-title-bar {
+  background-color: var(--echo-surface) !important;
+  border-bottom-color: var(--echo-border) !important;
+}
+/* Apicurio's OpenAPI logo is left out: the page is part of ECHO, not a separate product. */
+:root[data-echo-theme] .editor-title-bar > h1,
+:root[data-echo-theme] .editor-title-bar > form {
+  background-image: none !important;
+  padding-left: 12px !important;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--echo-text);
+}
+:root[data-echo-theme] .editor-title-bar .title-editor-form .title-editor-input {
+  margin-left: 8px !important;
+}
+:root[data-echo-theme] .editor-title-bar > h1:hover,
+:root[data-echo-theme] .undo-icon button.enabled:hover,
+:root[data-echo-theme] .redo-icon button.enabled:hover,
+:root[data-echo-theme] .validation-icon:hover {
+  background-color: var(--echo-ink-faint) !important;
+}
+:root[data-echo-theme] .editor-title-bar.selected > h1,
+:root[data-echo-theme] .editor-title-bar.editing,
+:root[data-echo-theme] .editor-title-bar.expanded .validation-icon {
+  background-color: var(--echo-brand-subtle) !important;
+}
+:root[data-echo-theme] .validation-icon,
+:root[data-echo-theme] .issues-label {
+  color: var(--echo-subtle);
+}
+
+/* ---------- Outline on the left: Paths, Data Types, Responses ---------- */
+
+:root[data-echo-theme] .editor-master {
+  background-color: var(--echo-surface);
+  border-color: var(--echo-border) !important;
+}
+:root[data-echo-theme] .editor-outline .section-header,
+:root[data-echo-theme] .section .section-header {
+  border-bottom-color: var(--echo-border) !important;
+}
+:root[data-echo-theme] .editor-outline .section-label,
+:root[data-echo-theme] .section .section-label {
+  font-weight: 600;
+  color: var(--echo-text);
+}
+:root[data-echo-theme] .editor-outline .hover,
+:root[data-echo-theme] .editor-outline .api-path:hover,
+:root[data-echo-theme] .editor-outline .api-definition:hover,
+:root[data-echo-theme] .editor-outline .api-response:hover {
+  background-color: var(--echo-ink-faint) !important;
+}
+:root[data-echo-theme] .editor-outline .selected,
+:root[data-echo-theme] .editor-master .editor-main.selected {
+  background-color: var(--echo-brand-subtle) !important;
+  border-left: 3px solid var(--echo-brand) !important;
+  color: var(--echo-text);
+}
+
+/* ---------- Detail on the right ---------- */
+
+:root[data-echo-theme] .editor-detail,
+:root[data-echo-theme] .detail-tabs,
+:root[data-echo-theme] .detail-title {
+  background-color: var(--echo-surface);
+  border-color: var(--echo-border) !important;
+}
+:root[data-echo-theme] .detail-label {
+  font-weight: 600;
+}
+:root[data-echo-theme] .section.highlight .section-body {
+  border-color: var(--echo-brand) !important;
+  box-shadow: 0 0 0 3px var(--echo-brand-subtle) !important;
+}
+:root[data-echo-theme] .operations-section .operation-tabs .operation-tab.selected,
+:root[data-echo-theme] .header > .selected {
+  border-color: var(--echo-brand) !important;
+  color: var(--echo-text) !important;
+}
+:root[data-echo-theme] .header:hover,
+:root[data-echo-theme] .security-requirement:hover {
+  background-color: var(--echo-ink-faint) !important;
+}
+
+/* Design / Source tabs: ECHO's tab look, the brand-colour underline under the open one. */
+:root[data-echo-theme] .nav-tabs {
+  border-bottom-color: var(--echo-border);
+}
+:root[data-echo-theme] .nav-tabs > li > a {
+  color: var(--echo-subtle) !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+:root[data-echo-theme] .nav-tabs > li > a:hover {
+  color: var(--echo-text) !important;
+  background-color: transparent;
+}
+:root[data-echo-theme] .nav-tabs > li.active > a,
+:root[data-echo-theme] .nav-tabs > li.active > a:hover,
+:root[data-echo-theme] .nav-tabs > li.active > a:focus {
+  color: var(--echo-text) !important;
+  background-color: transparent;
+}
+:root[data-echo-theme] .nav-tabs-pf > li.active > a::before,
+:root[data-echo-theme] .nav-tabs-pf > li.active > a:hover::before,
+:root[data-echo-theme] .nav-tabs-pf > li.active > a:focus::before {
+  background: var(--echo-brand);
+  height: 3px;
+}
+
+/* ---------- Buttons and fields ---------- */
+
+:root[data-echo-theme] .btn {
+  border-radius: 6px;
+  font-weight: 600;
+  box-shadow: none;
+  background-image: none;
+}
+:root[data-echo-theme] .btn-primary,
+:root[data-echo-theme] .btn-primary:hover,
+:root[data-echo-theme] .btn-primary:focus,
+:root[data-echo-theme] .btn-primary:active {
+  background-color: var(--echo-brand);
+  border-color: var(--echo-brand);
+  color: var(--echo-on-brand);
+}
+:root[data-echo-theme] .btn-primary:hover {
+  background-color: var(--echo-brand-hover);
+  border-color: var(--echo-brand-hover);
+}
+:root[data-echo-theme] .btn-default {
+  background-color: var(--echo-surface) !important;
+  border-color: var(--echo-border-strong);
+  color: var(--echo-text) !important;
+}
+:root[data-echo-theme] .btn-default:hover,
+:root[data-echo-theme] .btn-default:focus {
+  background-color: var(--echo-ink-faint) !important;
+  border-color: var(--echo-ink);
+  color: var(--echo-text);
+}
+:root[data-echo-theme] .form-control {
+  border-radius: 6px;
+  border-color: var(--echo-border-strong);
+  background-color: var(--echo-surface) !important;
+  color: var(--echo-text) !important;
+  box-shadow: none;
+}
+:root[data-echo-theme] .form-control:focus {
+  border-color: var(--echo-ink);
+  box-shadow: 0 0 0 3px var(--echo-brand-subtle);
+}
+/* The search box: one rounded field with its button. */
+:root[data-echo-theme] .editor-search .form-control {
+  border-radius: 6px 0 0 6px;
+}
+:root[data-echo-theme] .editor-search .btn {
+  border-radius: 0 6px 6px 0;
+}
+:root[data-echo-theme] .dropdown-menu {
+  border-radius: 6px;
+  border-color: var(--echo-border);
+  background-color: var(--echo-floating);
+  box-shadow: 0 4px 12px rgb(20 24 36 / 15%);
+}
+:root[data-echo-theme] .dropdown-menu > li > a {
+  color: var(--echo-text) !important;
+}
+:root[data-echo-theme] .dropdown-menu > li > a:hover,
+:root[data-echo-theme] .dropdown-menu > li > a:focus {
+  background-color: var(--echo-brand-faint);
+  border-color: transparent;
+}
+
+/* ---------- Dialogs (Add a path, Add a data type, ...) ---------- */
+
+:root[data-echo-theme] .modal-content {
+  border-radius: 10px;
+  border-color: var(--echo-border);
+  background-color: var(--echo-floating);
+  box-shadow: 0 8px 28px rgb(20 24 36 / 25%);
+}
+:root[data-echo-theme] .modal-header {
+  background-color: transparent;
+  border-bottom-color: var(--echo-border);
+}
+:root[data-echo-theme] .modal-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+:root[data-echo-theme] .modal-footer {
+  border-top-color: var(--echo-border);
+}
+
+/* ---------- Code editor (Ace, whichever of its themes Apicurio picks): Source tab and example fields ---------- */
+
+:root[data-echo-theme] .ace_editor {
+  font-family: var(--echo-mono) !important;
+  font-size: 13px !important;
+  border-radius: 6px;
+}
+:root[data-echo-theme] .ace_editor.ace_editor {
+  background-color: var(--echo-code-background);
+  color: var(--echo-text);
+}
+:root[data-echo-theme] .ace_editor .ace_gutter {
+  background-color: var(--echo-code-gutter);
+  color: var(--echo-subtle);
+  border-right: 1px solid var(--echo-border);
+}
+:root[data-echo-theme] .ace_editor .ace_gutter-active-line,
+:root[data-echo-theme] .ace_editor .ace_marker-layer .ace_active-line {
+  background-color: var(--echo-brand-faint);
+}
+:root[data-echo-theme] .ace_editor .ace_print-margin {
+  background-color: var(--echo-border);
+}
+:root[data-echo-theme] .ace_editor .ace_cursor {
+  color: var(--echo-text);
+}
+:root[data-echo-theme] .ace_editor .ace_marker-layer .ace_selection {
+  background-color: var(--echo-brand-subtle);
+}
+:root[data-echo-theme] .ace_editor .ace_marker-layer .ace_bracket {
+  border-color: var(--echo-subtle);
+}
+/* Keys, strings and numbers in ECHO's neutral palette with one accent, instead of Ace's blue and green. */
+:root[data-echo-theme] .ace_editor .ace_meta.ace_tag,
+:root[data-echo-theme] .ace_editor .ace_variable,
+:root[data-echo-theme] .ace_editor .ace_keyword {
+  color: var(--echo-code-key);
+}
+:root[data-echo-theme] .ace_editor .ace_string {
+  color: var(--echo-code-string);
+}
+:root[data-echo-theme] .ace_editor .ace_constant.ace_numeric,
+:root[data-echo-theme] .ace_editor .ace_constant.ace_language {
+  color: var(--echo-code-number);
+}

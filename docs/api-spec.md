@@ -5,8 +5,11 @@ it offers. This page covers the editor; using the spec at runtime is the next st
 
 ## Editing
 
-In the flow editor, **API spec** opens the flow's spec in the Apicurio OpenAPI editor (visual
-designer plus a Source tab). **Save** stores it as `openapi.json` in the flow's folder, next to
+In the flow editor, **API spec** (on the tab line, after DataMapper) opens the flow's spec in the
+Apicurio OpenAPI editor (visual designer plus a Source tab), in place of Kaoto's views; the tab line
+stays, so File, Flow Design, Rest and the rest are one click away, and unsaved spec edits are kept
+while another view is open. **Save API spec**, or File > Save and Ctrl+S from any view, stores it
+as `openapi.json` in the flow's folder, next to
 `<flow>.camel.yaml`, so it is published, downloaded and uploaded with the flow like any other side
 file. A flow without a spec starts from an empty OpenAPI 3.0.3 document named after the flow.
 Autosave follows `echo.editor.autosave-seconds`, as in the flow editor.
@@ -26,6 +29,14 @@ Builder ships Apicurio's own prebuilt editor (from the Apicurio Registry UI imag
 `builder-ui/public/apicurio-editor/` and shows it in a same-origin frame; see the README there and
 `builder-ui/src/apispec/`. The Builder therefore sends `X-Frame-Options: SAMEORIGIN` instead of
 Spring Security's default `DENY`.
+
+Being same-origin also lets the Builder theme the editor without changing the vendored copy:
+`ApicurioEditorHost` injects `src/apispec/apicurioTheme.css` into the frame and copies the active
+theme's colours onto it (`apicurioTheme.ts`). It restyles the font (Inter), title bar, outline
+selection, links, Design/Source tabs, buttons, fields, dialogs and the code editor. Apicurio is
+built on PatternFly 3, which has no dark mode, so under graphite the editor stays light. The CSS
+targets Apicurio's class names: after refreshing the editor with `update-apicurio-editor.sh`,
+check the API spec view in each theme (the `api-spec` e2e test checks the theme is applied).
 
 ## Next step: using the spec at runtime (not built yet)
 

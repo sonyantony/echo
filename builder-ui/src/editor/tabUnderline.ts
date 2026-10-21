@@ -6,6 +6,8 @@ const ACCENT_PROPERTIES = [
 
 /** Marks the menu on the tab line that has the underline (styled like the open tab). */
 export const UNDERLINED_CLASS = 'echo-tab-menu--underlined';
+/** Set on an item of the tab line whose Builder view is open (e.g. API spec): it has the underline, whatever was clicked. */
+export const CURRENT_ATTRIBUTE = 'data-echo-tab-current';
 
 /**
  * Keeps Kaoto's tab underline (PatternFly's animated accent, drawn by the tab list) on the right
@@ -14,7 +16,8 @@ export const UNDERLINED_CLASS = 'echo-tab-menu--underlined';
  *   closes;
  * - a Kaoto tab takes it back when clicked, or when another view opens;
  * - while Kaoto's Design or Beans view is open and no menu was clicked since, it sits under the menu
- *   standing in for that tab (the toggle's `data-echo-tab`, see KaotoTabMenu.tsx).
+ *   standing in for that tab (the toggle's `data-echo-tab`, see KaotoTabMenu.tsx);
+ * - while a Builder view covers Kaoto's (API spec), it sits under that view's item (CURRENT_ATTRIBUTE).
  * PatternFly sets the accent's position on the tabs element; values on the list itself take
  * precedence, and are removed again when a Kaoto tab has the underline. Returns a cleanup function.
  */
@@ -27,6 +30,7 @@ export function trackTabUnderline(container: HTMLElement) {
     list()?.querySelector("[role='tab'][aria-selected='true']")?.closest<HTMLElement>('[data-testid]')?.dataset.testid ?? null;
 
   const targetIn = (tabs: HTMLElement) =>
+    tabs.querySelector<HTMLElement>(`[${CURRENT_ATTRIBUTE}]`) ??
     (clicked?.isConnected && tabs.contains(clicked) ? clicked : null) ??
     (selected ? tabs.querySelector<HTMLElement>(`.pf-v6-c-menu-toggle[data-echo-tab='${selected}']`) : null);
 
@@ -86,7 +90,7 @@ export function trackTabUnderline(container: HTMLElement) {
   // Capture, so a menu's own click handler (which may open another view) runs after this.
   container.addEventListener('click', onClick, true);
   const mutations = new MutationObserver(onChange);
-  mutations.observe(container, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-selected'] });
+  mutations.observe(container, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-selected', CURRENT_ATTRIBUTE] });
   onChange();
 
   return () => {

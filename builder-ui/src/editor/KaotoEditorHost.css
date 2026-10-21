@@ -8,6 +8,8 @@
   flex: 1;
   min-height: 0;
   position: relative;
+  /* Keeps Kaoto's own layers (side panel, canvas controls) under the cover below. */
+  isolation: isolate;
 }
 /* Kaoto sizes its shell to the whole window (100vw x 100vh); fit it to the host instead,
    otherwise it is wider than the page and its own scroll bars sit off screen. */
@@ -106,4 +108,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* A Builder view shown in place of Kaoto's views, below its tab bar (e.g. the API spec). */
+.echo-kaoto-host {
+  position: relative;
+}
+.echo-kaoto-host__cover {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  background-color: var(--pf-t--global--background--color--primary--default);
+}
+.echo-kaoto-host__cover[hidden] {
+  display: none;
 }
