@@ -115,8 +115,11 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     setContentDirty(false);
   }, [flowName, flowDescription]);
 
+  // Opened once: a later fetch of the same spec must not throw away edits made since.
+  const opened = useRef(false);
   useEffect(() => {
-    if (spec.data) {
+    if (spec.data && !opened.current) {
+      opened.current = true;
       setStoredName(spec.data.name);
       open(spec.data);
     }
