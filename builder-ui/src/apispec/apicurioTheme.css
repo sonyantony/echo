@@ -125,16 +125,66 @@
 /* ---------- API Overview page (the spec's main page) ---------- */
 
 /*
- * Only the sections flows need: Info and Tag Definitions. Contact, License, Servers and Security
- * are hidden (whatever an uploaded spec has there stays in the file and shows in Source).
+ * Only the sections flows need: Info, Tag Definitions and Servers, shown as Base Path (below).
+ * Contact, License and Security are hidden (whatever an uploaded spec has there stays in the file
+ * and shows in Source).
  */
 :root[data-echo-theme] main-form contact-section,
 :root[data-echo-theme] main-form license-section,
-:root[data-echo-theme] main-form servers-section,
 :root[data-echo-theme] main-form security-schemes-section,
 :root[data-echo-theme] main-form security-requirements-section {
   display: none !important;
 }
+/*
+ * Servers, shown as Base Path: the path the flow serves its operations under (Camel takes it from
+ * the server URL). One is enough, so Add goes once there is one, and a server's description,
+ * variables and details are hidden. Apicurio's own words are swapped by sizing them to 0 and
+ * writing ECHO's in ::before. basePath.ts does what CSS cannot (Apply as you type, placeholder).
+ */
+:root[data-echo-theme] main-form .servers-section .section-label {
+  font-size: 0;
+}
+:root[data-echo-theme] main-form .servers-section .section-label::before {
+  content: 'BASE PATH';
+  font-size: 15px;
+}
+:root[data-echo-theme] main-form .servers-section context-help,
+:root[data-echo-theme] main-form .servers-section:has(server-row) icon-button[type='add'],
+:root[data-echo-theme] main-form .servers-section server-row :is(.expand, .description, .entity-icon) {
+  display: none !important;
+}
+:root[data-echo-theme] main-form .servers-section signpost :is(span, a) {
+  font-size: 0;
+}
+:root[data-echo-theme] main-form .servers-section signpost span::before {
+  content: 'No base path: the operations are served from the root, e.g. /orders.';
+  font-size: 13px;
+}
+:root[data-echo-theme] main-form .servers-section signpost a::before {
+  content: 'Set a base path';
+  font-size: 13px;
+}
+:root[data-echo-theme] .server-entity-editor :is(h1.title, label[for='serverUrl'], .explanation > span) {
+  font-size: 0;
+}
+:root[data-echo-theme] .server-entity-editor h1.title::before {
+  content: 'Base Path';
+  font-size: 25px;
+}
+:root[data-echo-theme] .server-entity-editor label[for='serverUrl']::before {
+  content: 'Base Path';
+  font-size: 13px;
+}
+:root[data-echo-theme] .server-entity-editor .explanation > span::before {
+  content: 'The path the flow serves its API under. With /customers/v1, the spec\0027s /orders is called as /customers/v1/orders.';
+  font-size: 13px;
+}
+:root[data-echo-theme] .server-entity-editor :is(.notice, .body-section h3, .explanation > br, .explanation > code, .url-action, form-error-message, .form-group:has(#description)),
+:root[data-echo-theme] .server-entity-editor .body-section + .divider-section,
+:root[data-echo-theme] .server-entity-editor .body-section + .divider-section + .body-section {
+  display: none !important;
+}
+
 /* Vendor Extensions (x-… fields) are hidden on every page: overview, paths, operations, data types. */
 :root[data-echo-theme] extensions-section {
   display: none !important;

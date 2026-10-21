@@ -144,10 +144,12 @@ test('Advanced > Java Beans opens the Beans view, before About; Flow Design take
   await expect(page.locator('.shell__tab-content--scrollable')).toBeVisible();
   await expect(advanced).toHaveClass(/echo-tab-menu--current/);
   await expect(page.getByRole('button', { name: 'Flow Design', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
-  // Flow Design opens the canvas and its menu of downloads.
+  // Flow Design opens the canvas and its menu of downloads and REST settings.
   await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
-  await expect(page.getByRole('menuitem')).toHaveCount(2);
+  await expect(page.getByRole('menuitem')).toHaveCount(4);
+  await expect(page.getByRole('menuitem', { name: /Client Request Validation/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /Enable CORS/ })).toBeVisible();
   await expect(advanced).not.toHaveClass(/echo-tab-menu--current/);
 });
 
@@ -197,7 +199,7 @@ test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate 
   await expect(page.getByTestId('validation-result')).toBeVisible();
 
   // They come back with the canvas after another tab.
-  await page.getByRole('tab', { name: /Rest/ }).click();
+  await page.getByRole('tab', { name: /DataMapper/ }).click();
   await expect(validate).toBeHidden();
   await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
   await page.keyboard.press('Escape');

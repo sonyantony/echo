@@ -215,7 +215,7 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   await editor.getByPlaceholder('Enter a unique data type name.').fill('Customer');
   await editor.getByRole('button', { name: 'Save' }).first().click();
   await expect(page.getByTestId('unsaved')).toBeVisible();
-  await page.getByRole('tab', { name: /Rest/ }).click();
+  await page.getByRole('tab', { name: /DataMapper/ }).click();
   await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
   await page.getByRole('button', { name: 'File', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Save$/ }).click();
@@ -232,17 +232,35 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   await expect(editor.getByText('VENDOR EXTENSIONS', { exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'API Overview' }).click();
   await expect(editor.getByText('TAG DEFINITIONS', { exact: true })).toBeVisible();
-  // Only Info and Tag Definitions are shown there (Vendor Extensions is hidden on every page); tags get a short explanation.
-  for (const hidden of ['CONTACT', 'LICENSE', 'SERVERS', 'SECURITY SCHEMES', 'SECURITY REQUIREMENTS', 'VENDOR EXTENSIONS']) {
+  // Only Info, Tag Definitions and Servers (as Base Path) are shown there (Vendor Extensions is hidden on every
+  // page); tags get a short explanation.
+  for (const hidden of ['CONTACT', 'LICENSE', 'SECURITY SCHEMES', 'SECURITY REQUIREMENTS', 'VENDOR EXTENSIONS']) {
     await expect(editor.getByText(hidden, { exact: true })).toBeHidden();
   }
   const tagNote = await editor
     .locator('main-form .tags-section .section-label')
     .evaluate((el) => getComputedStyle(el, '::after').content);
   expect(tagNote).toMatch(/^url\("data:image\/svg\+xml,.*"\) "\u00a0Tags group APIs into sections"$/);
+
+  // Servers shows as Base Path: one path, typed and saved (no Apply, description or variables).
+  const basePath = editor.locator('main-form .servers-section');
+  expect(await basePath.locator('.section-label').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"BASE PATH"');
+  await basePath.locator('signpost a').click({ force: true }); // its words are CSS, so not "visible" to Playwright
+  const dialog = editor.locator('.server-entity-editor');
+  expect(await dialog.locator('h1.title').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"Base Path"');
+  await expect(dialog.locator('#description')).toBeHidden();
+  await expect(dialog.getByRole('button', { name: 'Apply' })).toBeHidden();
+  await dialog.locator('#serverUrl').pressSequentially('/customers/v1');
+  await dialog.getByRole('button', { name: 'Save' }).first().click();
+  await expect(basePath.locator('server-row')).toHaveText(/\/customers\/v1/);
+  await expect(basePath.locator("icon-button[type='add']")).toBeHidden(); // one is enough
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByTestId('unsaved')).toBeHidden();
+  const saved = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/customers.json`)).json();
+  expect(saved.servers.map((s: { url: string }) => s.url)).toEqual(['/customers/v1']);
 });
 
-test("the Rest service's Openapi Specification picks a spec; another flow's spec is copied into this flow", async ({ page }) => {
+test("Copy From Another Flow starts this flow's spec from a copy of another flow's", async ({ page }) => {
   await login(page);
   // A spec owned by another flow.
   const other = uniqueName('spec-owner');
@@ -258,54 +276,30 @@ test("the Rest service's Openapi Specification picks a spec; another flow's spec
 
   await createFlow(page, uniqueName('spec-user'));
   const flowId = flowIdOf(page);
-  await page.getByRole('tab', { name: /Rest/ }).click();
-  await page.getByRole('button', { name: 'Actions' }).click();
-  await page.getByRole('menuitem', { name: 'Add Service' }).click();
-  await page
-    .locator('div')
-    .filter({ has: page.getByRole('button', { name: 'More info for Open Api field' }) })
-    .getByRole('button', { name: 'Set object' })
-    .last()
-    .click();
-
-  // Kaoto's text field is replaced by a drop-down, <new> first, then the other flows' specs.
-  const wrapper = page.getByTestId('#.openApi.specification__field-wrapper');
-  await expect(wrapper.locator('label')).toContainText('Openapi Specification');
-  await expect(wrapper.getByRole('textbox')).toBeHidden();
-  const toggle = page.getByTestId('openapi-specification-toggle');
-  await toggle.click();
-  const options = page.getByRole('option');
-  await expect(options.first()).toHaveText(/^<new>/);
-  await page.getByRole('option', { name: new RegExp(`^${specName}.*From flow ${other}`) }).click();
-
-  // Picking it copies the file into this flow and sets the field.
-  await expect(toggle).toHaveText(specName);
-  expect(await (await page.request.get(`/api/flows/${flowId}/files/${specName}`)).text()).toBe(ownerSpec);
-  await expect(page.getByTestId('unsaved')).toBeVisible();
-  await page.keyboard.press('Control+s');
-  await expect(page.getByTestId('unsaved')).toBeHidden();
-  const route = await (await page.request.get(`/api/flows/${flowId}`)).json();
-  const yaml = await (await page.request.get(`/api/flows/${flowId}/files/${route.routeFile}`)).text();
-  expect(yaml).toMatch(new RegExp(`openApi:\\s+specification: ${specName.replace('.', '\\.')}`));
-
-  // Now the flow has a spec of its own: it is listed as this flow's, and <new> replaces it after asking for a name.
-  await toggle.click();
-  await expect(page.getByRole('option', { name: new RegExp(`^${specName}.*This flow's spec`) })).toBeVisible();
-  await page.getByRole('option', { name: /^<new>/ }).click();
+  await specMenu(page, /^Copy From Another Flow/);
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByText(`A flow has one spec: this replaces ${specName}.`)).toBeVisible();
-  await dialog.getByLabel('File name').fill('fresh-api.yaml');
-  await dialog.getByRole('button', { name: 'Save' }).click();
-  await expect(toggle).toHaveText('fresh-api.yaml');
-  const detail = await (await page.request.get(`/api/flows/${flowId}`)).json();
-  expect(detail.apiSpec).toBe('fresh-api.yaml');
-  expect(detail.files).not.toContain(specName);
+  await dialog.getByRole('button', { name: 'OpenAPI spec to copy' }).click();
+  await page.getByText(`From flow ${other}`, { exact: true }).click();
+  await dialog.getByRole('button', { name: 'Copy', exact: true }).click();
+  await expect(dialog).toBeHidden();
 
-  // Picking another flow's spec when this flow has one asks first.
-  await toggle.click();
-  await page.getByRole('option', { name: new RegExp(`^${specName}.*From flow ${other}`) }).click();
-  await expect(page.getByRole('dialog')).toContainText(`fresh-api.yaml is replaced by a copy of ${specName} from flow ${other}`);
-  await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
-  await expect(toggle).toHaveText(specName);
-  expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe(specName);
+  // The file is copied into this flow, which shows it in Openapi Design.
+  expect(await (await page.request.get(`/api/flows/${flowId}/files/${specName}`)).text()).toBe(ownerSpec);
+  await expect(page.getByTestId('spec-name')).toHaveText(specName);
+
+  // When this flow has a spec, the copy replaces it after saying so.
+  await page.request.put(`/api/flows/${flowId}/api-spec/fresh-api.yaml`, {
+    data: ownerSpec.replace('Customers', 'Fresh'),
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf },
+  });
+  await page.reload();
+  await specMenu(page, /^Copy From Another Flow/);
+  await dialog.getByRole('button', { name: 'OpenAPI spec to copy' }).click();
+  await page.getByText(`From flow ${other}`, { exact: true }).click();
+  await expect(dialog).toContainText('A flow has one OpenAPI spec: fresh-api.yaml is replaced.');
+  await dialog.getByRole('button', { name: 'Replace' }).click();
+  await expect(dialog).toBeHidden();
+  const detail = await (await page.request.get(`/api/flows/${flowId}`)).json();
+  expect(detail.apiSpec).toBe(specName);
+  expect(detail.files).not.toContain('fresh-api.yaml');
 });

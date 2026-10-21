@@ -193,6 +193,105 @@ class FlowRunnerTest {
     }
 
     @Test
+    void servesTheSpecUnderItsBasePathAndAnswers404ForOperationsWithoutARoute() throws Exception {
+        // The draft has only the route; ECHO adds the REST part from the spec when the flow runs.
+        String spec = """
+                openapi: 3.0.3
+                info: {title: Customers, version: 1.0.0}
+                servers:
+                  - url: /myurlbase
+                paths:
+                  /customers/{id}:
+                    get:
+                      operationId: getCustomer
+                      responses: {"200": {description: ok}}
+                  /orders:
+                    get:
+                      operationId: listOrders
+                      responses: {"200": {description: ok}}
+                """;
+        var files = com.ey.echo.builder.flow.RestFromSpec.apply("customers.camel.yaml", java.util.Optional.of("customer-api.yaml"), Map.of(
+                "customers.camel.yaml", """
+                        - route:
+                            from:
+                              uri: direct:getCustomer
+                              steps:
+                                - setBody:
+                                    simple: '{"id":"${header.id}"}'
+                        """,
+                "customer-api.yaml", spec));
+
+        var run = runner.start(1, "customers", "customers.camel.yaml", files, "designer");
+        assertThat(run.endpoints).containsExactly(
+                new FlowRun.Endpoint("/myurlbase/customers/{id}", List.of("GET")),
+                new FlowRun.Endpoint("/myurlbase/orders", List.of("GET")));
+
+        var found = get(run.port, "/myurlbase/customers/C7");
+        assertThat(found.statusCode()).isEqualTo(200);
+        assertThat(found.body()).isEqualTo("{\"id\":\"C7\"}");
+        var missing = get(run.port, "/myurlbase/orders");
+        assertThat(missing.statusCode()).isEqualTo(404);
+        assertThat(missing.body()).contains("listOrders");
+        assertThat(get(run.port, "/customers/C7").statusCode()).isEqualTo(404);
+    }
+
+    @Test
+    void theFlowDesignMenusRestSettingsApplyToTheServiceMadeFromTheSpec() throws Exception {
+        String spec = """
+                openapi: 3.0.3
+                info: {title: Orders, version: 1.0.0}
+                paths:
+                  /orders:
+                    post:
+                      operationId: createOrder
+                      requestBody:
+                        required: true
+                        content:
+                          application/json:
+                            schema:
+                              type: object
+                              required: [sku]
+                              properties: {sku: {type: string}}
+                      responses: {"200": {description: ok}}
+                """;
+        var files = com.ey.echo.builder.flow.RestFromSpec.apply("orders.camel.yaml", java.util.Optional.of("orders-api.yaml"), Map.of(
+                "orders.camel.yaml", """
+                        - restConfiguration:
+                            clientRequestValidation: true
+                            enableCORS: true
+                        - route:
+                            from:
+                              uri: direct:createOrder
+                              steps:
+                                - setBody:
+                                    constant: '{"ok":true}'
+                        """,
+                "orders-api.yaml", spec));
+        var run = runner.start(1, "orders", "orders.camel.yaml", files, "designer");
+
+        // Camel's client request validation checks the content type and that a required body, query
+        // parameter or header is there; it does not check the body against the schema.
+        var noBody = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/orders"))
+                .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.noBody()).build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(noBody.statusCode()).isEqualTo(400);
+        var wrongType = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/orders"))
+                .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("sku=X")).build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(wrongType.statusCode()).isEqualTo(415);
+        var good = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/orders"))
+                .header("Content-Type", "application/json").header("Origin", "http://web.example")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"sku\":\"X\"}")).build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(good.statusCode()).isEqualTo(200);
+        assertThat(good.headers().firstValue("Access-Control-Allow-Origin")).isPresent();
+    }
+
+    private HttpResponse<String> get(int port, String path) throws Exception {
+        return http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + path)).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test
     void runsTheGoldenOrdersFlowWithItsDataMapperFiles() throws Exception {
         var files = folder(ORDERS);
         files.put("application.properties", "fulfilment.url=" + downstreamUrl("/fulfilment"));

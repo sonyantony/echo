@@ -19,7 +19,7 @@ import {
   Title,
 } from '@patternfly/react-core';
 import { UNDERLINED_CLASS } from '../editor/tabUnderline';
-import { CheckCircleIcon, DownloadIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon, CopyIcon, DownloadIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -34,9 +34,10 @@ import {
   type ValidationResult,
 } from '../api/flows';
 import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
-import { OPENAPI_SPECIFICATION_FIELD, SpecificationPicker } from '../apispec/SpecificationPicker';
+import { CopySpecModal } from '../apispec/CopySpecModal';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
+import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
@@ -111,6 +112,9 @@ function FlowEditor() {
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [copyingSpec, setCopyingSpec] = useState(false);
+  /** Client Request Validation and Enable CORS, as the route on screen has them (Flow Design menu). */
+  const [restSettings, setRestSettings] = useState<RestSettings>();
   // The API spec is opened on first use and then kept (hidden while a Kaoto view is open), so its
   // unsaved edits survive moving between views.
   const [specOpened, setSpecOpened] = useState(showSpec);
@@ -125,7 +129,10 @@ function FlowEditor() {
   const leavingAfterSaveAs = useRef(false);
 
   useEffect(() => {
-    if (route.data !== undefined) savedYaml.current = route.data;
+    const yaml = route.data;
+    if (yaml === undefined) return;
+    savedYaml.current = yaml;
+    setRestSettings((current) => current ?? readRestSettings(yaml));
   }, [route.data]);
 
   // Cancel on the Open Flow page comes back here when it has nowhere else to go.
@@ -136,6 +143,21 @@ function FlowEditor() {
   const onChange = useCallback((yaml: string) => {
     latestYaml.current = yaml;
     setDirty(yaml !== savedYaml.current);
+    const now = readRestSettings(yaml);
+    setRestSettings((was) =>
+      was && was.clientRequestValidation === now.clientRequestValidation && was.enableCORS === now.enableCORS ? was : now,
+    );
+  }, []);
+
+  /** Flow Design > Client Request Validation / Enable CORS: changes the route's restConfiguration in the editor. */
+  const toggleRestSetting = useCallback(async (key: RestSetting) => {
+    if (!editor.current) return;
+    try {
+      const yaml = await editor.current.getContent();
+      await editor.current.setContent(writeRestSetting(yaml, key, !readRestSettings(yaml)[key]));
+    } catch (e) {
+      setMessage({ variant: 'danger', text: `Could not change the setting: ${(e as Error).message}` });
+    }
   }, []);
 
   /** Saves the draft. An autosave stays quiet unless it fails, and leaves other messages alone. */
@@ -421,8 +443,8 @@ function FlowEditor() {
     </div>
   );
 
-  // Openapi Design, on the tab line right after File: API-first flows start from the spec, then Rest
-  // and Flow Design. Like Flow Design it opens its view (the flow's OpenAPI spec, in place of Kaoto's
+  // Openapi Design, on the tab line right after File: API-first flows start from the spec, then
+  // Flow Design. The spec is also the flow's REST service: ECHO makes it from the spec (no Rest tab). Like Flow Design it opens its view (the flow's OpenAPI spec, in place of Kaoto's
   // views) and a menu.
   const apiSpecMenu = (
     <div className="echo-tab-actions echo-no-print">
@@ -457,6 +479,14 @@ function FlowEditor() {
             description="Store a .yaml or .json OpenAPI file in this flow, under its own name"
           >
             Upload
+          </DropdownItem>
+          <DropdownItem
+            key="copy"
+            icon={<CopyIcon />}
+            onClick={() => setCopyingSpec(true)}
+            description="Start this flow's spec from a copy of another flow's"
+          >
+            Copy From Another Flow
           </DropdownItem>
           <DropdownItem
             key="yaml"
@@ -613,13 +643,17 @@ function FlowEditor() {
           }
           tabBarMenus={runMenu}
           canvasToolbarActions={canvasActions}
-          designMenuItems={downloadMenuItems({
-            name: flow.data.name,
-            onDownloadZip: download,
-            onDownloadImage: downloadDiagram,
-            zipBusy: saving,
-            imageBusy: drawing,
-          })}
+          designMenuItems={[
+            ...downloadMenuItems({
+              name: flow.data.name,
+              onDownloadZip: download,
+              onDownloadImage: downloadDiagram,
+              zipBusy: saving,
+              imageBusy: drawing,
+            }),
+            <Divider component="li" key="rest-divider" />,
+            ...restSettingItems(restSettings, !!flow.data.apiSpec, toggleRestSetting),
+          ]}
           tabBarActions={actions}
           cover={
             specOpened && (
@@ -635,25 +669,6 @@ function FlowEditor() {
           }
           coverVisible={showSpec}
           onKaotoViewPicked={() => showView(false)}
-          formFields={{
-            [OPENAPI_SPECIFICATION_FIELD]: (field) => (
-              <SpecificationPicker
-                field={field}
-                flowId={id}
-                flowName={flow.data.name}
-                flowDescription={flow.data.description}
-                ownSpec={flow.data.apiSpec}
-                specDirty={specDirty}
-                onSpecReplaced={() =>
-                  Promise.all([
-                    queryClient.invalidateQueries({ queryKey: ['flow', id], exact: true }),
-                    queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
-                    specPanel.current?.reload(),
-                  ])
-                }
-              />
-            ),
-          }}
         />
       </div>
 
@@ -731,6 +746,21 @@ function FlowEditor() {
       {uploading && (
         <UploadFlowModal onClose={() => setUploading(false)} onUploaded={(created) => openNewDraft(created.id)} />
       )}
+      {copyingSpec && (
+        <CopySpecModal
+          flowId={id}
+          ownSpec={flow.data.apiSpec}
+          specDirty={specDirty}
+          onClose={() => setCopyingSpec(false)}
+          onCopied={() =>
+            Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['flow', id], exact: true }),
+              queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
+              specPanel.current?.reload(),
+            ])
+          }
+        />
+      )}
       {showHistory && <HistoryModal flowId={id} onClose={() => setShowHistory(false)} />}
 
       {blocker.state === 'blocked' && (
@@ -751,6 +781,37 @@ function FlowEditor() {
       )}
     </div>
   );
+}
+
+/**
+ * The Flow Design menu's REST settings, written to the route's restConfiguration. They apply to the
+ * REST service ECHO makes from the flow's OpenAPI spec, so they wait for a spec (but one already on
+ * can always be turned off).
+ */
+function restSettingItems(
+  settings: RestSettings | undefined,
+  hasSpec: boolean,
+  toggle: (key: RestSetting) => void,
+) {
+  const item = (key: RestSetting, label: string, description: string) => {
+    const on = !!settings?.[key];
+    return (
+      <DropdownItem
+        key={key}
+        hasCheckbox
+        isSelected={on}
+        isDisabled={!settings || (!hasSpec && !on)}
+        onClick={() => toggle(key)}
+        description={hasSpec || on ? description : 'Needs an OpenAPI spec: design one in Openapi Design'}
+      >
+        {label}
+      </DropdownItem>
+    );
+  };
+  return [
+    item('clientRequestValidation', 'Client Request Validation', 'A request missing a body, query parameter or header the spec requires, or of the wrong content type, gets a 4xx before the flow runs'),
+    item('enableCORS', 'Enable CORS', 'Lets web pages on other sites call this flow from the browser'),
+  ];
 }
 
 /** The keyboard shortcut shown at the right of a menu item (not part of its name for screen readers). */
