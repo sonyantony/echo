@@ -1,6 +1,8 @@
 package com.ey.echo.builder.editor;
 
 import static org.hamcrest.Matchers.anEmptyMap;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -54,18 +56,21 @@ class CamelCatalogTest {
         }
 
         @Test
-        void restConfigurationHidesSettingsFlowsLeaveAtTheirDefaults() throws Exception {
-            for (String hidden : List.of("component", "scheme", "host", "port", "apiContextPath", "bindingMode",
-                    "inlineRoutes", "apiHost")) {
+        void restConfigurationShowsOnlyContextPathRequestValidationAndCorsAtTheTopLevel() throws Exception {
+            for (String part : List.of("properties", "propertiesSchema.properties")) {
                 mvc.perform(get(DIR + "entities-1.json"))
-                        .andExpect(jsonPath("$.restConfiguration.propertiesSchema.properties." + hidden).doesNotExist())
-                        .andExpect(jsonPath("$.restConfiguration.properties." + hidden).doesNotExist());
+                        .andExpect(jsonPath("$.restConfiguration." + part + ".*", hasSize(3)))
+                        .andExpect(jsonPath("$.restConfiguration." + part + ".contextPath").exists())
+                        .andExpect(jsonPath("$.restConfiguration." + part + ".clientRequestValidation").exists())
+                        .andExpect(jsonPath("$.restConfiguration." + part + ".enableCORS").exists());
             }
             mvc.perform(get(DIR + "entities-1.json"))
-                    .andExpect(jsonPath("$.restConfiguration.propertiesSchema.properties.contextPath.title").value("Context Path"))
-                    .andExpect(jsonPath("$.restConfiguration.properties.contextPath").exists())
-                    .andExpect(jsonPath("$.restConfiguration.propertiesSchema.properties.enableCORS").exists())
-                    .andExpect(jsonPath("$.restConfiguration.propertiesSchema.properties.clientRequestValidation").exists())
+                    .andExpect(content().string(containsString(
+                            "\"properties\":{\"contextPath\":{\"title\":\"Context Path\",\"$comment\":\"group:consumer\"},"
+                                    + "\"clientRequestValidation\":{\"$comment\":\"group:consumer\"},"
+                                    + "\"enableCORS\":{\"$comment\":\"group:consumer\"}}")))
+                    .andExpect(jsonPath("$.restConfiguration.properties.enableCORS.group").value("consumer"))
+                    .andExpect(jsonPath("$.restConfiguration.properties.enableCORS.label").value("consumer"))
                     .andExpect(jsonPath("$.rest.propertiesSchema.properties.path").exists());
         }
 
