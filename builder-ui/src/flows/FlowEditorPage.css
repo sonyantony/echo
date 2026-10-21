@@ -104,4 +104,8 @@
    open tab's text colour too (tabUnderline.ts). */
 .echo-tab-actions > .pf-v6-c-menu-toggle.echo-tab-menu--underlined {
   color: var(--pf-t--global--text--color--regular);
+  /* No grey hover/focus box on it: a clicked item keeps focus (API spec does, as its view is a frame),
+     and the box behind the underline made its yellow look paler than under the other views. */
+  --pf-v6-c-menu-toggle--m-plain--hover--BackgroundColor: transparent;
+  --pf-v6-c-menu-toggle--m-plain--expanded--BackgroundColor: transparent;
 }

@@ -416,7 +416,8 @@ function FlowEditor() {
     </div>
   );
 
-  // API spec, on the tab line among Kaoto's views: the flow's OpenAPI spec, shown in place of Kaoto.
+  // API spec, on the tab line right after File: API-first flows start from the spec, then Rest and
+  // Flow Design. The flow's OpenAPI spec is shown in place of Kaoto's views.
   const apiSpecTab = (
     <div className="echo-tab-actions echo-no-print">
       <MenuToggle
@@ -548,13 +549,13 @@ function FlowEditor() {
           initialContent={route.data ?? ''}
           files={files}
           onChange={onChange}
-          tabBarStart={fileMenu}
-          tabBarMenus={
+          tabBarStart={
             <>
+              {fileMenu}
               {apiSpecTab}
-              {runMenu}
             </>
           }
+          tabBarMenus={runMenu}
           canvasToolbarActions={canvasActions}
           designMenuItems={downloadMenuItems({
             name: flow.data.name,

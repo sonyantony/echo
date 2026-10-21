@@ -5,7 +5,7 @@ it offers. This page covers the editor; using the spec at runtime is the next st
 
 ## Editing
 
-In the flow editor, **API spec** (on the tab line, after DataMapper) opens the flow's spec in the
+In the flow editor, **API spec** (on the tab line, right after File: API-first flows start from the spec, then Rest, then Flow Design) opens the flow's spec in the
 Apicurio OpenAPI editor (visual designer plus a Source tab), in place of Kaoto's views; the tab line
 stays, so File, Flow Design, Rest and the rest are one click away, and unsaved spec edits are kept
 while another view is open. **Save API spec**, or File > Save and Ctrl+S from any view, stores it
