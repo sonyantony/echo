@@ -20,23 +20,25 @@ test('the step catalog only offers allowed components and no kamelets', async ({
   await expect(catalog.getByRole('button', { name: /^Kamelet/ })).toHaveCount(0);
 });
 
-// REST always runs on platform-http with Camel's defaults, so the REST configuration form leaves
-// out Component, Scheme, Host, Port, Api Context Path, Binding Mode, Inline Routes and most of
-// Consumer (Advanced).
-test('the REST configuration form hides settings flows leave at their defaults', async ({ page }) => {
+// REST always runs on platform-http with Camel's defaults, so the REST configuration form shows
+// only Context Path, Client Request Validation and Enable CORS, with no collapsible groups.
+test('the REST configuration form shows only Context Path, request validation and CORS', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('restconf'));
   await page.getByRole('tab', { name: 'Rest' }).click();
   await page.getByTestId('rest-tree-toolbar-menu').click();
   await page.getByTestId('add-rest-configuration-btn').click();
   const form = page.locator('.rest-right-panel');
-  await expect(form.getByText('Context Path', { exact: true })).toBeVisible();
-  await form.getByRole('button', { name: 'Toggle Consumer (advanced) group' }).click();
-  await expect(form.getByText('Enable CORS', { exact: true })).toBeVisible();
-  await expect(form.getByText('Client Request Validation', { exact: true })).toBeVisible();
+  const fields = ['Context Path', 'Client Request Validation', 'Enable CORS'];
+  for (const field of fields) {
+    await expect(form.getByText(field, { exact: true })).toBeVisible();
+  }
+  await expect(form.getByRole('button', { name: /^Toggle .* group$/ })).toHaveCount(0);
+  const tops = await Promise.all(fields.map(async (f) => (await form.getByText(f, { exact: true }).boundingBox())!.y));
+  expect(tops).toEqual([...tops].sort((a, b) => a - b));
   await page.screenshot({ path: 'test-results/rest-configuration.png' });
   for (const hidden of ['Component', 'Scheme', 'Host', 'Port', 'Api Context Path', 'Binding Mode', 'Inline Routes',
-    'Api Component', 'Api Host', 'Host Name Resolver', 'Binding Package Scan', 'Client Response Validation']) {
+    'Api Component', 'Producer Component', 'Json Data Format', 'Skip Binding On Error Code']) {
     await expect(form.getByText(hidden, { exact: true })).toHaveCount(0);
   }
 });
