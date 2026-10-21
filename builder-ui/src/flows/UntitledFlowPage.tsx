@@ -224,10 +224,11 @@ export function UntitledFlowPage() {
           files={files}
           onChange={onChange}
           tabBarStart={fileMenu}
-          designMenuItems={downloadMenuItems({ name: 'Untitled flow', onDownloadImage: downloadDiagram })}
+          designMenuItems={downloadMenuItems({ name: 'Untitled flow', onDownloadImage: dirty ? downloadDiagram : undefined })}
           canvasToolbarActions={
             <div className="echo-canvas-actions echo-no-print">
-              <DownloadButtons onDownloadImage={downloadDiagram} />
+              {/* Greyed out like Download Flow while the canvas is empty: there is no picture to save. */}
+              <DownloadButtons onDownloadImage={dirty ? downloadDiagram : undefined} />
             </div>
           }
         />

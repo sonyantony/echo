@@ -191,6 +191,9 @@ test('saves the blank canvas as a new flow', async ({ page }) => {
   await page.getByRole('menuitem', { name: /^Route/ }).click();
   await expect(page.getByTestId(/^custom-node__route/).first()).toBeVisible();
   expect(created).toHaveLength(0);
+  // With something on the canvas, its picture can be downloaded; the .zip needs a saved flow.
+  await expect(page.getByRole('button', { name: 'Download Flow As Image', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Download Flow', exact: true })).toBeDisabled();
 
   const name = uniqueName('canvas');
   await fileMenu(page, /^Save(?! As)/);
