@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: Greetings
+  version: 1.0.0
+servers:
+  - url: /greetings
+paths:
+  /{name}:
+    get:
+      operationId: getGreeting
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A greeting
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  greeting:
+                    type: string
+    delete:
+      operationId: deleteGreeting
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted

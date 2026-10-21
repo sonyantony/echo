@@ -1,0 +1,32 @@
+- route:
+    id: greeting
+    from:
+      id: from-greeting
+      uri: direct:getGreeting
+      steps:
+        - setHeader:
+            id: set-greeting-content-type
+            name: Content-Type
+            constant: application/json
+        - setBody:
+            id: set-greeting
+            simple: '{"greeting":"Hello ${header.name}"}'
+- rest:
+    id: echo-openapi
+    openApi:
+      specification: greetings-api.yaml
+      missingOperation: ignore
+- route:
+    id: echo-missing-deleteGreeting
+    description: Made by EY ECHO; the flow has no route for this operation of its OpenAPI spec
+    from:
+      uri: direct:deleteGreeting
+      steps:
+        - setHeader:
+            name: CamelHttpResponseCode
+            constant: 404
+        - setHeader:
+            name: Content-Type
+            constant: application/json
+        - setBody:
+            constant: '{"error":"Not found","message":"This flow does not implement the operation deleteGreeting yet."}'

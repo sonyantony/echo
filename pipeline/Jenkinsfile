@@ -2,19 +2,29 @@
 // Copy pipeline/ and runtime-template/ from the EY ECHO repository into the root of the flow
 // repository and point a Jenkins (multibranch) pipeline job at pipeline/Jenkinsfile.
 //
-// It builds an image for every flow folder changed since the last successful build and pushes it
-// to your registry. Only flows/ is built: templates/ (the Builder's Save As Template) is ignored. Promotion between environments stays with your own release process.
+// BUILD_MODE decides what it builds and pushes to your registry:
+//   bundle   (default): one image, echo-flows:1.0.<build number>, with every flow in flows/, rebuilt
+//                       when any flow changes. Flows share one port, so each needs its own Base Path;
+//                       the build fails and lists the clashes otherwise.
+//   per-flow: one image per flow, echo-flow-<flow>:<version>, for every flow changed since the last
+//             successful build.
+// Only flows/ is built: templates/ (the Builder's Save As Template) is ignored. Promotion between
+// environments stays with your own release process.
 //
 // Agent needs: Java 21, Maven, curl, git. No Docker daemon needed (Jib pushes directly).
 pipeline {
   agent any
 
   parameters {
+    // bundle = all flows in one image. per-flow (one image per flow) is also available.
+    choice(name: 'BUILD_MODE', choices: ['bundle', 'per-flow'],
+           description: 'bundle: all flows in one image. per-flow: one image per changed flow.')
     string(name: 'REGISTRY_URL', defaultValue: 'registry.example.com/echo',
            description: 'Registry and namespace, e.g. mycompany.jfrog.io/echo-docker')
     string(name: 'REGISTRY_CREDENTIALS_ID', defaultValue: 'echo-registry',
            description: 'Jenkins username/password credentials for the registry')
-    booleanParam(name: 'BUILD_ALL', defaultValue: false, description: 'Build every flow, not only changed ones')
+    booleanParam(name: 'BUILD_ALL', defaultValue: false,
+                 description: 'Build even if no flow changed (per-flow: build every flow)')
   }
 
   options {
@@ -37,6 +47,10 @@ pipeline {
           }
           // Skip deleted flows: only folders that still have a route file.
           env.FLOWS = folders.split('\n').findAll { it && fileExists("flows/${it}/${it}.camel.yaml") }.join(' ')
+          if (params.BUILD_MODE == 'bundle' && fileExists('flows') && (folders.trim() || params.BUILD_ALL)) {
+            // Any change, including a deleted flow, rebuilds the one image from every flow.
+            env.FLOWS = 'ALL'
+          }
           echo "Flows to build: ${env.FLOWS ?: '(none)'}"
         }
       }
@@ -49,9 +63,13 @@ pipeline {
                                           usernameVariable: 'REGISTRY_USERNAME',
                                           passwordVariable: 'REGISTRY_PASSWORD')]) {
           script {
-            for (flow in env.FLOWS.split(' ')) {
-              stage("Flow ${flow}") {
-                sh "pipeline/build-flow.sh flows/${flow} --registry '${params.REGISTRY_URL}'"
+            if (params.BUILD_MODE == 'bundle') {
+              sh "pipeline/build-flow.sh flows --mode bundle --version 1.0.${env.BUILD_NUMBER} --registry '${params.REGISTRY_URL}'"
+            } else {
+              for (flow in env.FLOWS.split(' ')) {
+                stage("Flow ${flow}") {
+                  sh "pipeline/build-flow.sh flows/${flow} --mode per-flow --registry '${params.REGISTRY_URL}'"
+                }
               }
             }
           }
