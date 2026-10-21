@@ -41,7 +41,8 @@ export default defineConfig({
     // The golden sample flows live in ../samples.
     fs: { allow: ['..'] },
     proxy: {
-      '/api': backend,
+      // '/api/', not '/api': the prefix would also catch /apicurio-editor.
+      '/api/': backend,
       '/actuator': backend,
       '/branding': backend,
     },

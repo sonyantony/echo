@@ -40,7 +40,7 @@ echo:
 
 The CSS is in `builder-ui/src/branding/themes.css`; Kaoto itself is not modified. Diagrams
 downloaded with **Download <flow> As Image** always use light colours on white, whatever the
-theme. The API spec editor (Apicurio) takes the theme's font, brand colour and controls; under
+theme. The Openapi Design editor (Apicurio) takes the theme's font, brand colour and controls; under
 graphite it stays light, as its PatternFly 3 base has no dark mode. Kaoto's step icons are Camel's own.
 
 ## Using your own logo

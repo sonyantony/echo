@@ -9,7 +9,7 @@ app and built into an image by the buyer's pipeline).
 - Save As, Save As Template and Open Template (templates in `templates/` next to `flows/`): `docs/decisions/0007-save-as-and-templates.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
 - Publish targets (Git, S3; each with `enabled`) are per install config: `docs/publishing.md`.
-- A flow's OpenAPI spec (`openapi.json`, edited in the vendored Apicurio editor): `docs/api-spec.md`.
+- A flow's OpenAPI spec (Openapi Design; one file per flow under its own name, YAML or JSON, edited in the vendored Apicurio editor): `docs/api-spec.md`.
 - Downstream APIs flows may call (approved specs per install, `echo.apis`, REST OpenApi steps): `docs/apis.md`.
 - Version 1 is a demo prototype: prefer simple over production-hardened, but keep the seams
   (auth, Git provider, CI, secrets, database) swappable. No cloud SDKs, no provider-specific
@@ -71,7 +71,7 @@ Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar 
   in its own React root because it brings its own router.
 - A flow is a folder: `<name>.camel.yaml` plus side files next to it (DataMapper
   `kaoto-datamapper-*.xsl`, `*.schema.json`, `.kaoto` metadata, `application.properties`,
-  `openapi.json`).
+  the flow's OpenAPI spec, e.g. `customer-api.yaml`, or `openapi.json` in older flows).
 - `builder-ui/public/apicurio-editor/` is Apicurio's prebuilt editor, vendored unmodified; refresh it
   with `builder-ui/scripts/update-apicurio-editor.sh`, don't edit it.
 - Every milestone's "done when" check becomes an automated test. Tests run offline: Git is a

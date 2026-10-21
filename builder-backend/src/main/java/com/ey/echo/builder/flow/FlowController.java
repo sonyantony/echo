@@ -43,7 +43,7 @@ public class FlowController {
     @PostMapping
     public ResponseEntity<FlowDetail> create(@Valid @RequestBody CreateFlow request, Principal user) {
         var flow = service.create(request.name(), request.description(), user.getName());
-        return ResponseEntity.created(URI.create("/api/flows/" + flow.getId())).body(FlowDetail.of(flow));
+        return ResponseEntity.created(URI.create("/api/flows/" + flow.getId())).body(service.detail(flow.getId()));
     }
 
     /** Uploads a flow zip (as made by download) as a new flow draft. */
@@ -111,6 +111,15 @@ public class FlowController {
             Principal user) {
         service.writeFile(id, stripSlash(path), content == null ? "" : content, user.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    /** Saves the flow's OpenAPI spec under the given file name (its format follows the extension). */
+    @PutMapping(value = "/{id}/api-spec/{name}", consumes = MediaType.ALL_VALUE)
+    public FlowDetail saveApiSpec(
+            @PathVariable long id, @PathVariable String name, @RequestBody(required = false) String content,
+            Principal user) {
+        service.saveApiSpec(id, name, content == null ? "" : content, user.getName());
+        return service.detail(id);
     }
 
     @DeleteMapping("/{id}/files/{*path}")

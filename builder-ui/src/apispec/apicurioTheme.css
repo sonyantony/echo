@@ -65,7 +65,17 @@
   color: var(--echo-subtle) !important;
 }
 
-/* ---------- Title bar: the flow's API name ---------- */
+/* ---------- Title bar ---------- */
+
+/*
+ * The API's name is hidden: ECHO's own bar (Openapi format, Save, Save As, Discard) lies over this
+ * part of the title bar (ApiSpecPanel.css). The name is still clicked by "API info" to open the
+ * spec's details. Undo, redo and Issues stay on the right.
+ */
+:root[data-echo-theme] .editor-title-bar > h1,
+:root[data-echo-theme] .editor-title-bar > form {
+  visibility: hidden;
+}
 
 :root[data-echo-theme] .editor-title-bar {
   background-color: var(--echo-surface) !important;

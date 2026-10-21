@@ -1,0 +1,27 @@
+import { formatOf, parseSpec, serialize, toEditorJson, withFormat } from './apiSpec';
+
+describe('OpenAPI spec files', () => {
+  it('takes the format from the extension, and changes the extension with the format', () => {
+    expect(formatOf('customer-api.yaml')).toBe('yaml');
+    expect(formatOf('customer-api.YML')).toBe('yaml');
+    expect(formatOf('openapi.json')).toBe('json');
+    expect(formatOf('notes.txt')).toBeUndefined();
+    expect(withFormat('customer.json', 'yaml')).toBe('customer.yaml');
+    expect(withFormat('customer.yml', 'yaml')).toBe('customer.yml');
+    expect(withFormat('customer', 'json')).toBe('customer.json');
+  });
+
+  it('reads JSON and YAML specs for the editor and writes them back in either format', () => {
+    const json = toEditorJson('openapi: 3.0.3\ninfo:\n  title: Orders\n  version: 1.0.0\npaths: {}\n');
+    expect(JSON.parse(json)).toEqual({ openapi: '3.0.3', info: { title: 'Orders', version: '1.0.0' }, paths: {} });
+    expect(serialize(json, 'json')).toBe(json);
+    expect(serialize(json, 'yaml')).toBe('openapi: 3.0.3\ninfo:\n  title: Orders\n  version: 1.0.0\npaths: {}\n');
+    expect(parseSpec('{"swagger":"2.0"}')).toEqual({ swagger: '2.0' });
+  });
+
+  it('refuses files that are not OpenAPI specs', () => {
+    expect(() => parseSpec('title: notes')).toThrow(/not an OpenAPI spec/);
+    expect(() => parseSpec('- a\n- b')).toThrow(/not an OpenAPI spec/);
+    expect(() => parseSpec('{ "openapi": ')).toThrow(/neither JSON nor YAML/);
+  });
+});

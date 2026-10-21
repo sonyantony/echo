@@ -14,6 +14,8 @@ export interface FlowSummary {
 export interface FlowDetail extends FlowSummary {
   routeFile: string;
   files: string[];
+  /** The flow's OpenAPI spec file, under the name it was uploaded or saved with; absent if it has none. */
+  apiSpec?: string | null;
   createdBy: string;
   createdAt: string;
 }
@@ -42,6 +44,13 @@ export const flowsApi = {
   writeFile: (id: number, path: string, content: string) =>
     api<void>(filePath(id, path), { method: 'PUT', body: content, headers: { 'Content-Type': 'text/plain' } }),
   deleteFile: (id: number, path: string) => api<void>(filePath(id, path), { method: 'DELETE' }),
+  /** Saves the flow's OpenAPI spec as name (JSON or YAML, by its extension), replacing a spec saved under another name. */
+  saveApiSpec: (id: number, name: string, content: string) =>
+    api<FlowDetail>(`/api/flows/${id}/api-spec/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      body: content,
+      headers: { 'Content-Type': 'text/plain' },
+    }),
 
   /** Creates a flow from a zip made by download. Name and description are optional overrides. */
   upload: (file: File, name?: string, description?: string) => {
