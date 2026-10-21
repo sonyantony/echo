@@ -32,7 +32,7 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   await expect(page).toHaveURL(new RegExp(`/flows/${flowId}/api(#.*)?$`));
   // A spec without a name yet: the breadcrumb says so, and YAML is the format.
   await expect(page.getByTestId('spec-name')).toHaveText('<new>');
-  await expect(page.getByRole('radio', { name: 'YAML' })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Yaml' })).toBeChecked();
   const editor = editorOf(page);
 
   await editor.getByText('Add a data type').click();
@@ -73,7 +73,7 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   expect(text).toMatch(/orderId:\n\s+type: string/);
 
   // Switching to JSON and saving stores it as order-api.json instead (a flow has one spec).
-  await page.getByRole('radio', { name: 'JSON' }).check();
+  await page.getByRole('radio', { name: 'Json' }).check();
   await expect(page.getByTestId('unsaved')).toBeVisible();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByTestId('spec-name')).toHaveText('order-api.json');
@@ -85,7 +85,7 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   await page.reload();
   await expect(editor.getByText('Order', { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId('spec-name')).toHaveText('order-api.json');
-  await expect(page.getByRole('radio', { name: 'JSON' })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Json' })).toBeChecked();
 });
 
 test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Discard starts again', async ({ page }, testInfo) => {
@@ -159,7 +159,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click();
   await expect(page.getByTestId('spec-name')).toHaveText('<new>');
   await expect(page.getByTestId('unsaved')).toBeHidden();
-  await expect(page.getByRole('radio', { name: 'YAML' })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Yaml' })).toBeChecked();
   await expect(editorOf(page).getByText('Add a data type')).toBeVisible();
   expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('orders.json');
 });
@@ -176,7 +176,7 @@ test('a flow saved before specs kept their name opens its openapi.json', async (
   await page.reload();
   await openSpec(page);
   await expect(page.getByTestId('spec-name')).toHaveText('openapi.json');
-  await expect(page.getByRole('radio', { name: 'JSON' })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Json' })).toBeChecked();
   await expect(editorOf(page).getByText('LegacyOrder', { exact: true }).first()).toBeVisible();
 });
 

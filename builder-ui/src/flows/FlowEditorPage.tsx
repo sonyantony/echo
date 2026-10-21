@@ -543,23 +543,19 @@ function FlowEditor() {
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
           {showSpec ? (
             // While Openapi Design is open the breadcrumb names the spec: Openapi / <file name>.
-            <>
-              <FlexItem>Openapi /</FlexItem>
-              <FlexItem>
-                <Title headingLevel="h1" size="lg" data-testid="spec-name">
-                  {(specName === undefined ? flow.data.apiSpec : specName) ?? <strong>&lt;new&gt;</strong>}
-                </Title>
-              </FlexItem>
-            </>
+            <FlexItem className="echo-flow-editor__crumbs">
+              Openapi /
+              <Title headingLevel="h1" size="lg" data-testid="spec-name">
+                {(specName === undefined ? flow.data.apiSpec : specName) ?? <strong>&lt;new&gt;</strong>}
+              </Title>
+            </FlexItem>
           ) : (
             <>
-              <FlexItem>
+              <FlexItem className="echo-flow-editor__crumbs">
                 <Link to={OPEN_FLOW_PATH} state={openFlowState}>
                   Flows
                 </Link>{' '}
                 /
-              </FlexItem>
-              <FlexItem>
                 <Title headingLevel="h1" size="lg">
                   {flow.data.name}
                 </Title>

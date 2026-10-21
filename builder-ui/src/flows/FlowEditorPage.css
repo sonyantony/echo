@@ -109,3 +109,10 @@
   --pf-v6-c-menu-toggle--m-plain--hover--BackgroundColor: transparent;
   --pf-v6-c-menu-toggle--m-plain--expanded--BackgroundColor: transparent;
 }
+
+/* Breadcrumb (Flows / <flow>, Openapi / <spec>): one space's width after the slash, not the header's gap. */
+.echo-flow-editor__crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+}

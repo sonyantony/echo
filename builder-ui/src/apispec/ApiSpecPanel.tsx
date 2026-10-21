@@ -268,8 +268,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           undo, redo and Issues stay on the right. */}
       <div className="echo-api-spec__bar">
         <div className="echo-api-spec__formats" role="radiogroup" aria-label="File format">
-          <Radio id="echo-spec-yaml" name="echo-spec-format" label="YAML" isChecked={format === 'yaml'} onChange={() => setFormat('yaml')} />
-          <Radio id="echo-spec-json" name="echo-spec-format" label="JSON" isChecked={format === 'json'} onChange={() => setFormat('json')} />
+          <Radio id="echo-spec-yaml" name="echo-spec-format" label="Yaml" isChecked={format === 'yaml'} onChange={() => setFormat('yaml')} />
+          <Radio id="echo-spec-json" name="echo-spec-format" label="Json" isChecked={format === 'json'} onChange={() => setFormat('json')} />
         </div>
         <Button variant="primary" size="sm" onClick={() => save()} isLoading={saving} isDisabled={saving || (!dirty && !!name)}>
           Save
