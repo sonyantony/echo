@@ -290,7 +290,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           className="echo-api-spec__info"
           onClick={() => editor.current?.showApiInfo()}
           isAriaDisabled={dialogOpen}
-          title={dialogOpen ? "Close the editor's dialog (Cancel or Save) first" : "The spec's own details: info, tags and vendor extensions"}
+          title={dialogOpen ? "Close the editor's dialog (Cancel or Save) first" : "The spec's own details: info and tags"}
         >
           API Overview
         </Button>

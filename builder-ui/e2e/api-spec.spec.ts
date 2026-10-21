@@ -228,14 +228,16 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   // API Overview opens the spec's own details (Apicurio's title bar click).
   await openSpec(page);
   await editor.getByText('Customer', { exact: true }).first().click();
+  await expect(editor.locator('definition-form')).toBeVisible();
+  await expect(editor.getByText('VENDOR EXTENSIONS', { exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'API Overview' }).click();
   await expect(editor.getByText('TAG DEFINITIONS', { exact: true })).toBeVisible();
-  // Only Info, Tag Definitions and Vendor Extensions are shown there; tags get a short explanation.
-  for (const hidden of ['CONTACT', 'LICENSE', 'SERVERS', 'SECURITY SCHEMES', 'SECURITY REQUIREMENTS']) {
+  // Only Info and Tag Definitions are shown there (Vendor Extensions is hidden on every page); tags get a short explanation.
+  for (const hidden of ['CONTACT', 'LICENSE', 'SERVERS', 'SECURITY SCHEMES', 'SECURITY REQUIREMENTS', 'VENDOR EXTENSIONS']) {
     await expect(editor.getByText(hidden, { exact: true })).toBeHidden();
   }
   const tagNote = await editor
     .locator('main-form .tags-section .section-label')
     .evaluate((el) => getComputedStyle(el, '::after').content);
-  expect(tagNote).toBe('"Tags group APIs into sections"');
+  expect(tagNote).toMatch(/^url\("data:image\/svg\+xml,.*"\) "\u00a0Tags group APIs into sections"$/);
 });
