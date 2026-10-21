@@ -21,16 +21,16 @@ test('logs in and lands on a blank canvas', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'No flow is open' })).toBeVisible();
   await expect(page.getByText('There are no routes defined')).toBeHidden();
   await expect(page.locator('.echo-untitled__empty').getByRole('button')).toHaveCount(0);
-  // Greyed out until there is a saved flow.
+  // Greyed out until there is a saved flow (the image: until there is something on the canvas).
   for (const item of [/^Save As(?! Template)/, /^Save As Template/]) {
     await expect(page.getByRole('menuitem', { name: item })).toBeDisabled();
   }
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Download Flow', exact: true })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Download Flow As Image', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Download Flow As Image', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: /^Download Untitled flow(?! As)/ })).toBeDisabled();
-  await expect(page.getByRole('menuitem', { name: /^Download Untitled flow As Image/ })).toBeEnabled();
+  await expect(page.getByRole('menuitem', { name: /^Download Untitled flow As Image/ })).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('current-user')).toHaveText('designer');
   await expect(page.getByRole('banner')).toContainText('User: designer');

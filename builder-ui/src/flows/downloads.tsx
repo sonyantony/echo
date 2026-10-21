@@ -4,7 +4,8 @@ import { DownloadIcon, ImageIcon } from '@patternfly/react-icons';
 export interface DownloadActions {
   /** Downloads the flow as a .zip; undefined when there is no saved flow to download yet. */
   onDownloadZip?(): void;
-  onDownloadImage(): void;
+  /** Downloads the diagram as a PNG; undefined while there is nothing on the canvas. */
+  onDownloadImage?(): void;
   /** True while the flow is being saved, or its picture drawn. */
   zipBusy?: boolean;
   imageBusy?: boolean;
@@ -26,7 +27,12 @@ export function downloadMenuItems({ name, onDownloadZip, onDownloadImage, zipBus
     >
       Download {name}
     </DropdownItem>,
-    <DropdownItem key="png" onClick={onDownloadImage} isDisabled={imageBusy} description="A picture of the whole flow diagram (.png)">
+    <DropdownItem
+      key="png"
+      onClick={onDownloadImage}
+      isDisabled={!onDownloadImage || imageBusy}
+      description={onDownloadImage ? 'A picture of the whole flow diagram (.png)' : 'Add something to the flow first'}
+    >
       Download {name} As Image
     </DropdownItem>,
   ];
@@ -49,8 +55,8 @@ export function DownloadButtons({ onDownloadZip, onDownloadImage, zipBusy, image
         variant="secondary"
         icon={<ImageIcon />}
         onClick={onDownloadImage}
-        isDisabled={imageBusy}
-        title="A picture of the whole flow diagram (.png)"
+        isDisabled={!onDownloadImage || imageBusy}
+        title={onDownloadImage ? 'A picture of the whole flow diagram (.png)' : 'Add something to the flow first'}
       >
         Download Flow As Image
       </Button>
