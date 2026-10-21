@@ -69,12 +69,25 @@
 
 /*
  * The API's name is hidden: ECHO's own bar (Openapi format, Save, Save As, Discard) lies over this
- * part of the title bar (ApiSpecPanel.css). The name is still clicked by "API info" to open the
+ * part of the title bar (ApiSpecPanel.css). The name is still clicked by "API Info" to open the
  * spec's details. Undo, redo and Issues stay on the right.
  */
 :root[data-echo-theme] .editor-title-bar > h1,
 :root[data-echo-theme] .editor-title-bar > form {
   visibility: hidden;
+}
+/*
+ * Apicurio's full-page dialogs ("Define a New Data Type", new path, response...) cover the whole
+ * editor, title bar included. They start below the title bar instead, so ECHO's bar does not hide
+ * their heading; the title bar's undo, redo and Issues are dimmed and inert meanwhile, as they were
+ * when covered.
+ */
+:root[data-echo-theme] .entity-editor {
+  top: 42px !important;
+}
+:root[data-echo-theme] .openapi-editor:has(.entity-editor) .editor-title-bar {
+  pointer-events: none;
+  opacity: 0.4;
 }
 
 :root[data-echo-theme] .editor-title-bar {

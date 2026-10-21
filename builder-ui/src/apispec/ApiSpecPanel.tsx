@@ -104,6 +104,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ variant: 'success' | 'danger'; text: string }>();
   const [dialog, setDialog] = useState<Dialog>();
+  /** One of Apicurio's full-page dialogs (e.g. Define a New Data Type) is open. */
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const open = useCallback((loaded: Loaded) => {
     saved.current = loaded.json;
@@ -113,6 +115,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     setInitialJson(loaded.json ?? newApiSpec(flowName, flowDescription));
     setEditorKey((k) => k + 1);
     setContentDirty(false);
+    setDialogOpen(false);
   }, [flowName, flowDescription]);
 
   // Opened once: a later fetch of the same spec must not throw away edits made since.
@@ -210,6 +213,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     if (await store(fileName, text, json)) {
       setInitialJson(json);
       setEditorKey((k) => k + 1);
+      setDialogOpen(false);
     }
   };
 
@@ -280,8 +284,15 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
         <Button variant="secondary" size="sm" onClick={() => (dirty ? setDialog({ kind: 'discard' }) : discard())} isDisabled={saving}>
           Discard
         </Button>
-        <Button variant="link" size="sm" className="echo-api-spec__info" onClick={() => editor.current?.showApiInfo()}>
-          API info
+        <Button
+          variant="link"
+          size="sm"
+          className="echo-api-spec__info"
+          onClick={() => editor.current?.showApiInfo()}
+          isAriaDisabled={dialogOpen}
+          title={dialogOpen ? "Close the editor's dialog (Cancel or Save) first" : "The spec's own details: info, servers, security..."}
+        >
+          API Info
         </Button>
         <span
           className="echo-api-spec__hint"
@@ -308,7 +319,13 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
         />
       </div>
       <div className="echo-api-spec__editor">
-        <ApicurioEditorHost key={editorKey} ref={editor} initialContent={initialJson} onChange={onChange} />
+        <ApicurioEditorHost
+          key={editorKey}
+          ref={editor}
+          initialContent={initialJson}
+          onChange={onChange}
+          onDialogChange={setDialogOpen}
+        />
       </div>
 
       {dialog?.kind === 'name' && (
