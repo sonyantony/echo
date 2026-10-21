@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Flows as they are in Git, listed next to the Builder drafts on the Flows page. */
@@ -48,10 +49,14 @@ public class PublishedFlowController {
                 .body(out.toByteArray());
     }
 
-    /** Copies the published flow into the Builder as a new draft. */
+    /**
+     * Copies the published flow into the Builder as a new draft, or with {@code replace=true} over
+     * the draft it is linked to.
+     */
     @PostMapping("/{name}/draft")
-    public ResponseEntity<?> createDraft(@PathVariable String name, Principal user) {
-        var flow = service.createDraft(name, user.getName());
+    public ResponseEntity<?> createDraft(@PathVariable String name,
+            @RequestParam(defaultValue = "false") boolean replace, Principal user) {
+        var flow = service.createDraft(name, replace, user.getName());
         return ResponseEntity.created(URI.create("/api/flows/" + flow.getId())).body(flows.detail(flow.getId()));
     }
 

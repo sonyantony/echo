@@ -150,6 +150,25 @@ public class FlowService {
         return importArchive(new FlowArchive.Contents(templateName, templateFiles), name, description, user);
     }
 
+    /**
+     * Replaces a draft's files with a published version of the flow (its route file renamed to
+     * match the draft). The draft then matches what is published, unless it was renamed since.
+     */
+    public Flow replaceWithPublished(long id, FlowArchive.Contents published, String user) {
+        var flow = get(id);
+        published.files().keySet().forEach(FlowService::checkPath);
+        var originalRoute = FlowNames.routeFile(published.name());
+        var files = new java.util.TreeMap<String, String>();
+        published.files().forEach((path, content) ->
+                files.put(path.equals(originalRoute) ? FlowNames.routeFile(flow.getName()) : path, content));
+        replaceFiles(flow, files);
+        flow.touch(user, now());
+        if (flow.getName().equals(published.name())) {
+            flow.setStatus(FlowStatus.PUBLISHED);
+        }
+        return flow;
+    }
+
     /** Makes the flow's files exactly {@code files}, updating rows in place (no delete-then-insert of a path). */
     private static void replaceFiles(Flow flow, java.util.Map<String, String> files) {
         files.forEach(flow::putFile);
