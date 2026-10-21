@@ -191,14 +191,14 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   await expect(page.getByRole('button', { name: 'Openapi Design', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
 
   // The editor has ECHO's theme and font, not Apicurio's own; its title bar's API name is hidden
-  // under ECHO's bar, which "API Info" stands in for.
+  // under ECHO's bar, which "API Overview" stands in for.
   const html = editor.locator('html');
   await expect(html).toHaveAttribute('data-echo-theme', 'studio');
   expect(await editor.locator('body').evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Inter');
   await expect(editor.locator('.editor-title-bar > h1')).toBeHidden();
   await expect(editor.getByRole('button', { name: /Issues/ })).toBeVisible();
 
-  // Apicurio's full-page dialogs start below ECHO's bar, and API Info waits until they close.
+  // Apicurio's full-page dialogs start below ECHO's bar, and API Overview waits until they close.
   await editor.getByText('Add a data type').click();
   const heading = editor.getByText('Define a New Data Type');
   await expect(heading).toBeVisible();
@@ -206,9 +206,9 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   const frame = (await page.locator('iframe[title="OpenAPI editor"]').boundingBox())!;
   const headingBox = (await heading.boundingBox())!;
   expect(frame.y + headingBox.y).toBeGreaterThanOrEqual(bar.y + bar.height);
-  await expect(page.getByRole('button', { name: 'API Info' })).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('button', { name: 'API Overview' })).toHaveAttribute('aria-disabled', 'true');
   await editor.getByRole('button', { name: 'Cancel' }).first().click();
-  await expect(page.getByRole('button', { name: 'API Info' })).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('button', { name: 'API Overview' })).not.toHaveAttribute('aria-disabled', 'true');
 
   // An unsaved spec edit is saved by File > Save, from any view; without a name it asks for one.
   await editor.getByText('Add a data type').click();
@@ -225,17 +225,19 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   const spec = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/customers.json`)).json();
   expect(spec.components.schemas.Customer).toBeDefined();
 
-  // API Info opens the spec's own details (Apicurio's title bar click).
+  // API Overview opens the spec's own details (Apicurio's title bar click).
   await openSpec(page);
   await editor.getByText('Customer', { exact: true }).first().click();
-  await page.getByRole('button', { name: 'API Info' }).click();
+  await expect(editor.locator('definition-form')).toBeVisible();
+  await expect(editor.getByText('VENDOR EXTENSIONS', { exact: true })).toBeHidden();
+  await page.getByRole('button', { name: 'API Overview' }).click();
   await expect(editor.getByText('TAG DEFINITIONS', { exact: true })).toBeVisible();
-  // Only Info, Tag Definitions and Vendor Extensions are shown there; tags get a short explanation.
-  for (const hidden of ['CONTACT', 'LICENSE', 'SERVERS', 'SECURITY SCHEMES', 'SECURITY REQUIREMENTS']) {
+  // Only Info and Tag Definitions are shown there (Vendor Extensions is hidden on every page); tags get a short explanation.
+  for (const hidden of ['CONTACT', 'LICENSE', 'SERVERS', 'SECURITY SCHEMES', 'SECURITY REQUIREMENTS', 'VENDOR EXTENSIONS']) {
     await expect(editor.getByText(hidden, { exact: true })).toBeHidden();
   }
   const tagNote = await editor
     .locator('main-form .tags-section .section-label')
     .evaluate((el) => getComputedStyle(el, '::after').content);
-  expect(tagNote).toBe('"Tags group APIs into sections"');
+  expect(tagNote).toMatch(/^url\("data:image\/svg\+xml,.*"\) "\u00a0Tags group APIs into sections"$/);
 });
