@@ -47,12 +47,17 @@ public class FlowService {
         return FlowDtos.FlowDetail.of(flow, apiSpecs.find(flow).orElse(null));
     }
 
-    /** All files of a flow, path to content. */
+    /**
+     * All files of a flow, path to content, as it leaves the editor (Run, Validate, Publish,
+     * Download, Save As Template): the route file includes the REST part made from the flow's
+     * OpenAPI spec ({@link RestFromSpec}).
+     */
     @Transactional(readOnly = true)
     public java.util.Map<String, String> files(long id) {
+        var flow = get(id);
         var result = new java.util.TreeMap<String, String>();
-        get(id).getFiles().forEach(f -> result.put(f.getPath(), f.getContent()));
-        return result;
+        flow.getFiles().forEach(f -> result.put(f.getPath(), f.getContent()));
+        return RestFromSpec.apply(FlowNames.routeFile(flow.getName()), apiSpecs.find(flow), result);
     }
 
     public Flow create(String name, String description, String user) {
@@ -81,8 +86,14 @@ public class FlowService {
         }
         var flow = new Flow(flowName, blankToNull(description), user, now());
         var originalRoute = FlowNames.routeFile(archive.name());
-        archive.files().forEach((path, content) ->
-                flow.putFile(path.equals(originalRoute) ? FlowNames.routeFile(flowName) : path, content));
+        // A downloaded or published flow carries the REST part made from its spec; the draft does not.
+        archive.files().forEach((path, content) -> {
+            if (path.equals(originalRoute)) {
+                flow.putFile(FlowNames.routeFile(flowName), RestFromSpec.strip(content));
+            } else {
+                flow.putFile(path, content);
+            }
+        });
         return flows.save(flow);
     }
 
@@ -162,8 +173,13 @@ public class FlowService {
         published.files().keySet().forEach(FlowService::checkPath);
         var originalRoute = FlowNames.routeFile(published.name());
         var files = new java.util.TreeMap<String, String>();
-        published.files().forEach((path, content) ->
-                files.put(path.equals(originalRoute) ? FlowNames.routeFile(flow.getName()) : path, content));
+        published.files().forEach((path, content) -> {
+            if (path.equals(originalRoute)) {
+                files.put(FlowNames.routeFile(flow.getName()), RestFromSpec.strip(content));
+            } else {
+                files.put(path, content);
+            }
+        });
         replaceFiles(flow, files);
         flow.touch(user, now());
         if (flow.getName().equals(published.name())) {
@@ -220,7 +236,7 @@ public class FlowService {
         flow.touch(user, now());
     }
 
-    /** Every flow's OpenAPI spec, by flow name: what the Rest tab's Openapi Specification offers. */
+    /** Every flow's OpenAPI spec, by flow name: what Openapi Design's Copy From Another Flow offers. */
     @Transactional(readOnly = true)
     public List<FlowDtos.ApiSpecRef> apiSpecs() {
         return list().stream()

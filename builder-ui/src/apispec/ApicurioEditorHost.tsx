@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { followApicurioTheme } from './apicurioTheme';
+import { simplifyBasePathDialog } from './basePath';
 
 /**
  * Apicurio's OpenAPI editor, the prebuilt build from Apicurio Registry served from
@@ -45,6 +46,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
   onChangeRef.current = onChange;
   const timer = useRef<number>(undefined);
   const stopTheme = useRef<() => void>(undefined);
+  const stopBasePath = useRef<() => void>(undefined);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -59,6 +61,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
       window.clearInterval(timer.current);
       stopTheme.current?.();
       stopDialogs.current?.();
+      stopBasePath.current?.();
     };
   }, []);
 
@@ -73,6 +76,8 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     stopTheme.current = frameDoc ? followApicurioTheme(frameDoc) : undefined;
     stopDialogs.current?.();
     stopDialogs.current = frameDoc ? watchDialogs(frameDoc) : undefined;
+    stopBasePath.current?.();
+    stopBasePath.current = frameDoc ? simplifyBasePathDialog(frameDoc) : undefined;
     sendContent();
   };
 

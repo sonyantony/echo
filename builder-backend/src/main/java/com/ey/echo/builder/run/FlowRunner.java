@@ -1,5 +1,6 @@
 package com.ey.echo.builder.run;
 
+import com.ey.echo.builder.flow.RestFromSpec;
 import com.ey.echo.builder.run.FlowRun.Endpoint;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
@@ -228,6 +229,17 @@ public class FlowRunner {
                         : Arrays.stream(restrict.split(",")).map(String::strip).map(String::toUpperCase).toList();
                 String path = http.getPath().startsWith("/") ? http.getPath() : "/" + http.getPath();
                 list.add(new Endpoint(path, methods));
+            } else if (route.getEndpoint().getEndpointUri().startsWith("rest-openapi:")) {
+                // Contract-first REST (made from the flow's spec): one consumer for all of the spec's paths.
+                String spec = route.getEndpoint().getEndpointUri().substring("rest-openapi:".length())
+                        .replaceFirst("\\?.*$", "").replaceFirst("^(classpath:|file:)?/*", "");
+                try {
+                    String content = Files.readString(run.dir.resolve(spec));
+                    RestFromSpec.servedPaths(content, run.camel.getRestConfiguration().getContextPath())
+                            .forEach((path, methods) -> list.add(new Endpoint(path, methods)));
+                } catch (IOException | RuntimeException e) {
+                    LOG.debug("Could not list the paths of {}", spec, e);
+                }
             }
         }
         return list;

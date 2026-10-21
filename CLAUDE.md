@@ -7,6 +7,7 @@ app and built into an image by the buyer's pipeline).
 - Requirements: `docs/Initial Requirements.md`. Build plan and milestones: `docs/ECHO Builder Plan.md`.
 - Decisions: `docs/decisions/` (one short note per significant choice).
 - Save As, Save As Template and Open Template (templates in `templates/` next to `flows/`): `docs/decisions/0007-save-as-and-templates.md`.
+- The REST service made from the flow's spec (Base Path, 404 for missing operations, no Rest tab): `docs/decisions/0008-rest-from-the-spec.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
 - Publish targets (Git, S3; each with `enabled`) are per install config: `docs/publishing.md`.
 - A flow's OpenAPI spec (Openapi Design; one file per flow under its own name, YAML or JSON, edited in the vendored Apicurio editor): `docs/api-spec.md`.
@@ -67,8 +68,10 @@ Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar 
 - Kaoto's catalog is served by the backend (`/api/camel-catalog/**`), cut down to
   `echo.validation.allowed-components` (docs/decisions/0005). To allow another component, add it to
   that list and its jar to `builder-backend/pom.xml` together, or Run cannot start flows using it.
-- REST DSL always runs on platform-http: the catalog cuts the REST configuration form down to
-  Context Path, Client Request Validation and Enable CORS (top level, no groups); Run and `runtime-template` set platform-http; Validate rejects another component, binding or API docs.
+- REST DSL always runs on platform-http: Run and `runtime-template` set it; Validate rejects another
+  component, binding or API docs. There is no Rest tab: ECHO adds the flow's REST service from its
+  OpenAPI spec whenever the flow leaves the editor (`RestFromSpec`, docs/decisions/0008); the Flow
+  Design menu sets Client Request Validation and Enable CORS in the route's `restConfiguration`.
 - Kaoto stays unmodified; Builder code wraps it (`builder-ui/src/editor/`). Kaoto is rendered
   in its own React root because it brings its own router.
 - A flow is a folder: `<name>.camel.yaml` plus side files next to it (DataMapper

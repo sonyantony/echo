@@ -75,9 +75,11 @@
 }
 
 /* Kaoto's Design and Beans views open from the Flow Design and Advanced menus (KaotoTabMenu.tsx),
-   not their own tabs. */
+   not their own tabs. There is no Rest view: ECHO makes the REST part from the flow's OpenAPI spec,
+   and the Flow Design menu holds its two settings. */
 .echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='design-tab'],
-.echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='beans-tab'] {
+.echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='beans-tab'],
+.echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='rest-editor-tab'] {
   display: none;
 }
 .echo-kaoto-host__tab-design {
@@ -125,7 +127,3 @@
   display: none;
 }
 
-/* A form field the Builder shows its own control for (formFields): Kaoto's input stays, hidden. */
-.echo-kaoto-host__replaced-field .pf-v6-c-form__group-control > .pf-v6-c-text-input-group {
-  display: none;
-}

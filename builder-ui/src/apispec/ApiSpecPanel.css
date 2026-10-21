@@ -72,3 +72,9 @@
 .echo-api-spec__status--danger {
   color: var(--pf-t--global--text--color--status--danger--default);
 }
+
+/* Openapi Design > Copy From Another Flow (CopySpecModal). */
+.echo-copy-spec__toggle,
+.echo-copy-spec__warning {
+  margin-top: var(--pf-t--global--spacer--md);
+}

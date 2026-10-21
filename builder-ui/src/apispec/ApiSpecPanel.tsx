@@ -37,7 +37,7 @@ export interface ApiSpecPanelHandle {
   upload(): void;
   /** Openapi Design > Download Openapi File As Yaml / Json: what is on screen, unsaved edits included. */
   download(format: SpecFormat): void;
-  /** Opens the spec stored in the flow again, e.g. after the Rest tab replaced it; unsaved edits are dropped. */
+  /** Opens the spec stored in the flow again, e.g. after Copy From Another Flow replaced it; unsaved edits are dropped. */
   reload(): Promise<void>;
 }
 

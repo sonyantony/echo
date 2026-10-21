@@ -6,23 +6,34 @@ it offers. This page covers the editor; using the spec at runtime is the next st
 ## Editing
 
 In the flow editor, **Openapi Design** (on the tab line, right after File: API-first flows start
-from the spec, then Rest, then Flow Design) opens the flow's spec in the Apicurio OpenAPI editor
+from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI editor
 (visual designer plus a Source tab), in place of Kaoto's views. Like Flow Design it is also a menu:
 
 - **Upload**: picks a `.yaml`, `.yml` or `.json` OpenAPI (or Swagger 2.0) file and stores it in the
   flow exactly as it is: same file name, same text. A name with characters a flow file cannot
   have (spaces, for example) is asked for again. If the flow already has a spec, or there are
   unsaved edits, it asks before replacing them.
+- **Copy From Another Flow**: lists every other flow's spec; the picked one is copied into this
+  flow under the same name (`POST /api/flows/{id}/api-spec/copy-from/{sourceId}`) and is this
+  flow's own from then on. A flow has one spec, so it says first that it replaces the one the flow
+  has (and any unsaved edits).
 - **Download Openapi File As Yaml** / **As Json**: the spec on screen, unsaved edits included,
   named after the spec (or the flow while the spec has no name).
 
 The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Yaml for a new spec), **Save**,
 **Save As** and **Discard**. It takes the place of Apicurio's title bar with the API's name
 (hidden by `apicurioTheme.css`); Apicurio's undo, redo and Issues stay at its right, and
-**API Overview** opens the spec's own details (Info and Tag Definitions; Contact,
-License, Servers and Security are hidden, though a spec that has them keeps them and Source shows them;
+**API Overview** opens the spec's own details (Info, Tag Definitions and Base Path; Contact,
+License and Security are hidden, though a spec that has them keeps them and Source shows them;
 Vendor Extensions is hidden on every page, the same way), which a click on that
 title used to do.
+
+**Base Path** is Apicurio's Servers section under another name: the path the flow serves its
+operations under, e.g. `/customers/v1` (the spec's `/orders` is then called as
+`/customers/v1/orders`). It is stored as the spec's server URL (`servers: [{url: /customers/v1}]`),
+which is where Camel takes it from. Its dialog has just the one field (no Apply button, description
+or server variables; `basePath.ts` presses Apply as you type), and once there is a base path the
+add button goes. Without one the operations are served from the root.
 
 - **Save** stores the spec as a draft in the flow, in the chosen format. The first time it asks
   for a file name (a name typed without extension gets the format's). Picking the other format
@@ -48,25 +59,26 @@ other than the route, `*.schema.json` files and copies of approved APIs (`<id>.o
 docs/apis.md); `FlowDetail.apiSpec` names it, and `PUT /api/flows/{id}/api-spec/{name}` saves it.
 A `rest-openapi` endpoint points at the spec by its file name, e.g. `customer-api.yaml`.
 
-### Openapi Specification in the Rest tab
+### The flow's REST service
 
-A Rest service's Open Api section (contract-first: `rest: openApi: specification: <file>`) shows
-**Openapi Specification** as a drop-down instead of Kaoto's text field (`SpecificationPicker`,
-put in place of Kaoto's input through `KaotoEditorHost`'s `formFields`; the label comes from the
-catalog, `CamelCatalogController`). It lists:
+There is no Rest tab: the spec **is** the flow's REST service. Whenever the flow leaves the editor
+(Run, Validate, Publish, Download, Save As Template) ECHO adds to the route file a contract-first
+`rest` whose `openApi.specification` is the flow's spec (`RestFromSpec`, docs/decisions/0008), so
+Camel sends each operation to the route `direct:<operationId>` under the Base Path. The draft
+itself keeps only what is designed, so the service always follows the spec's current name.
 
-- **`<new>`**: asks for a file name and stores an empty spec (`openapi: 3.0.3`, no paths) as this
-  flow's spec, to design in Openapi Design.
-- **This flow's spec**, if it has one: picked as it is.
-- **Every other flow's spec** in the Builder's database (`GET /api/flows/api-specs`), labelled
-  with its flow. Picking one copies the file into this flow under the same name
-  (`POST /api/flows/{id}/api-spec/copy-from/{sourceId}`); the copy is this flow's own from then
-  on, and editing it leaves the other flow's spec alone.
-
-A flow has one spec, so `<new>` and a copy replace the spec the flow had, after asking. The spec
-file is stored in the draft straight away (like Upload); the field itself is saved with the flow.
-Run and the pipeline both serve the operations of the spec named here (each `operationId` goes to
-`direct:<operationId>`); `pipeline/build-flow.sh` copies YAML specs as well as JSON ones.
+- **An operation without a route** answers **404** with a JSON message naming the operation. The
+  service has `missingOperation: ignore` (so the flow starts), and ECHO adds a small
+  `echo-missing-<operationId>` route for each such operation; add a route from
+  `direct:<operationId>` and it takes over. A path that is not in the spec is a 404 too.
+- **Flow Design > Client Request Validation** and **Enable CORS** turn the REST configuration's
+  settings on and off (`restConfiguration` in the route file). They need a spec. Camel's request
+  validation answers 400 when a body, query parameter or header the spec requires is missing, and
+  415/406 for a content type the operation does not take or give; it does not check a body against
+  its schema.
+- The Run panel lists the spec's paths, Base Path included, to call.
+- Upload, Edit as draft and Open Template take the generated part out again, so it never shows up
+  in the draft. A flow with its own hand-written (code-first) `rest` keeps it.
 
 ### A schema from a sample JSON
 
@@ -92,16 +104,10 @@ built on PatternFly 3, which has no dark mode, so under graphite the editor stay
 targets Apicurio's class names: after refreshing the editor with `update-apicurio-editor.sh`,
 check the Openapi Design view in each theme (the `api-spec` e2e test checks the theme is applied).
 
-## Next step: using the spec at runtime (not built yet)
+## Not built yet
 
-1. **Generate or check the REST DSL from the spec.** Camel's `rest-openapi` (contract-first) binds
-   each `operationId` in the spec to a `direct:<operationId>` route, so the flow implements
-   operations instead of declaring paths by hand. The Builder would offer "Create routes from the
-   spec" and validation would report operations without a route.
-2. **Request validation.** With `rest-openapi`, set `clientRequestValidation=true` so requests that
-   break the spec (missing required fields, wrong types) get a 400 before the flow runs. The flow
-   image needs `camel-rest-openapi` (and its validator dependency) added by the export in
-   `pipeline/build-flow.sh`, and the in-Builder Run needs the same.
-3. **Swagger UI on the runtime.** Serve the flow's spec from the flow image (e.g. `/openapi.json`)
+1. **Body validation.** Checking request bodies against their schema (Camel's client request
+   validation does not), and Validate reporting operations without a route before Run.
+2. **Swagger UI on the runtime.** Serve the flow's spec from the flow image (e.g. `/openapi.json`)
    plus Swagger UI (`camel-openapi-java` or a static Swagger UI bundle) at `/api-docs`.
-4. **Build checks.** Validation should report an invalid spec, and Publish should refuse one.
+3. **Build checks.** Validation should report an invalid spec, and Publish should refuse one.

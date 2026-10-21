@@ -291,6 +291,31 @@ class FlowControllerTest {
     }
 
     @Test
+    void aDownloadCarriesTheRestServiceMadeFromTheSpecAndAnUploadLeavesItOut() throws Exception {
+        long id = create("customers");
+        String spec = "openapi: 3.0.3\ninfo: {title: Customers, version: 1.0.0}\nservers: [{url: /api}]\n"
+                + "paths:\n  /customers:\n    get: {operationId: listCustomers, responses: {'200': {description: ok}}}\n";
+        mvc.perform(as(put("/api/flows/{id}/api-spec/customer-api.yaml", id)).contentType(MediaType.TEXT_PLAIN).content(spec))
+                .andExpect(status().isOk());
+        String draft = mvc.perform(as(get("/api/flows/{id}/files/customers.camel.yaml", id)))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(draft).doesNotContain("openApi");
+
+        var zip = mvc.perform(as(get("/api/flows/{id}/download", id))).andReturn().getResponse().getContentAsByteArray();
+        String published = FlowArchive.read(new ByteArrayInputStream(zip)).files().get("customers.camel.yaml");
+        assertThat(published).contains("specification: 'customer-api.yaml'", "missingOperation: ignore",
+                "id: 'echo-missing-listCustomers'");
+
+        var body = mvc.perform(as(multipart("/api/flows/upload").file(zipFile(zip)).param("name", "customers-copy")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long copy = ((Number) JsonPath.read(body, "$.id")).longValue();
+        mvc.perform(as(get("/api/flows/{id}/files/customers-copy.camel.yaml", copy)))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("openApi"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("echo-missing"))));
+    }
+
+    @Test
     void uploadsTheSampleOrdersFlow() throws Exception {
         var out = new ByteArrayOutputStream();
         FlowArchive.write("orders", FlowArchiveTest.sampleOrders(), out);
