@@ -19,7 +19,8 @@ from the spec, then Rest, then Flow Design) opens the flow's spec in the Apicuri
 The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Yaml for a new spec), **Save**,
 **Save As** and **Discard**. It takes the place of Apicurio's title bar with the API's name
 (hidden by `apicurioTheme.css`); Apicurio's undo, redo and Issues stay at its right, and
-**API Info** opens the spec's own details (info, servers, security...), which a click on that
+**API Info** opens the spec's own details (Info, Tag Definitions and Vendor Extensions; Contact,
+License, Servers and Security are hidden, though a spec that has them keeps them and Source shows them), which a click on that
 title used to do.
 
 - **Save** stores the spec as a draft in the flow, in the chosen format. The first time it asks
