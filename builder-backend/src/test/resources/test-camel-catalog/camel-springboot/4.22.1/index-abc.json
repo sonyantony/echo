@@ -4,4 +4,5 @@
  "languages":{"file":"languages-1.json"},
  "kamelets":{"file":"kamelets-1.json"},
  "kameletBoundaries":{"file":"boundaries-1.json"},
- "models":{"file":"models-1.json"}}}
+ "models":{"file":"models-1.json"},
+ "entities":{"file":"entities-1.json"}}}

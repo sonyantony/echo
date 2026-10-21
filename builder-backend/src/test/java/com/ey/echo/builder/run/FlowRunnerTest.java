@@ -131,6 +131,31 @@ class FlowRunnerTest {
     }
 
     @Test
+    void restDslRunsOnPlatformHttpWithoutAComponentSet() throws Exception {
+        var files = Map.of("hello.camel.yaml", """
+                - restConfiguration: {}
+                - rest:
+                    path: /api
+                    post:
+                      - path: /hello
+                        to: direct:hello
+                - route:
+                    from:
+                      uri: direct:hello
+                      steps:
+                        - setBody:
+                            simple: "hello ${body}"
+                """);
+
+        var run = runner.start(1, "hello", "hello.camel.yaml", files, "designer");
+        var response = post(run.port, "/api/hello", "world");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).isEqualTo("hello world");
+        assertThat(run.camel.getRestConfiguration().getComponent()).isEqualTo("platform-http");
+    }
+
+    @Test
     void runsTheGoldenOrdersFlowWithItsDataMapperFiles() throws Exception {
         var files = folder(ORDERS);
         files.put("application.properties", "fulfilment.url=" + downstreamUrl("/fulfilment"));

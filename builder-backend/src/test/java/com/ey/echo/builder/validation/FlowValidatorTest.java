@@ -79,6 +79,32 @@ class FlowValidatorTest {
     }
 
     @Test
+    void restConfigurationMayOnlyUsePlatformHttpWithBindingOffAndNoApiDocs() {
+        String rest = """
+                - rest:
+                    get:
+                      - path: /hello
+                        to: direct:hello
+                - route:
+                    from:
+                      uri: direct:hello
+                      steps:
+                        - setBody: {constant: hi}
+                """;
+        var ok = validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml",
+                "- restConfiguration:\n    component: platform-http\n    bindingMode: \"off\"\n" + rest));
+        assertThat(ok.problems()).isEmpty();
+        assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", rest)).problems()).isEmpty();
+
+        var result = validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml",
+                "- restConfiguration:\n    component: servlet\n    bindingMode: json\n    apiContextPath: /api-doc\n" + rest));
+        assertThat(result.problems()).extracting(Problem::line, Problem::message).containsExactly(
+                org.assertj.core.groups.Tuple.tuple(2, "REST services in flows always run on platform-http, so remove 'component: servlet' from the REST configuration."),
+                org.assertj.core.groups.Tuple.tuple(3, "REST binding mode 'json' is not supported in flows (bodies stay plain JSON text), so remove 'bindingMode' from the REST configuration."),
+                org.assertj.core.groups.Tuple.tuple(4, "Generated API docs are not supported in flows, so remove 'apiContextPath' from the REST configuration."));
+    }
+
+    @Test
     void disallowedLanguagesAreRejected() {
         var result = validateFixture("disallowed-language.camel.yaml");
         assertThat(result.problems()).extracting(Problem::message)

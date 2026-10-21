@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,22 @@ class CamelCatalogTest {
             mvc.perform(get(DIR + "languages-1.json"))
                     .andExpect(jsonPath("$.simple").exists())
                     .andExpect(jsonPath("$.jq").doesNotExist());
+        }
+
+        @Test
+        void restConfigurationHidesSettingsFlowsLeaveAtTheirDefaults() throws Exception {
+            for (String hidden : List.of("component", "scheme", "host", "port", "apiContextPath", "bindingMode",
+                    "inlineRoutes", "apiHost")) {
+                mvc.perform(get(DIR + "entities-1.json"))
+                        .andExpect(jsonPath("$.restConfiguration.propertiesSchema.properties." + hidden).doesNotExist())
+                        .andExpect(jsonPath("$.restConfiguration.properties." + hidden).doesNotExist());
+            }
+            mvc.perform(get(DIR + "entities-1.json"))
+                    .andExpect(jsonPath("$.restConfiguration.propertiesSchema.properties.contextPath.title").value("Context Path"))
+                    .andExpect(jsonPath("$.restConfiguration.properties.contextPath").exists())
+                    .andExpect(jsonPath("$.restConfiguration.propertiesSchema.properties.enableCORS").exists())
+                    .andExpect(jsonPath("$.restConfiguration.propertiesSchema.properties.clientRequestValidation").exists())
+                    .andExpect(jsonPath("$.rest.propertiesSchema.properties.path").exists());
         }
 
         @Test

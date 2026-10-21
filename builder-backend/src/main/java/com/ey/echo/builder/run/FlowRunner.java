@@ -156,6 +156,8 @@ public class FlowRunner {
             props.load(new StringReader(applicationProperties));
         }
         camel.getPropertiesComponent().setInitialProperties(props);
+        // REST DSL always runs on platform-http (the editor hides the Component setting).
+        camel.getRestConfiguration().setComponent("platform-http");
 
         var http = new VertxPlatformHttpServerConfiguration();
         http.setBindPort(run.port);
