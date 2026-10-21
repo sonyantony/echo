@@ -122,6 +122,30 @@
   color: var(--echo-subtle);
 }
 
+/* ---------- API Info page (the spec's main page) ---------- */
+
+/*
+ * Only the sections flows need: Info, Tag Definitions and Vendor Extensions. Contact, License,
+ * Servers and Security are hidden (whatever an uploaded spec has there stays in the file and shows
+ * in Source).
+ */
+:root[data-echo-theme] main-form contact-section,
+:root[data-echo-theme] main-form license-section,
+:root[data-echo-theme] main-form servers-section,
+:root[data-echo-theme] main-form security-schemes-section,
+:root[data-echo-theme] main-form security-requirements-section {
+  display: none !important;
+}
+:root[data-echo-theme] main-form .tags-section .section-label::after {
+  content: 'Tags group APIs into sections';
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--echo-subtle);
+}
+
 /* ---------- Outline on the left: Paths, Data Types, Responses ---------- */
 
 :root[data-echo-theme] .editor-master {
