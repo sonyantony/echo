@@ -241,3 +241,71 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
     .evaluate((el) => getComputedStyle(el, '::after').content);
   expect(tagNote).toMatch(/^url\("data:image\/svg\+xml,.*"\) "\u00a0Tags group APIs into sections"$/);
 });
+
+test("the Rest service's Openapi Specification picks a spec; another flow's spec is copied into this flow", async ({ page }) => {
+  await login(page);
+  // A spec owned by another flow.
+  const other = uniqueName('spec-owner');
+  await createFlow(page, other);
+  const otherId = flowIdOf(page);
+  const xsrf = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
+  const ownerSpec = 'openapi: 3.0.3\ninfo: {title: Customers, version: 1.0.0}\npaths: {}\n';
+  const specName = `${other}.yaml`;
+  await page.request.put(`/api/flows/${otherId}/api-spec/${specName}`, {
+    data: ownerSpec,
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf },
+  });
+
+  await createFlow(page, uniqueName('spec-user'));
+  const flowId = flowIdOf(page);
+  await page.getByRole('tab', { name: /Rest/ }).click();
+  await page.getByRole('button', { name: 'Actions' }).click();
+  await page.getByRole('menuitem', { name: 'Add Service' }).click();
+  await page
+    .locator('div')
+    .filter({ has: page.getByRole('button', { name: 'More info for Open Api field' }) })
+    .getByRole('button', { name: 'Set object' })
+    .last()
+    .click();
+
+  // Kaoto's text field is replaced by a drop-down, <new> first, then the other flows' specs.
+  const wrapper = page.getByTestId('#.openApi.specification__field-wrapper');
+  await expect(wrapper.locator('label')).toContainText('Openapi Specification');
+  await expect(wrapper.getByRole('textbox')).toBeHidden();
+  const toggle = page.getByTestId('openapi-specification-toggle');
+  await toggle.click();
+  const options = page.getByRole('option');
+  await expect(options.first()).toHaveText(/^<new>/);
+  await page.getByRole('option', { name: new RegExp(`^${specName}.*From flow ${other}`) }).click();
+
+  // Picking it copies the file into this flow and sets the field.
+  await expect(toggle).toHaveText(specName);
+  expect(await (await page.request.get(`/api/flows/${flowId}/files/${specName}`)).text()).toBe(ownerSpec);
+  await expect(page.getByTestId('unsaved')).toBeVisible();
+  await page.keyboard.press('Control+s');
+  await expect(page.getByTestId('unsaved')).toBeHidden();
+  const route = await (await page.request.get(`/api/flows/${flowId}`)).json();
+  const yaml = await (await page.request.get(`/api/flows/${flowId}/files/${route.routeFile}`)).text();
+  expect(yaml).toMatch(new RegExp(`openApi:\\s+specification: ${specName.replace('.', '\\.')}`));
+
+  // Now the flow has a spec of its own: it is listed as this flow's, and <new> replaces it after asking for a name.
+  await toggle.click();
+  await expect(page.getByRole('option', { name: new RegExp(`^${specName}.*This flow's spec`) })).toBeVisible();
+  await page.getByRole('option', { name: /^<new>/ }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText(`A flow has one spec: this replaces ${specName}.`)).toBeVisible();
+  await dialog.getByLabel('File name').fill('fresh-api.yaml');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(toggle).toHaveText('fresh-api.yaml');
+  const detail = await (await page.request.get(`/api/flows/${flowId}`)).json();
+  expect(detail.apiSpec).toBe('fresh-api.yaml');
+  expect(detail.files).not.toContain(specName);
+
+  // Picking another flow's spec when this flow has one asks first.
+  await toggle.click();
+  await page.getByRole('option', { name: new RegExp(`^${specName}.*From flow ${other}`) }).click();
+  await expect(page.getByRole('dialog')).toContainText(`fresh-api.yaml is replaced by a copy of ${specName} from flow ${other}`);
+  await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
+  await expect(toggle).toHaveText(specName);
+  expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe(specName);
+});

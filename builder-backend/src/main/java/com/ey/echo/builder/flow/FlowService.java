@@ -220,6 +220,30 @@ public class FlowService {
         flow.touch(user, now());
     }
 
+    /** Every flow's OpenAPI spec, by flow name: what the Rest tab's Openapi Specification offers. */
+    @Transactional(readOnly = true)
+    public List<FlowDtos.ApiSpecRef> apiSpecs() {
+        return list().stream()
+                .flatMap(f -> apiSpecs.find(f).map(spec -> new FlowDtos.ApiSpecRef(f.getId(), f.getName(), spec)).stream())
+                .toList();
+    }
+
+    /**
+     * Copies another flow's OpenAPI spec into this flow, under the same file name. The copy belongs
+     * to this flow and replaces the spec it had (a flow has one). Copying from itself changes nothing.
+     *
+     * @return the copy's file name
+     */
+    public String copyApiSpec(long id, long sourceId, String user) {
+        var source = get(sourceId);
+        String name = apiSpecs.find(source)
+                .orElseThrow(() -> notFound("An OpenAPI spec in flow " + source.getName()));
+        if (sourceId != id) {
+            saveApiSpec(id, name, source.file(name).orElseThrow().getContent(), user);
+        }
+        return name;
+    }
+
     public void deleteFile(long id, String path, String user) {
         checkPath(path);
         var flow = get(id);

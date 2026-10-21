@@ -37,6 +37,8 @@ export interface ApiSpecPanelHandle {
   upload(): void;
   /** Openapi Design > Download Openapi File As Yaml / Json: what is on screen, unsaved edits included. */
   download(format: SpecFormat): void;
+  /** Opens the spec stored in the flow again, e.g. after the Rest tab replaced it; unsaved edits are dropped. */
+  reload(): Promise<void>;
 }
 
 interface Props {
@@ -246,6 +248,13 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     saveIfChanged: async () => (dirty ? save() : true),
     upload: pickUpload,
     download,
+    reload: async () => {
+      const { data } = await spec.refetch();
+      if (!data) return;
+      setStatus(undefined);
+      setStoredName(data.name);
+      open(data);
+    },
   }));
 
   useAutosave({

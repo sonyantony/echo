@@ -169,6 +169,38 @@ class FlowControllerTest {
     }
 
     @Test
+    void listsEveryFlowsApiSpecAndCopiesOneIntoAnotherFlow() throws Exception {
+        long orders = create("orders");
+        long customers = create("customers");
+        long empty = create("empty");
+        String yaml = "openapi: 3.0.3\ninfo:\n  title: Customers\n  version: 1.0.0\npaths: {}\n";
+        mvc.perform(as(put("/api/flows/{id}/api-spec/customer-api.yaml", customers)).contentType(MediaType.TEXT_PLAIN).content(yaml));
+        mvc.perform(as(put("/api/flows/{id}/api-spec/orders.json", orders)).contentType(MediaType.TEXT_PLAIN)
+                .content("{\"openapi\":\"3.0.3\",\"info\":{\"title\":\"Orders\",\"version\":\"1\"},\"paths\":{}}"));
+
+        mvc.perform(as(get("/api/flows/api-specs")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].flowName").value("customers"))
+                .andExpect(jsonPath("$[0].flowId").value(customers))
+                .andExpect(jsonPath("$[0].fileName").value("customer-api.yaml"))
+                .andExpect(jsonPath("$[1].flowName").value("orders"));
+
+        // The copy belongs to the flow it is copied into, and replaces the spec it had.
+        mvc.perform(as(post("/api/flows/{id}/api-spec/copy-from/{source}", orders, customers)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.apiSpec").value("customer-api.yaml"));
+        mvc.perform(as(get("/api/flows/{id}/files/customer-api.yaml", orders))).andExpect(content().string(yaml));
+        mvc.perform(as(get("/api/flows/{id}/files/orders.json", orders))).andExpect(status().isNotFound());
+        mvc.perform(as(put("/api/flows/{id}/files/customer-api.yaml", orders)).contentType(MediaType.TEXT_PLAIN)
+                .content(yaml.replace("Customers", "My customers")));
+        mvc.perform(as(get("/api/flows/{id}/files/customer-api.yaml", customers))).andExpect(content().string(yaml));
+
+        mvc.perform(as(post("/api/flows/{id}/api-spec/copy-from/{source}", customers, empty)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void findsTheApiSpecOfOlderFlowsAndIgnoresOtherJsonFiles() throws Exception {
         long id = create("orders");
         mvc.perform(as(put("/api/flows/{id}/files/order.schema.json", id)).contentType(MediaType.TEXT_PLAIN)

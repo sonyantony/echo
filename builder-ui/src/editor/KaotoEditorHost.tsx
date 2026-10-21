@@ -1,5 +1,5 @@
 import { KaotoEditorFactory } from '@kaoto/kaoto';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { AdvancedMenu } from './AdvancedMenu';
@@ -44,6 +44,19 @@ export interface KaotoEditorHostProps {
   coverVisible?: boolean;
   /** Called when one of Kaoto's views is picked on the tab line (a tab, or a menu standing in for one). */
   onKaotoViewPicked?(): void;
+  /**
+   * Builder controls shown in place of text fields of Kaoto's forms, by the field's name in the form
+   * (e.g. "#.openApi.specification"). Kaoto's own input stays, hidden, and keeps the value.
+   */
+  formFields?: Record<string, (field: KaotoFormField) => ReactNode>;
+}
+
+/** A text field of one of Kaoto's forms, which the Builder shows its own control for. */
+export interface KaotoFormField {
+  /** The field's current text. */
+  value: string;
+  /** Sets the field's text as typing would, so Kaoto writes it to the flow. */
+  setValue(value: string): void;
 }
 
 interface KaotoEditor {
@@ -59,7 +72,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked, formFields },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +88,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const [canvasSlot, setCanvasSlot] = useState<HTMLElement>();
   const [designSlot, setDesignSlot] = useState<HTMLElement>();
   const [tabBarHeight, setTabBarHeight] = useState(0);
+  const [fieldSlots, setFieldSlots] = useState<Record<string, FieldSlot>>({});
   const onKaotoViewPickedRef = useRef(onKaotoViewPicked);
   onKaotoViewPickedRef.current = onKaotoViewPicked;
 
@@ -216,6 +230,47 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     };
   }, []);
 
+  // Kaoto renders a form field when its form opens; put a slot for the Builder's control in front
+  // of its input, which CSS hides, and follow the field as Kaoto renders it again or closes the form.
+  const fieldNames = Object.keys(formFields ?? {}).join('\n');
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !fieldNames) return;
+    const names = fieldNames.split('\n');
+    const slots: Record<string, FieldSlot> = {};
+    const attach = () => {
+      let changed = false;
+      for (const name of names) {
+        const wrapper = container.querySelector(`[data-testid='${CSS.escape(name)}__field-wrapper']`);
+        const input = wrapper?.querySelector<HTMLInputElement>(`input[name='${CSS.escape(name)}']`);
+        const current = slots[name];
+        if (current && current.input === input && current.slot.isConnected) continue;
+        if (!wrapper || !input) {
+          if (current) {
+            delete slots[name];
+            changed = true;
+          }
+          continue;
+        }
+        const slot = document.createElement('div');
+        slot.className = 'echo-kaoto-host__form-field';
+        wrapper.classList.add('echo-kaoto-host__replaced-field');
+        wrapper.querySelector('.pf-v6-c-form__group-control')?.prepend(slot);
+        slots[name] = { slot, input };
+        changed = true;
+      }
+      if (changed) setFieldSlots({ ...slots });
+    };
+    const observer = new MutationObserver(attach);
+    observer.observe(container, { childList: true, subtree: true });
+    attach();
+    return () => {
+      observer.disconnect();
+      Object.values(slots).forEach(({ slot }) => slot.remove());
+      setFieldSlots({});
+    };
+  }, [fieldNames]);
+
   const onFilesPicked = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const picked: Record<string, string> = {};
     await Promise.all(Array.from(event.target.files ?? []).map(async (f) => (picked[f.name] = await f.text())));
@@ -251,6 +306,10 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
           </>,
           advancedSlot,
         )}
+      {Object.entries(fieldSlots).map(([name, { slot, input }]) => {
+        const render = formFields?.[name];
+        return render && createPortal(<FormField input={input} render={render} />, slot, name);
+      })}
       <input
         ref={fileInputRef}
         type="file"
@@ -261,3 +320,34 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     </div>
   );
 });
+
+interface FieldSlot {
+  slot: HTMLElement;
+  input: HTMLInputElement;
+}
+
+/** Kaoto's (React) form fields hold their value in the input; set it the way typing does. */
+const setInputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+
+function FormField({ input, render }: { input: HTMLInputElement; render: (field: KaotoFormField) => ReactNode }) {
+  // React keeps the value attribute of Kaoto's controlled input in step with its value.
+  const value = useSyncExternalStore(
+    (onChange) => {
+      const observer = new MutationObserver(onChange);
+      observer.observe(input, { attributes: true, attributeFilter: ['value'] });
+      input.addEventListener('input', onChange);
+      return () => {
+        observer.disconnect();
+        input.removeEventListener('input', onChange);
+      };
+    },
+    () => input.value,
+  );
+  return render({
+    value,
+    setValue: (text) => {
+      setInputValue.call(input, text);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+  });
+}
