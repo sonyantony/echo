@@ -46,8 +46,27 @@ names have `openapi.json`, which still opens. The backend finds the spec by its 
 (`ApiSpecFiles`): the top-level `.json`/`.yaml`/`.yml` file with an `openapi` or `swagger` field,
 other than the route, `*.schema.json` files and copies of approved APIs (`<id>.openapi.json`,
 docs/apis.md); `FlowDetail.apiSpec` names it, and `PUT /api/flows/{id}/api-spec/{name}` saves it.
-To point the Rest tab (or a `rest-openapi` endpoint) at the spec, use its file name, e.g.
-`customer-api.yaml`.
+A `rest-openapi` endpoint points at the spec by its file name, e.g. `customer-api.yaml`.
+
+### Openapi Specification in the Rest tab
+
+A Rest service's Open Api section (contract-first: `rest: openApi: specification: <file>`) shows
+**Openapi Specification** as a drop-down instead of Kaoto's text field (`SpecificationPicker`,
+put in place of Kaoto's input through `KaotoEditorHost`'s `formFields`; the label comes from the
+catalog, `CamelCatalogController`). It lists:
+
+- **`<new>`**: asks for a file name and stores an empty spec (`openapi: 3.0.3`, no paths) as this
+  flow's spec, to design in Openapi Design.
+- **This flow's spec**, if it has one: picked as it is.
+- **Every other flow's spec** in the Builder's database (`GET /api/flows/api-specs`), labelled
+  with its flow. Picking one copies the file into this flow under the same name
+  (`POST /api/flows/{id}/api-spec/copy-from/{sourceId}`); the copy is this flow's own from then
+  on, and editing it leaves the other flow's spec alone.
+
+A flow has one spec, so `<new>` and a copy replace the spec the flow had, after asking. The spec
+file is stored in the draft straight away (like Upload); the field itself is saved with the flow.
+Run and the pipeline both serve the operations of the spec named here (each `operationId` goes to
+`direct:<operationId>`); `pipeline/build-flow.sh` copies YAML specs as well as JSON ones.
 
 ### A schema from a sample JSON
 

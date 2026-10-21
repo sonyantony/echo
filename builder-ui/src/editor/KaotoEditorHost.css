@@ -124,3 +124,8 @@
 .echo-kaoto-host__cover[hidden] {
   display: none;
 }
+
+/* A form field the Builder shows its own control for (formFields): Kaoto's input stays, hidden. */
+.echo-kaoto-host__replaced-field .pf-v6-c-form__group-control > .pf-v6-c-text-input-group {
+  display: none;
+}

@@ -34,6 +34,7 @@ import {
   type ValidationResult,
 } from '../api/flows';
 import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
+import { OPENAPI_SPECIFICATION_FIELD, SpecificationPicker } from '../apispec/SpecificationPicker';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { DownloadButtons, downloadMenuItems } from './downloads';
@@ -634,6 +635,25 @@ function FlowEditor() {
           }
           coverVisible={showSpec}
           onKaotoViewPicked={() => showView(false)}
+          formFields={{
+            [OPENAPI_SPECIFICATION_FIELD]: (field) => (
+              <SpecificationPicker
+                field={field}
+                flowId={id}
+                flowName={flow.data.name}
+                flowDescription={flow.data.description}
+                ownSpec={flow.data.apiSpec}
+                specDirty={specDirty}
+                onSpecReplaced={() =>
+                  Promise.all([
+                    queryClient.invalidateQueries({ queryKey: ['flow', id], exact: true }),
+                    queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
+                    specPanel.current?.reload(),
+                  ])
+                }
+              />
+            ),
+          }}
         />
       </div>
 

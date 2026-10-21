@@ -21,6 +21,9 @@ public final class FlowDtos {
      */
     public record SaveAs(@NotBlank String name, String routeContent, boolean overwrite) {}
 
+    /** A flow's OpenAPI spec file, as offered for copying into another flow. */
+    public record ApiSpecRef(long flowId, String flowName, String fileName) {}
+
     public record FlowSummary(
             long id, String name, String description, FlowStatus status, String updatedBy, Instant updatedAt) {
 

@@ -53,6 +53,9 @@ public class CamelCatalogController {
     /** Kaoto shows properties of this group at the top level of the form, not in a collapsible section. */
     private static final String TOP_LEVEL_GROUP = "consumer";
 
+    static final String OPENAPI_DEFINITION = "org.apache.camel.model.rest.OpenApiDefinition";
+    static final String OPENAPI_SPECIFICATION_TITLE = "Openapi Specification";
+
     private final ObjectMapper json;
     private final Resource root;
     private final Map<String, Predicate<String>> filters;
@@ -90,7 +93,7 @@ public class CamelCatalogController {
                 : path.endsWith(".xsd") || path.endsWith(".xsl") ? MediaType.APPLICATION_XML
                 : MediaType.APPLICATION_OCTET_STREAM;
         if (entityFiles.contains(path)) {
-            return ResponseEntity.ok().contentType(type).body(filtered.computeIfAbsent(path, p -> withoutRestTransport(file)));
+            return ResponseEntity.ok().contentType(type).body(filtered.computeIfAbsent(path, p -> restForms(file)));
         }
         Predicate<String> keep = filters.get(path);
         if (keep == null) {
@@ -148,9 +151,19 @@ public class CamelCatalogController {
         }
     }
 
-    /** The entities catalog with restConfiguration's form cut down to {@link #SHOWN_REST_CONFIGURATION}. */
-    private byte[] withoutRestTransport(Resource file) {
+    /**
+     * The entities catalog with restConfiguration's form cut down to {@link #SHOWN_REST_CONFIGURATION},
+     * and the Rest service's Open Api "Specification" called {@value #OPENAPI_SPECIFICATION_TITLE} (the
+     * Builder shows a drop-down of the flows' specs in its place, see builder-ui SpecificationPicker).
+     */
+    private byte[] restForms(Resource file) {
         var entities = (ObjectNode) read(file);
+        entities.forEach(entity -> {
+            if (entity.path("propertiesSchema").path("definitions").path(OPENAPI_DEFINITION).path("properties")
+                    .get("specification") instanceof ObjectNode specification) {
+                specification.put("title", OPENAPI_SPECIFICATION_TITLE);
+            }
+        });
         if (entities.get("restConfiguration") instanceof ObjectNode rest) {
             for (JsonNode node : List.of(rest, rest.path("propertiesSchema"))) {
                 if (!(node instanceof ObjectNode owner && owner.get("properties") instanceof ObjectNode all)) {

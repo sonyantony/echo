@@ -122,6 +122,19 @@ public class FlowController {
         return service.detail(id);
     }
 
+    /** Every flow's OpenAPI spec (flow and file name), for picking one to copy into a flow. */
+    @GetMapping("/api-specs")
+    public List<FlowDtos.ApiSpecRef> apiSpecs() {
+        return service.apiSpecs();
+    }
+
+    /** Copies flow sourceId's OpenAPI spec into this flow, replacing the spec it had. */
+    @PostMapping("/{id}/api-spec/copy-from/{sourceId}")
+    public FlowDetail copyApiSpec(@PathVariable long id, @PathVariable long sourceId, Principal user) {
+        service.copyApiSpec(id, sourceId, user.getName());
+        return service.detail(id);
+    }
+
     @DeleteMapping("/{id}/files/{*path}")
     public ResponseEntity<Void> deleteFile(@PathVariable long id, @PathVariable String path, Principal user) {
         service.deleteFile(id, stripSlash(path), user.getName());

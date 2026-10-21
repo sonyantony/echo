@@ -156,6 +156,43 @@ class FlowRunnerTest {
     }
 
     @Test
+    void contractFirstRestServesTheOperationsOfTheFlowsYamlSpec() throws Exception {
+        // What the Rest tab writes when Openapi Specification names the flow's own spec.
+        var files = Map.of(
+                "customers.camel.yaml", """
+                        - restConfiguration: {}
+                        - rest:
+                            openApi:
+                              specification: customer-api.yaml
+                        - route:
+                            from:
+                              uri: direct:getCustomer
+                              steps:
+                                - setBody:
+                                    simple: '{"id":"${header.id}"}'
+                        """,
+                "customer-api.yaml", """
+                        openapi: 3.0.3
+                        info: {title: Customers, version: 1.0.0}
+                        paths:
+                          /customers/{id}:
+                            get:
+                              operationId: getCustomer
+                              parameters:
+                                - {name: id, in: path, required: true, schema: {type: string}}
+                              responses:
+                                "200": {description: ok}
+                        """);
+
+        var run = runner.start(1, "customers", "customers.camel.yaml", files, "designer");
+        var response = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/customers/C7")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).isEqualTo("{\"id\":\"C7\"}");
+    }
+
+    @Test
     void runsTheGoldenOrdersFlowWithItsDataMapperFiles() throws Exception {
         var files = folder(ORDERS);
         files.put("application.properties", "fulfilment.url=" + downstreamUrl("/fulfilment"));

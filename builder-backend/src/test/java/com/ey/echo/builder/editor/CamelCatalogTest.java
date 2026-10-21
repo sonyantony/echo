@@ -75,6 +75,13 @@ class CamelCatalogTest {
         }
 
         @Test
+        void restServiceSpecificationIsCalledOpenapiSpecification() throws Exception {
+            mvc.perform(get(DIR + "entities-1.json"))
+                    .andExpect(jsonPath("$.rest.propertiesSchema.definitions['org.apache.camel.model.rest.OpenApiDefinition']"
+                            + ".properties.specification.title").value("Openapi Specification"));
+        }
+
+        @Test
         void otherFilesArePassedThroughWithoutALogin() throws Exception {
             mvc.perform(get("/api/camel-catalog/index.json"))
                     .andExpect(status().isOk())

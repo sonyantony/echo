@@ -20,6 +20,13 @@ export interface FlowDetail extends FlowSummary {
   createdAt: string;
 }
 
+/** A flow's OpenAPI spec file. */
+export interface ApiSpecRef {
+  flowId: number;
+  flowName: string;
+  fileName: string;
+}
+
 export const FLOW_NAME_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 export const FLOW_NAME_HINT = 'Lowercase letters, digits and dashes, starting with a letter.';
 
@@ -51,6 +58,12 @@ export const flowsApi = {
       body: content,
       headers: { 'Content-Type': 'text/plain' },
     }),
+
+  /** Every flow's OpenAPI spec (the Rest tab's Openapi Specification offers them). */
+  apiSpecs: () => api<ApiSpecRef[]>('/api/flows/api-specs'),
+  /** Copies flow sourceId's spec into flow id, under its own file name, replacing the spec flow id had. */
+  copyApiSpec: (id: number, sourceId: number) =>
+    api<FlowDetail>(`/api/flows/${id}/api-spec/copy-from/${sourceId}`, { method: 'POST' }),
 
   /** Creates a flow from a zip made by download. Name and description are optional overrides. */
   upload: (file: File, name?: string, description?: string) => {
