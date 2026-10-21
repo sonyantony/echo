@@ -46,7 +46,8 @@
   letter-spacing: -0.005em;
 }
 [data-echo-theme] a,
-[data-echo-theme] a:visited {
+[data-echo-theme] a:visited,
+[data-echo-theme] .pf-v6-c-button.echo-text-link {
   color: var(--echo-ink);
   text-decoration: underline;
   text-decoration-color: var(--pf-t--global--color--brand--default);
@@ -61,6 +62,11 @@
 
 [data-echo-theme] .pf-v6-c-button {
   --pf-v6-c-button--FontWeight: 600;
+}
+/* A button that opens something, drawn like the links next to it (e.g. Git rows on Open Flow). */
+[data-echo-theme] .pf-v6-c-button.echo-text-link {
+  --pf-v6-c-button--FontWeight: inherit;
+  font-size: inherit;
 }
 [data-echo-theme] .pf-v6-c-label {
   --pf-v6-c-label--BorderRadius: 4px;

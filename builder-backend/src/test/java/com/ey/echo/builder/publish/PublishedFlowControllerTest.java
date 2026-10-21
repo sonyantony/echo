@@ -98,6 +98,7 @@ class PublishedFlowControllerTest {
                 .andExpect(jsonPath("$[0].name").value("legacy"))
                 .andExpect(jsonPath("$[0].flowId").doesNotExist())
                 .andExpect(jsonPath("$[0].version").doesNotExist())
+                .andExpect(jsonPath("$[0].target").value("Git"))
                 .andExpect(jsonPath("$[1].name").value("orders"))
                 .andExpect(jsonPath("$[1].flowId").value(orders))
                 .andExpect(jsonPath("$[1].draftChanged").value(false))
@@ -124,6 +125,26 @@ class PublishedFlowControllerTest {
         mvc.perform(as(get("/api/published-flows"))).andExpect(jsonPath("$[0].flowId").value(id));
         mvc.perform(as(post("/api/published-flows/legacy/draft"))).andExpect(status().isConflict());
         mvc.perform(as(post("/api/published-flows/missing/draft"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void replacesAChangedDraftWithThePublishedVersion() throws Exception {
+        long refunds = createAndPublish("refunds");
+        mvc.perform(as(put("/api/flows/{id}/files/application.properties", refunds))
+                .contentType(MediaType.TEXT_PLAIN).content("x=1\n")).andExpect(status().isNoContent());
+        mvc.perform(as(put("/api/flows/{id}/files/extra.schema.json", refunds))
+                .contentType(MediaType.TEXT_PLAIN).content("{}")).andExpect(status().isNoContent());
+
+        mvc.perform(as(post("/api/published-flows/refunds/draft").param("replace", "true")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(refunds))
+                .andExpect(jsonPath("$.status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.files", hasSize(2)));
+        mvc.perform(as(get("/api/flows/{id}/files/application.properties", refunds)))
+                .andExpect(status().isOk())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).doesNotContain("x=1"));
+        mvc.perform(as(get("/api/published-flows"))).andExpect(jsonPath("$[0].draftChanged").value(false));
+        assertThat(flows.count()).isEqualTo(1);
     }
 
     @Test

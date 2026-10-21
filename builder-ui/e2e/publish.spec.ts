@@ -39,8 +39,9 @@ test('lists a published flow and deletes it from Git', async ({ page }) => {
   await expect(page.getByText('Published Successfully')).toBeVisible();
 
   await page.goto('/flows');
-  const row = page.getByRole('row').filter({ hasText: name });
-  await expect(row).toHaveCount(1);
+  // Git has its own row next to the Builder's.
+  await expect(page.getByRole('row').filter({ hasText: name })).toHaveCount(2);
+  const row = page.getByRole('row').filter({ hasText: name }).filter({ hasText: 'Git' });
   await expect(row.getByText('Published v1')).toBeVisible();
 
   await row.getByRole('button', { name: `Delete ${name}` }).click();

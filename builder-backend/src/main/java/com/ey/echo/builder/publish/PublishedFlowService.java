@@ -39,10 +39,11 @@ public class PublishedFlowService {
     /**
      * @param flowId the linked Builder flow, or null if the flow is only in the publish target
      * @param draftChanged true if the linked Builder flow has changes that are not published
+     * @param target where the flow is, as shown to users (e.g. {@code Git})
      */
     public record PublishedFlow(
             String name, String description, Long version, String publishedBy, Instant publishedAt, Long flowId,
-            boolean draftChanged) {}
+            boolean draftChanged, String target) {}
 
     @Transactional(readOnly = true)
     public List<PublishedFlow> list() {
@@ -51,6 +52,7 @@ public class PublishedFlowService {
             return List.of();
         }
         var linked = linkedFlows();
+        var target = primary.get().displayName();
         return primary.get().list().stream().map(folder -> {
             var meta = metadata(folder.files());
             var flow = linked.get(folder.name());
@@ -60,7 +62,7 @@ public class PublishedFlowService {
             return new PublishedFlow(folder.name(), text(meta, "description"),
                     meta.hasNonNull("version") ? meta.get("version").asLong() : null, text(meta, "author"),
                     instant(text(meta, "publishedAt")),
-                    flow == null ? null : flow.getId(), flow != null && flow.getStatus() == FlowStatus.DRAFT);
+                    flow == null ? null : flow.getId(), flow != null && flow.getStatus() == FlowStatus.DRAFT, target);
         }).toList();
     }
 
@@ -71,9 +73,13 @@ public class PublishedFlowService {
         return files;
     }
 
-    /** Copies a published flow into the Builder as a new draft, to edit and publish again. */
+    /**
+     * Copies a published flow into the Builder as a new draft, to edit and publish again. With
+     * {@code replace}, the Builder flow it is linked to (if any) gets the published files instead,
+     * discarding its unpublished changes.
+     */
     @Transactional
-    public Flow createDraft(String name, String user) {
+    public Flow createDraft(String name, boolean replace, String user) {
         var all = primary().read(name).orElseThrow(() -> notFound(name));
         if (!all.containsKey(FlowNames.routeFile(name))) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
@@ -82,6 +88,10 @@ public class PublishedFlowService {
         var meta = metadata(all);
         var files = new LinkedHashMap<>(all);
         files.remove(PublishService.METADATA_FILE);
+        var linked = replace ? linkedFlow(name) : null;
+        if (linked != null) {
+            return flows.replaceWithPublished(linked.getId(), new FlowArchive.Contents(name, files), user);
+        }
         return flows.importArchive(new FlowArchive.Contents(name, files), name, text(meta, "description"), user);
     }
 
@@ -94,14 +104,17 @@ public class PublishedFlowService {
         if (primary().read(name).isEmpty()) {
             throw notFound(name);
         }
-        var flow = linkedFlows().get(name);
-        if (flow == null) {
-            flow = flows.findByName(name).orElse(null);
-        }
+        var flow = linkedFlow(name);
         targets.removeEverywhere(name, user, "Delete flow %s".formatted(name));
         if (flow != null) {
             flows.delete(flow.getId());
         }
+    }
+
+    /** The Builder flow that last published to this folder, else the one with its name, else null. */
+    private Flow linkedFlow(String name) {
+        var flow = linkedFlows().get(name);
+        return flow != null ? flow : flows.findByName(name).orElse(null);
     }
 
     /** Builder flows by the folder they last published to. */

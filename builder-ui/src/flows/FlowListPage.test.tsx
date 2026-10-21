@@ -79,16 +79,69 @@ describe('Flow list', () => {
     const names = screen
       .getAllByRole('row')
       .slice(1)
-      .map((r) => [(r as HTMLTableRowElement).cells[0].textContent, (r as HTMLTableRowElement).cells[2].textContent]);
+      .map((r) => {
+        const cells = (r as HTMLTableRowElement).cells;
+        return [cells[0].textContent, cells[2].textContent, cells[3].textContent];
+      });
+    // Every flow in Git has its own row, next to the Builder's own row for it.
     expect(names).toEqual([
-      ['legacy', 'Published'],
-      ['new-one', 'Draft'],
-      ['orders', 'Published v1'], // unchanged since publishing: one row
-      ['refunds', 'Published v2'], // published plus newer edits: two rows
-      ['refunds', 'Draft'],
+      ['legacy', 'Published', 'Git'],
+      ['new-one', 'Draft', 'Builder'],
+      ['orders', 'Published v1', 'Git'],
+      ['orders', 'Published', 'Builder'],
+      ['refunds', 'Published v2', 'Git'],
+      ['refunds', 'Draft', 'Builder'],
     ]);
     expect(screen.getByRole('link', { name: 'orders' })).toHaveAttribute('href', '/flows/1');
-    expect(screen.queryByRole('link', { name: 'legacy' })).not.toBeInTheDocument();
+    for (const name of ['legacy', 'orders', 'refunds']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument(); // the Git rows open too
+    }
+  });
+
+  it('opens a Git row in the editor: the draft when it is the same, else after asking', async () => {
+    const { calls } = mockFetch({
+      ...loggedIn,
+      'GET /api/flows': { status: 200, body: [flow(1, 'orders', 'PUBLISHED'), flow(2, 'refunds')] },
+      'GET /api/published-flows': {
+        status: 200,
+        body: [
+          { ...published('orders', 1), draftChanged: false, target: 'Git' },
+          { ...published('refunds', 2), draftChanged: true, target: 'Git' },
+        ],
+      },
+      'POST /api/published-flows/refunds/draft?replace=true': {
+        status: 201,
+        body: { ...flow(2, 'refunds', 'PUBLISHED'), routeFile: 'refunds.camel.yaml', files: [] },
+      },
+    });
+    render(<App queryClient={createQueryClient()} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'orders' }));
+    expect(await screen.findByText('Flow editor')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/flows/1');
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+
+    // A draft with other changes: the user chooses, nothing is replaced until they do.
+    const back = async () => {
+      window.history.pushState({}, '', '/flows');
+      window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+      await userEvent.click(await screen.findByRole('button', { name: 'refunds' }));
+      return screen.findByRole('dialog');
+    };
+    let dialog = await back();
+    expect(within(dialog).getByText(/changes that are not in Git/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Open my draft' }));
+    expect(await screen.findByText('Flow editor')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/flows/2');
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+
+    dialog = await back();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Replace draft with Git version' }));
+    expect(await screen.findByText('Flow editor')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/flows/2');
+    expect(calls.some((c) => c.method === 'POST' && c.url === '/api/published-flows/refunds/draft?replace=true')).toBe(
+      true,
+    );
   });
 
   it('filters the list by search text and by Published / Unpublished', async () => {
@@ -104,7 +157,7 @@ describe('Flow list', () => {
       },
     });
     render(<App queryClient={createQueryClient()} />);
-    await screen.findByRole('link', { name: 'orders' });
+    await screen.findByRole('button', { name: 'orders' });
     const shown = () =>
       screen
         .queryAllByRole('row')
@@ -177,9 +230,7 @@ describe('Flow list', () => {
       'POST /api/published-flows/legacy/draft': { status: 201, body: { ...flow(7, 'legacy'), routeFile: 'legacy.camel.yaml', files: [] } },
     });
     render(<App queryClient={createQueryClient()} />);
-    await screen.findByText('legacy');
-    await userEvent.click(screen.getByRole('button', { name: 'Kebab toggle' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit as draft' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'legacy' }));
 
     expect(await screen.findByText('Flow editor')).toBeInTheDocument();
     expect(calls.some((c) => c.method === 'POST' && c.url === '/api/published-flows/legacy/draft')).toBe(true);

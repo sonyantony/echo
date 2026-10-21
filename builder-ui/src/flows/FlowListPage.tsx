@@ -44,15 +44,11 @@ const PUBLISHED_KEY = [...FLOWS_KEY, 'published'];
 /** One row of the list: a Builder flow, or a flow as it is in the publish target. */
 type Row = { kind: 'draft'; flow: FlowSummary } | { kind: 'published'; published: PublishedFlowSummary };
 
-/**
- * Every published flow gets a row. A Builder flow gets its own row unless it is exactly what is
- * published (then the Published row stands for both).
- */
+/** Every published flow and every Builder flow gets its own row; a flow's published row comes first. */
 function listRows(flows: FlowSummary[], published: PublishedFlowSummary[]): Row[] {
-  const sameAsPublished = new Set(published.filter((p) => p.flowId != null && !p.draftChanged).map((p) => p.flowId));
   const rows: Row[] = [
     ...published.map((p): Row => ({ kind: 'published', published: p })),
-    ...flows.filter((f) => !sameAsPublished.has(f.id)).map((f): Row => ({ kind: 'draft', flow: f })),
+    ...flows.map((f): Row => ({ kind: 'draft', flow: f })),
   ];
   const name = (r: Row) => (r.kind === 'draft' ? r.flow.name : r.published.name);
   return rows.sort((a, b) => name(a).localeCompare(name(b)) || (a.kind === 'published' ? -1 : 1));
@@ -111,6 +107,8 @@ export function FlowListPage() {
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [renaming, setRenaming] = useState<FlowSummary>();
   const [deleting, setDeleting] = useState<Row>();
+  /** A published flow whose draft in the Builder has other changes: ask which one to open. */
+  const [choosing, setChoosing] = useState<PublishedFlowSummary>();
   const [search, setSearch] = useState('');
   const [showPublished, setShowPublished] = useState(true);
   const [showUnpublished, setShowUnpublished] = useState(true);
@@ -124,13 +122,25 @@ export function FlowListPage() {
       refresh();
     },
   });
+  /** Loads the published version into the editor: as a new draft, or over the existing one with replace. */
   const openPublished = useMutation({
-    mutationFn: async (p: PublishedFlowSummary) => p.flowId ?? (await publishedFlowsApi.createDraft(p.name)).id,
+    mutationFn: async ({ published: p, replace }: { published: PublishedFlowSummary; replace: boolean }) =>
+      p.flowId != null && !replace ? p.flowId : (await publishedFlowsApi.createDraft(p.name, replace)).id,
     onSuccess: async (id) => {
+      setChoosing(undefined);
       await refresh();
       navigate(`/flows/${id}`);
     },
   });
+  /** A published row opens its draft when that is the same, else asks first; never overwrites silently. */
+  const open = (p: PublishedFlowSummary) => {
+    if (p.flowId != null && p.draftChanged) {
+      openPublished.reset();
+      setChoosing(p);
+    } else {
+      openPublished.mutate({ published: p, replace: false });
+    }
+  };
 
   const rows = flows.data ? listRows(flows.data, published.data ?? []) : undefined;
   /** Back to where you came from; else to the flow last worked on, if it still exists; else the blank canvas. */
@@ -187,7 +197,7 @@ export function FlowListPage() {
             {(published.error as Error).message} Only the drafts in the Builder are shown.
           </Alert>
         )}
-        {openPublished.isError && (
+        {openPublished.isError && !choosing && (
           <Alert variant="danger" isInline title={(openPublished.error as Error).message} />
         )}
         {rows && rows.length === 0 && (
@@ -258,6 +268,7 @@ export function FlowListPage() {
                     <Th>Name</Th>
                     <Th>Description</Th>
                     <Th>Status</Th>
+                    <Th>Where</Th>
                     <Th>Last changed</Th>
                     <Th screenReaderText="Delete" />
                     <Th screenReaderText="Actions" />
@@ -274,6 +285,7 @@ export function FlowListPage() {
                         <Td dataLabel="Status">
                           <StatusLabel status={row.flow.status} />
                         </Td>
+                        <Td dataLabel="Where">Builder</Td>
                         <Td dataLabel="Last changed">
                           {new Date(row.flow.updatedAt).toLocaleString()} by {row.flow.updatedBy}
                         </Td>
@@ -292,11 +304,9 @@ export function FlowListPage() {
                     ) : (
                       <Tr key={`published-${row.published.name}`}>
                         <Td dataLabel="Name">
-                          {row.published.flowId != null && !row.published.draftChanged ? (
-                            <Link to={`/flows/${row.published.flowId}`}>{row.published.name}</Link>
-                          ) : (
-                            row.published.name
-                          )}
+                          <Button variant="link" isInline className="echo-text-link" onClick={() => open(row.published)}>
+                            {row.published.name}
+                          </Button>
                         </Td>
                         <Td dataLabel="Description">{row.published.description}</Td>
                         <Td dataLabel="Status">
@@ -304,6 +314,7 @@ export function FlowListPage() {
                             Published{row.published.version != null && ` v${row.published.version}`}
                           </Label>
                         </Td>
+                        <Td dataLabel="Where">{row.published.target ?? 'Git'}</Td>
                         <Td dataLabel="Last changed">
                           {row.published.publishedAt
                             ? `${new Date(row.published.publishedAt).toLocaleString()} by ${row.published.publishedBy ?? 'unknown'}`
@@ -314,14 +325,7 @@ export function FlowListPage() {
                           isActionCell
                           actions={{
                             items: [
-                              ...(row.published.draftChanged
-                                ? []
-                                : [
-                                    {
-                                      title: row.published.flowId != null ? 'Open' : 'Edit as draft',
-                                      onClick: () => openPublished.mutate(row.published),
-                                    },
-                                  ]),
+                              { title: 'Open', onClick: () => open(row.published) },
                               { title: 'Download', onClick: () => downloadPublishedFlow(row.published.name) },
                             ],
                           }}
@@ -382,6 +386,38 @@ export function FlowListPage() {
             await refresh();
           }}
         />
+      )}
+      {choosing && (
+        <Modal isOpen variant="small" onClose={() => setChoosing(undefined)} aria-labelledby="choose-title">
+          <ModalHeader
+            title={`Open ${choosing.name} from ${choosing.target ?? 'Git'}?`}
+            titleIconVariant="warning"
+            labelId="choose-title"
+          />
+          <ModalBody>
+            Your draft of this flow in the Builder has changes that are not in {choosing.target ?? 'Git'}. Replace the
+            draft with the {choosing.target ?? 'Git'} version (your unpublished changes are lost), or open your draft as
+            it is.
+            {openPublished.isError && (
+              <Alert variant="danger" isInline isPlain title={(openPublished.error as Error).message} />
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="danger"
+              isLoading={openPublished.isPending}
+              onClick={() => openPublished.mutate({ published: choosing, replace: true })}
+            >
+              Replace draft with {choosing.target ?? 'Git'} version
+            </Button>
+            <Button variant="secondary" onClick={() => navigate(`/flows/${choosing.flowId}`)}>
+              Open my draft
+            </Button>
+            <Button variant="link" onClick={() => setChoosing(undefined)}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </Modal>
       )}
       {deleting && (
         <Modal isOpen variant="small" onClose={() => setDeleting(undefined)} aria-labelledby="delete-title">

@@ -101,14 +101,17 @@ export interface PublishedFlowSummary {
   flowId?: number | null;
   /** The Builder flow has changes that are not published yet. */
   draftChanged: boolean;
+  /** Where the flow is, as shown to users, e.g. Git. */
+  target?: string | null;
 }
 
 const publishedPath = (name: string) => `/api/published-flows/${encodeURIComponent(name)}`;
 
 export const publishedFlowsApi = {
   list: () => api<PublishedFlowSummary[]>('/api/published-flows'),
-  /** Copies the published flow into the Builder as a new draft. */
-  createDraft: (name: string) => api<FlowDetail>(`${publishedPath(name)}/draft`, { method: 'POST' }),
+  /** Copies the published flow into the Builder as a new draft, or with replace over the draft it belongs to. */
+  createDraft: (name: string, replace = false) =>
+    api<FlowDetail>(`${publishedPath(name)}/draft${replace ? '?replace=true' : ''}`, { method: 'POST' }),
   remove: (name: string) => api<void>(publishedPath(name), { method: 'DELETE' }),
   downloadUrl: (name: string) => `${publishedPath(name)}/download`,
 };
