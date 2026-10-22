@@ -59,9 +59,10 @@ jobs:
           path: builder-ui/playwright-report
           retention-days: 7
 
-  pipeline:
+  pipeline-modes:
     # Builds the sample flows into images with the sample pipeline script, in both build modes, and
     # checks they answer: bundle (all samples/flows in one image) and per-flow (one image per flow).
+    name: pipeline (${{ matrix.mode }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -90,6 +91,14 @@ jobs:
           fi
           cat "$clash/err.txt"
           grep -q 'Base Path or path /greetings is used by more than one flow: greetings, hello' "$clash/err.txt"
+
+  pipeline:
+    # The check branch protection requires: passes only when both build modes passed.
+    needs: pipeline-modes
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.pipeline-modes.result }}" = success
 
   image:
     # Builds the Builder's own Docker image and checks it starts healthy and serves the UI.
