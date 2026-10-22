@@ -1,14 +1,16 @@
 /*
- * ECHO's theme for Apicurio's OpenAPI editor (public/apicurio-editor, vendored unmodified).
- * ApicurioEditorHost injects this stylesheet into the editor's frame and copies the active
- * theme's colours onto the frame's <html> as the --echo-* values used below (see
- * apicurioTheme.ts), so this file follows studio, graphite and blueprint, and the install's
- * brand colours, without knowing them.
+ * Maps ECHO's theme tokens (themes.css) onto Apicurio's OpenAPI editor (public/apicurio-editor,
+ * vendored unmodified). It holds no colours of its own: it only says which part of the editor uses
+ * which token. Change a theme's colours in themes.css, not here.
  *
- * Apicurio is an Angular app on PatternFly 3 (Bootstrap): its colours are hard-coded, many in
- * component styles that Angular adds after this sheet with long selectors. Rules that must beat
- * those use !important. Rules start with :root[data-echo-theme] so they apply only once the
- * colours are in place.
+ * ApicurioEditorHost injects this file and themes.css into the editor's frame and copies the
+ * theme's name and the install's brand colours onto the frame's <html> (apicurioTheme.ts).
+ *
+ * Apicurio is an Angular app on PatternFly 3 (Bootstrap), which has no colour variables: its
+ * colours are hard-coded, many in component styles that Angular adds after this sheet with long
+ * selectors. So this file picks Apicurio's parts by class name, and rules that must beat those
+ * use !important. If an Apicurio upgrade renames those classes, this is the file to fix. Rules
+ * start with :root[data-echo-theme] so they apply only once the theme is in place.
  */
 @import '@fontsource-variable/inter';
 
@@ -62,7 +64,7 @@
 :root[data-echo-theme] .pficon,
 :root[data-echo-theme] .validation-icon button .icon,
 :root[data-echo-theme] .fa-check-circle {
-  color: var(--echo-subtle) !important;
+  color: var(--echo-text-subtle) !important;
 }
 
 /* ---------- Title bar ---------- */
@@ -119,7 +121,7 @@
 }
 :root[data-echo-theme] .validation-icon,
 :root[data-echo-theme] .issues-label {
-  color: var(--echo-subtle);
+  color: var(--echo-text-subtle);
 }
 
 /* ---------- API Overview page (the spec's main page) ---------- */
@@ -189,15 +191,24 @@
 :root[data-echo-theme] extensions-section {
   display: none !important;
 }
-:root[data-echo-theme] main-form .tags-section .section-label::after {
-  /* PatternFly's outlined question circle, as before "Schema from a sample"; the frame is always light. */
-  content: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 512 512'><path fill='%234d4d4d' d='M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 448c-110.532 0-200-89.431-200-200 0-110.495 89.472-200 200-200 110.491 0 200 89.471 200 200 0 110.53-89.431 200-200 200zm107.244-255.2c0 67.052-72.421 68.084-72.421 92.863V300c0 6.627-5.373 12-12 12h-45.647c-6.627 0-12-5.373-12-12v-8.659c0-35.745 27.1-50.034 47.579-61.516 17.561-9.845 28.324-16.541 28.324-29.579 0-17.246-21.999-28.693-39.784-28.693-23.189 0-33.894 10.977-48.942 29.969-4.057 5.12-11.46 6.071-16.666 2.124l-27.824-21.098c-5.107-3.872-6.251-11.066-2.644-16.363C184.846 131.491 214.94 112 261.794 112c49.071 0 101.45 38.304 101.45 88.8zM298 368c0 23.159-18.841 42-42 42s-42-18.841-42-42 18.841-42 42-42 42 18.841 42 42z'/></svg>") '\00a0 Tags group APIs into sections';
+:root[data-echo-theme] main-form .tags-section .section-label counter::after {
+  /* PatternFly's outlined question circle, as before "Schema from a sample", in the theme's subtle text colour. */
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
   margin-left: 10px;
+  vertical-align: -1px;
+  background-color: var(--echo-text-subtle);
+  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 512 512'><path d='M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 448c-110.532 0-200-89.431-200-200 0-110.495 89.472-200 200-200 110.491 0 200 89.471 200 200 0 110.53-89.431 200-200 200zm107.244-255.2c0 67.052-72.421 68.084-72.421 92.863V300c0 6.627-5.373 12-12 12h-45.647c-6.627 0-12-5.373-12-12v-8.659c0-35.745 27.1-50.034 47.579-61.516 17.561-9.845 28.324-16.541 28.324-29.579 0-17.246-21.999-28.693-39.784-28.693-23.189 0-33.894 10.977-48.942 29.969-4.057 5.12-11.46 6.071-16.666 2.124l-27.824-21.098c-5.107-3.872-6.251-11.066-2.644-16.363C184.846 131.491 214.94 112 261.794 112c49.071 0 101.45 38.304 101.45 88.8zM298 368c0 23.159-18.841 42-42 42s-42-18.841-42-42 18.841-42 42-42 42 18.841 42 42z'/></svg>") center / contain no-repeat;
+}
+:root[data-echo-theme] main-form .tags-section .section-label::after {
+  content: '\00a0 Tags group APIs into sections';
   font-size: 12px;
   font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
-  color: var(--echo-subtle);
+  color: var(--echo-text-subtle);
 }
 
 /* ---------- Outline on the left: Paths, Data Types, Responses ---------- */
@@ -258,7 +269,7 @@
   border-bottom-color: var(--echo-border);
 }
 :root[data-echo-theme] .nav-tabs > li > a {
-  color: var(--echo-subtle) !important;
+  color: var(--echo-text-subtle) !important;
   font-weight: 600;
   text-decoration: none;
 }
@@ -332,7 +343,7 @@
   border-radius: 6px;
   border-color: var(--echo-border);
   background-color: var(--echo-floating);
-  box-shadow: 0 4px 12px rgb(20 24 36 / 15%);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--echo-shadow) 15%, transparent);
 }
 :root[data-echo-theme] .dropdown-menu > li > a {
   color: var(--echo-text) !important;
@@ -349,7 +360,7 @@
   border-radius: 10px;
   border-color: var(--echo-border);
   background-color: var(--echo-floating);
-  box-shadow: 0 8px 28px rgb(20 24 36 / 25%);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--echo-shadow) 25%, transparent);
 }
 :root[data-echo-theme] .modal-header {
   background-color: transparent;
@@ -371,12 +382,12 @@
   border-radius: 6px;
 }
 :root[data-echo-theme] .ace_editor.ace_editor {
-  background-color: var(--echo-code-background);
+  background-color: var(--echo-surface);
   color: var(--echo-text);
 }
 :root[data-echo-theme] .ace_editor .ace_gutter {
-  background-color: var(--echo-code-gutter);
-  color: var(--echo-subtle);
+  background-color: var(--echo-background);
+  color: var(--echo-text-subtle);
   border-right: 1px solid var(--echo-border);
 }
 :root[data-echo-theme] .ace_editor .ace_gutter-active-line,
@@ -393,7 +404,7 @@
   background-color: var(--echo-brand-subtle);
 }
 :root[data-echo-theme] .ace_editor .ace_marker-layer .ace_bracket {
-  border-color: var(--echo-subtle);
+  border-color: var(--echo-text-subtle);
 }
 /* Keys, strings and numbers in ECHO's neutral palette with one accent, instead of Ace's blue and green. */
 :root[data-echo-theme] .ace_editor .ace_meta.ace_tag,
@@ -407,4 +418,154 @@
 :root[data-echo-theme] .ace_editor .ace_constant.ace_numeric,
 :root[data-echo-theme] .ace_editor .ace_constant.ace_language {
   color: var(--echo-code-number);
+}
+
+/* ---------- Surfaces PatternFly 3 paints light, so dark themes stay dark everywhere ---------- */
+
+/* Full-page dialogs (Define a New Data Type, Add Response, Base Path...), an operation's sections, panels. */
+:root[data-echo-theme] .entity-editor,
+:root[data-echo-theme] .operations-section .section-body .section .section-body,
+:root[data-echo-theme] .panel,
+:root[data-echo-theme] .panel-body,
+:root[data-echo-theme] .response-tab-content,
+:root[data-echo-theme] .response-tabs .tab.active,
+:root[data-echo-theme] .drawer-pf,
+:root[data-echo-theme] .drawer-pf-title,
+:root[data-echo-theme] .popover,
+:root[data-echo-theme] .popover-title,
+:root[data-echo-theme] .tooltip-inner,
+:root[data-echo-theme] .list-group-item,
+:root[data-echo-theme] .table,
+:root[data-echo-theme] .table > thead > tr > th,
+:root[data-echo-theme] .table > tbody > tr > td {
+  background-color: var(--echo-surface) !important;
+  color: var(--echo-text);
+}
+/* Grey wells: an operation's body, empty states, dialog footers, read-only fields. */
+:root[data-echo-theme] .operation,
+:root[data-echo-theme] .blank-slate-pf,
+:root[data-echo-theme] .modal-footer,
+:root[data-echo-theme] .well,
+:root[data-echo-theme] .form-control[disabled],
+:root[data-echo-theme] .form-control[readonly],
+:root[data-echo-theme] .input-group-addon,
+:root[data-echo-theme] .table-striped > tbody > tr:nth-of-type(odd) > td {
+  background-color: var(--echo-background) !important;
+  color: var(--echo-text);
+}
+:root[data-echo-theme] .blank-slate-pf h1,
+:root[data-echo-theme] .blank-slate-pf p,
+:root[data-echo-theme] .blank-slate-pf-icon,
+:root[data-echo-theme] .help-block,
+:root[data-echo-theme] .explanation,
+:root[data-echo-theme] .text-muted {
+  color: var(--echo-text-subtle) !important;
+}
+/* Text PatternFly 3 draws in near-black. */
+:root[data-echo-theme] .name > span,
+:root[data-echo-theme] .entity-editor,
+:root[data-echo-theme] .entity-editor :is(h1, h2, h3, h4, label, .title),
+:root[data-echo-theme] .modal-content :is(h1, h2, h3, h4, label),
+:root[data-echo-theme] .control-label,
+:root[data-echo-theme] .drawer-pf-title,
+:root[data-echo-theme] .popover-content,
+:root[data-echo-theme] .close {
+  color: var(--echo-text) !important;
+}
+:root[data-echo-theme] .close {
+  text-shadow: none;
+  opacity: 0.7;
+}
+
+/* An operation's method tabs (Get, Put...): the unused ones as quiet chips; the used ones keep
+   Apicurio's method colours. */
+:root[data-echo-theme] .operation-tab:not(.enabled) .tab-label {
+  background-color: color-mix(in srgb, var(--echo-text) 12%, var(--echo-surface)) !important;
+  color: var(--echo-text-subtle) !important;
+}
+
+/* Dividers and outlines. */
+:root[data-echo-theme] :is(
+    .section-field.type,
+    .operation-tabs,
+    .detail-actionbar,
+    .create-option-divider,
+    .api-definition.selected,
+    .panel,
+    .operations-section .section-body .section .section-body,
+    .response-tab-content,
+    .response-tabs .tab,
+    .drawer-pf,
+    .drawer-pf-title,
+    .modal-footer,
+    .table,
+    .table > thead > tr > th,
+    .table > tbody > tr > td,
+    .list-group-item,
+    .popover
+  ) {
+  border-color: var(--echo-border) !important;
+}
+:root[data-echo-theme] hr,
+:root[data-echo-theme] .blank-slate-pf,
+:root[data-echo-theme] .detail-actionbar .btn-default {
+  border-color: var(--echo-border) !important;
+}
+:root[data-echo-theme] .ace_editor {
+  border-color: var(--echo-border) !important;
+}
+
+/* A primary button that cannot be pressed yet (Save before anything changed). */
+:root[data-echo-theme] .btn-primary:is([disabled], .disabled),
+:root[data-echo-theme] .btn-primary:is([disabled], .disabled):hover {
+  background-color: var(--echo-ink-faint) !important;
+  border-color: var(--echo-border-strong) !important;
+  color: var(--echo-text-subtle) !important;
+}
+
+/* Rows that expand (properties, parameters, media types, tags, servers...): hover and open. */
+:root[data-echo-theme] :is(.property, .query-param, .header-param, .cookie-param, .path-parameter, .formData-param, .media-type, .headers, .http-header, .oneof, .schema, .security-scheme, .server, .tag, .extension, .payload) .header:hover,
+:root[data-echo-theme] .security-requirement:hover,
+:root[data-echo-theme] .create-option:hover,
+:root[data-echo-theme] .editor-master .editor-main:hover,
+:root[data-echo-theme] .detail-title .detail-actions:hover,
+:root[data-echo-theme] .typed-item-list .typed-item:is(:hover, .editing, .overridable),
+:root[data-echo-theme] .editor-detail table tbody tr:hover,
+:root[data-echo-theme] .drawer-pf .drawer-pf-notification:hover,
+:root[data-echo-theme] :is(.response-tabs, .parts-tabs) .tab:hover {
+  background-color: var(--echo-ink-faint) !important;
+}
+:root[data-echo-theme] :is(.property, .query-param, .header-param, .cookie-param, .path-parameter, .formData-param, .media-type, .headers, .http-header, .oneof, .schema, .security-scheme, .server, .tag, .extension, .payload).expanded > .header {
+  background-color: var(--echo-brand-faint) !important;
+  color: var(--echo-text);
+}
+:root[data-echo-theme] :is(.property, .query-param, .header-param, .cookie-param, .path-parameter, .formData-param, .media-type, .headers, .http-header, .oneof, .schema, .security-scheme, .server, .tag, .extension, .payload) > .header,
+:root[data-echo-theme] :is(.property, .query-param, .header-param, .cookie-param, .path-parameter, .formData-param, .media-type, .headers, .http-header, .oneof, .schema, .security-scheme, .server, .tag, .extension, .payload).expanded,
+:root[data-echo-theme] .header > .summary.selected,
+:root[data-echo-theme] .properties-config,
+:root[data-echo-theme] .inline-editor-label {
+  border-color: var(--echo-border) !important;
+}
+:root[data-echo-theme] :is(.property, .oneof) .body .divider,
+:root[data-echo-theme] .dropdown-menu .divider {
+  background-color: var(--echo-border) !important;
+}
+
+/* Panels that pop up (context help, problems of one item) and other light wells. */
+:root[data-echo-theme] :is(.context-help-panel, .validation-aggregate-panel, .validation-problems-panel, .collaborator-aggregate-panel, .collaborator-overlay-panel) {
+  background-color: var(--echo-floating) !important;
+  border-color: var(--echo-border) !important;
+  color: var(--echo-text);
+}
+:root[data-echo-theme] .editor-master .editor-main,
+:root[data-echo-theme] .editor-master .editor-search input,
+:root[data-echo-theme] :is(.response-tabs, .parts-tabs) .tab,
+:root[data-echo-theme] :is(.readonly, #server_ro, #name_ro) {
+  background-color: var(--echo-background) !important;
+  color: var(--echo-text);
+}
+:root[data-echo-theme] :is(.response-tabs, .parts-tabs) .tab.active,
+:root[data-echo-theme] .parts-tab-content,
+:root[data-echo-theme] .typed-item-list .type-row {
+  background-color: var(--echo-surface) !important;
 }

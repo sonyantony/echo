@@ -1,5 +1,5 @@
 /**
- * Apicurio's server dialog, shown as Base Path (apicurioTheme.css): a URL there only counts once
+ * Apicurio's server dialog, shown as Base Path (theme/apicurio-mapping.css): a URL there only counts once
  * Apply is pressed (or Enter), which the dialog's Save waits for. ECHO hides Apply and presses it
  * as the user types, and gives the field an example as its placeholder.
  */

@@ -9,7 +9,7 @@
   flex: none;
 }
 .echo-flow-editor__autosaved {
-  color: var(--pf-t--global--text--color--subtle);
+  color: var(--echo-text-subtle);
 }
 .echo-flow-editor__message {
   margin-top: 8px;
@@ -39,10 +39,10 @@
 }
 .echo-tab-actions > .pf-v6-c-button.pf-m-plain,
 .echo-tab-actions > .pf-v6-c-menu-toggle {
-  --pf-v6-c-button--m-plain--Color: var(--pf-t--global--text--color--subtle);
-  --pf-v6-c-menu-toggle--m-plain--Color: var(--pf-t--global--text--color--subtle);
+  --pf-v6-c-button--m-plain--Color: var(--echo-text-subtle);
+  --pf-v6-c-menu-toggle--m-plain--Color: var(--echo-text-subtle);
   --pf-v6-c-menu-toggle--m-plain--BackgroundColor: transparent;
-  color: var(--pf-t--global--text--color--subtle);
+  color: var(--echo-text-subtle);
   font-size: var(--pf-t--global--font--size--body--default);
   font-weight: 600;
 }
@@ -52,7 +52,7 @@
 }
 .echo-tab-actions > .pf-v6-c-button.pf-m-plain:hover,
 .echo-tab-actions > .pf-v6-c-menu-toggle:hover {
-  color: var(--pf-t--global--text--color--regular);
+  color: var(--echo-text);
 }
 .echo-tab-actions .pf-v6-c-button__icon,
 .echo-tab-actions .pf-v6-c-menu-toggle__icon {
@@ -79,18 +79,18 @@
 }
 .echo-tab-actions .pf-v6-c-menu-toggle__controls,
 .echo-tab-actions .pf-v6-c-menu-toggle__toggle-icon {
-  color: var(--pf-t--global--text--color--subtle);
+  color: var(--echo-text-subtle);
 }
 .echo-tab-actions .echo-tab-actions__more,
 .echo-tab-actions .echo-tab-actions__more .pf-v6-c-menu-toggle__icon {
-  color: var(--pf-t--global--text--color--subtle);
+  color: var(--echo-text-subtle);
 }
 
 /* Keyboard shortcuts in the File menu, at the right of the item's name. */
 .echo-menu-shortcut {
   float: right;
   margin-inline-start: 32px;
-  color: var(--pf-t--global--text--color--subtle);
+  color: var(--echo-text-subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
@@ -103,7 +103,7 @@
 /* The menu with Kaoto's tab underline (the last one clicked, or the one whose view is open) has the
    open tab's text colour too (tabUnderline.ts). */
 .echo-tab-actions > .pf-v6-c-menu-toggle.echo-tab-menu--underlined {
-  color: var(--pf-t--global--text--color--regular);
+  color: var(--echo-text);
   /* No grey hover/focus box on it: a clicked item keeps focus (API spec does, as its view is a frame),
      and the box behind the underline made its yellow look paler than under the other views. */
   --pf-v6-c-menu-toggle--m-plain--hover--BackgroundColor: transparent;

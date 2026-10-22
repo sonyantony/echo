@@ -1,0 +1,136 @@
+/*
+ * Maps ECHO's theme tokens (themes.css) onto PatternFly 6 and Kaoto. It holds no colours of its
+ * own: it only says which part uses which token. Change a theme's colours in themes.css, not here.
+ *
+ * ECHO's own screens and the embedded Kaoto editor are both PatternFly 6, which draws its colours
+ * from CSS variables, so most of this file sets PatternFly's tokens from ECHO's. Kaoto's canvas
+ * (cards, connectors, the route's box) is drawn with Kaoto's own classes, mapped below; Kaoto
+ * itself stays unmodified. If a Kaoto upgrade renames those classes, this is the file to fix.
+ */
+
+/* ---------- PatternFly 6: ECHO's screens and Kaoto's forms, catalog, DataMapper ---------- */
+
+:root:root[data-echo-theme] {
+  --pf-t--global--background--color--primary--default: var(--echo-surface);
+  --pf-t--global--background--color--secondary--default: var(--echo-background);
+  --pf-t--global--background--color--floating--default: var(--echo-floating);
+  --pf-t--global--text--color--regular: var(--echo-text);
+  --pf-t--global--text--color--subtle: var(--echo-text-subtle);
+  --pf-t--global--border--color--default: var(--echo-border);
+
+  --pf-t--global--color--brand--default: var(--echo-brand);
+  --pf-t--global--color--brand--hover: var(--echo-brand-hover);
+  --pf-t--global--color--brand--clicked: var(--echo-brand-hover);
+  --pf-t--global--text--color--on-brand--default: var(--echo-on-brand);
+  --pf-t--global--text--color--on-brand--hover: var(--echo-on-brand);
+  --pf-t--global--text--color--on-brand--clicked: var(--echo-on-brand);
+  --pf-t--global--text--color--brand--default: var(--echo-brand-text);
+  --pf-t--global--text--color--brand--hover: var(--echo-brand-text);
+  --pf-t--global--text--color--brand--clicked: var(--echo-brand-text);
+
+  /* Links use the ink colour instead of PatternFly blue. */
+  --pf-t--global--text--color--link--default: var(--echo-ink);
+  --pf-t--global--text--color--link--hover: var(--echo-ink);
+  --pf-t--global--text--color--link--visited: var(--echo-ink);
+  /* Light tints PatternFly draws in blue (selected menu items, focus rings) follow the brand. */
+  --pf-t--global--color--brand--subtle--default: color-mix(in srgb, var(--echo-brand) 22%, transparent);
+  --pf-t--global--color--brand--subtle--hover: color-mix(in srgb, var(--echo-brand) 32%, transparent);
+  --pf-t--global--color--brand--subtle--clicked: color-mix(in srgb, var(--echo-brand) 40%, transparent);
+  --pf-t--global--text--color--on-brand--subtle--default: var(--echo-text);
+  --pf-t--global--border--color--brand--subtle--default: var(--echo-ink);
+  --pf-t--global--border--color--brand--subtle--hover: var(--echo-ink);
+  --pf-t--global--border--color--brand--subtle--clicked: var(--echo-ink);
+}
+
+/* Kaoto pulls in IBM Carbon styles that set the body's font and colour (and link blue) globally. */
+:root[data-echo-theme] {
+  background-color: var(--echo-background);
+}
+:root[data-echo-theme] body {
+  color: var(--echo-text);
+  background-color: var(--echo-background);
+}
+
+/* Blue tags (Draft, Kaoto's catalog types): outlined and neutral instead of PatternFly blue. */
+[data-echo-theme] .pf-v6-c-label {
+  --pf-v6-c-label--m-blue--BackgroundColor: transparent;
+  --pf-v6-c-label--m-blue--Color: var(--echo-text);
+  --pf-v6-c-label--m-blue__icon--Color: var(--echo-text);
+  --pf-v6-c-label--m-blue--m-outline--BorderColor: var(--echo-border);
+}
+[data-echo-theme] .pf-v6-c-label.pf-m-blue {
+  box-shadow: inset 0 0 0 1px var(--echo-border);
+}
+[data-echo-theme] .pf-v6-c-toggle-group__button.pf-m-selected {
+  --pf-v6-c-toggle-group__button--m-selected--BackgroundColor: var(--echo-selected);
+  --pf-v6-c-toggle-group__button--m-selected--Color: var(--echo-on-selected);
+  --pf-v6-c-toggle-group__button--m-selected--before--BorderColor: var(--echo-selected);
+}
+
+/* ---------- Kaoto's canvas ---------- */
+
+[data-echo-theme] .echo-kaoto-host {
+  /* Kaoto paints route headers and drop hints in a light blue; use the brand colour. */
+  --pf-t--global--color--brand--100: var(--echo-brand);
+}
+[data-echo-theme] .echo-kaoto-host .pf-topology-visualization-surface:not(.hidden-canvas *) {
+  background-color: var(--echo-canvas);
+  background-image: var(--echo-canvas-pattern);
+  background-size: var(--echo-canvas-pattern-size);
+}
+[data-echo-theme] .echo-kaoto-host .pf-topology-content:not(.hidden-canvas *) {
+  background-color: var(--echo-canvas);
+}
+[data-echo-theme] .echo-kaoto-host .custom-node,
+[data-echo-theme] .echo-kaoto-host .custom-group {
+  --custom-node-BorderRadius: var(--echo-node-radius);
+  --custom-node-BorderColor: var(--echo-node-border);
+  --custom-node-BorderColor-hover: var(--echo-node-border-hover);
+}
+[data-echo-theme] .echo-kaoto-host .custom-node__container__image {
+  background-color: var(--echo-node);
+  border-color: var(--echo-node-border);
+  border-top: var(--echo-node-accent-top);
+  border-left: var(--echo-node-accent-left);
+  box-shadow: var(--echo-node-shadow);
+}
+[data-echo-theme] .echo-kaoto-host [data-selected='true'] .custom-node__container__image {
+  border-color: var(--echo-brand);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--echo-brand) 35%, transparent),
+    var(--echo-node-shadow);
+}
+[data-echo-theme] .echo-kaoto-host .custom-node__label__text {
+  color: var(--echo-node-label);
+  background-color: transparent;
+}
+[data-echo-theme] .echo-kaoto-host .custom-group__container {
+  background-color: var(--echo-group);
+  border: 1px var(--echo-group-border-style) var(--echo-group-border);
+}
+[data-echo-theme] .echo-kaoto-host .custom-group__container__text {
+  background-color: var(--echo-brand);
+  color: var(--echo-on-brand);
+}
+[data-echo-theme] .echo-kaoto-host .custom-edge__body,
+[data-echo-theme] .echo-kaoto-host .custom-edge__connector {
+  stroke: var(--echo-edge);
+}
+[data-echo-theme] .echo-kaoto-host .custom-edge__connector {
+  fill: var(--echo-edge);
+}
+[data-echo-theme] .echo-kaoto-host .placeholder-node__container {
+  color: var(--echo-node-label);
+}
+/* "Download diagram" captures Kaoto's off-screen copy of the canvas and puts it on white (see
+   editor/diagramImage.ts), so that copy keeps a transparent background and the diagram colours. */
+[data-echo-theme] .echo-kaoto-host .hidden-canvas {
+  --echo-node: var(--echo-diagram-node);
+  --echo-node-border: var(--echo-diagram-node-border);
+  --echo-node-shadow: none;
+  --echo-node-label: var(--echo-diagram-node-label);
+  --echo-edge: var(--echo-diagram-edge);
+  --echo-group: transparent;
+  --echo-group-border: var(--echo-diagram-node-border);
+  --echo-group-border-style: solid;
+}

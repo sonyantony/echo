@@ -1,0 +1,66 @@
+/*
+ * ECHO's look that every theme shares: the Inter typeface, squarer corners, underlined links,
+ * small upper-case tags. Colours come from the theme's tokens (themes.css), never from here.
+ */
+
+:root:root[data-echo-theme] {
+  --echo-font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pf-t--global--font--family--body: var(--echo-font);
+  --pf-t--global--font--family--heading: var(--echo-font);
+  /* Squarer than PatternFly's pill buttons and rounded cards. */
+  --pf-t--global--border--radius--pill: 6px;
+  --pf-t--global--border--radius--large: 10px;
+  --pf-t--global--border--radius--medium: 6px;
+}
+
+:root[data-echo-theme] body {
+  font-family: var(--echo-font);
+  letter-spacing: -0.005em;
+}
+[data-echo-theme] a,
+[data-echo-theme] a:visited,
+[data-echo-theme] .pf-v6-c-button.echo-text-link {
+  color: var(--echo-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--echo-brand);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+[data-echo-theme] .echo-masthead a,
+[data-echo-theme] .echo-masthead a:visited {
+  color: inherit;
+  text-decoration: none;
+}
+
+[data-echo-theme] .pf-v6-c-button {
+  --pf-v6-c-button--FontWeight: 600;
+}
+/* A button that opens something, drawn like the links next to it (e.g. Git rows on Open Flow). */
+[data-echo-theme] .pf-v6-c-button.echo-text-link {
+  --pf-v6-c-button--FontWeight: inherit;
+  font-size: inherit;
+}
+[data-echo-theme] .pf-v6-c-label {
+  --pf-v6-c-label--BorderRadius: 4px;
+  --pf-v6-c-label--FontSize: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Kaoto's tab bar: text only (no Camel/Kaoto icons), bold labels. */
+[data-echo-theme] .echo-kaoto-host__editor .shell > .pf-v6-c-tabs .pf-v6-c-tabs__item-icon {
+  display: none;
+}
+[data-echo-theme] .echo-kaoto-host__editor .shell > .pf-v6-c-tabs .pf-v6-c-tabs__item-text {
+  font-weight: 600;
+}
+/* Kaoto's step names and connectors. */
+[data-echo-theme] .echo-kaoto-host .custom-node__label__text {
+  font-size: 12px;
+  font-weight: 600;
+}
+[data-echo-theme] .echo-kaoto-host .custom-edge__body,
+[data-echo-theme] .echo-kaoto-host .custom-edge__connector {
+  stroke-width: 1.5;
+}

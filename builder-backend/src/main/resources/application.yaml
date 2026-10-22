@@ -64,7 +64,7 @@ echo:
     #   graphite   dark throughout
     #   blueprint  light, with a dark grid canvas
     theme: studio
-    # CSS colours (EY: yellow #FFE600, grey #2E2E38). Leave one out to keep the PatternFly default.
+    # CSS colours (EY: yellow #FFE600, grey #2E2E38). Leave one out to keep the theme default (EY's).
     colors:
       primary: "#FFE600"            # primary buttons, selected items
       primary-hover: "#E6CF00"

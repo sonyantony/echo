@@ -16,7 +16,7 @@
 }
 .echo-run-panel__hint,
 .echo-run-panel__subtle {
-  color: var(--pf-t--global--text--color--subtle);
+  color: var(--echo-text-subtle);
   font-size: var(--pf-t--global--font--size--sm);
 }
 .echo-run-panel__hint {
@@ -40,7 +40,7 @@
 .echo-run-panel__log {
   font-family: var(--pf-t--global--font--family--mono);
   font-size: var(--pf-t--global--font--size--sm);
-  background: var(--pf-t--global--background--color--secondary--default);
+  background: var(--echo-background);
   border-radius: 4px;
   padding: 8px;
   margin: 0;

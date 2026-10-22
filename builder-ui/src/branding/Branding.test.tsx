@@ -31,7 +31,7 @@ describe('Branding', () => {
     expect(screen.getByText('EY', { selector: '.echo-brand__ey' }).parentElement).toHaveTextContent('EY ECHO Builder');
     expect(document.title).toBe('EY ECHO Builder');
     expect(document.querySelector('link[rel="icon"]')).toHaveAttribute('href', '/branding/acme.ico');
-    expect(document.documentElement.style.getPropertyValue('--pf-t--global--color--brand--default')).toBe('#123456');
+    expect(document.documentElement.style.getPropertyValue('--echo-brand')).toBe('#123456');
   });
 
   it('falls back to no logo when branding cannot be loaded', async () => {
@@ -51,12 +51,12 @@ describe('Branding', () => {
     expect(screen.getByRole('heading', { name: 'Log in to EY ECHO Builder' })).toBeInTheDocument();
   });
 
-  it('puts every configured colour on its PatternFly token and clears unset ones', () => {
+  it('puts every configured colour on its theme token and clears unset ones', () => {
     applyBranding({
       colors: { primary: '#ffe600', onPrimary: '#2e2e38', mastheadBackground: '#2e2e38', mastheadText: '#fff' },
     });
     const style = document.documentElement.style;
-    expect(style.getPropertyValue('--pf-t--global--text--color--on-brand--hover')).toBe('#2e2e38');
+    expect(style.getPropertyValue('--echo-on-brand')).toBe('#2e2e38');
     expect(style.getPropertyValue('--echo-masthead-background')).toBe('#2e2e38');
 
     applyBranding({ colors: { primary: '#ffe600' } });

@@ -9,6 +9,8 @@ app and built into an image by the buyer's pipeline).
 - Save As, Save As Template and Open Template (templates in `templates/` next to `flows/`): `docs/decisions/0007-save-as-and-templates.md`.
 - The REST service made from the flow's spec (Base Path, 404 for missing operations, no Rest tab): `docs/decisions/0008-rest-from-the-spec.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
+  Themes: colours only in `builder-ui/src/theme/themes.css`; Kaoto and Apicurio map onto its tokens
+  (`kaoto-mapping.css`, `apicurio-mapping.css`), never with colour values of their own.
 - Publish targets (Git, S3; each with `enabled`) are per install config: `docs/publishing.md`.
 - A flow's OpenAPI spec (Openapi Design; one file per flow under its own name, YAML or JSON, edited in the vendored Apicurio editor): `docs/api-spec.md`.
 - Downstream APIs flows may call (approved specs per install, `echo.apis`, REST OpenApi steps): `docs/apis.md`.

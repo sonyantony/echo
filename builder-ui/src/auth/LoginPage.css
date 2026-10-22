@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: var(--pf-t--global--background--color--secondary--default, #f2f2f2);
+  background: var(--echo-background);
 }
 .echo-login__card {
   width: 100%;
@@ -13,8 +13,8 @@
 }
 .echo-login__header {
   padding: 20px 24px;
-  background: var(--echo-masthead-background, var(--pf-t--global--background--color--secondary--default));
-  color: var(--echo-masthead-text, inherit);
+  background: var(--echo-masthead-background);
+  color: var(--echo-masthead-text);
 }
 .echo-login__title {
   padding-top: 24px;

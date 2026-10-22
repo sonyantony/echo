@@ -26,7 +26,7 @@ const DIALOG_SELECTOR = '.entity-editor';
 export interface ApicurioEditorHandle {
   /**
    * Opens the spec's own details (info, servers, security...). Apicurio does this when its title
-   * bar is clicked; ECHO hides that bar (apicurioTheme.css), so its title is clicked for it.
+   * bar is clicked; ECHO hides that bar (theme/apicurio-mapping.css), so its title is clicked for it.
    */
   showApiInfo(): void;
 }

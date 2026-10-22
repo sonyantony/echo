@@ -277,7 +277,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   return (
     <div className="echo-api-spec">
-      {/* Sits where Apicurio's title bar shows the API's name (hidden, see apicurioTheme.css); its
+      {/* Sits where Apicurio's title bar shows the API's name (hidden, see theme/apicurio-mapping.css); its
           undo, redo and Issues stay on the right. */}
       <div className="echo-api-spec__bar">
         <div className="echo-api-spec__formats" role="radiogroup" aria-label="File format">
