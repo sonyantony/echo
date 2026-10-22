@@ -22,7 +22,7 @@ from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI e
 
 The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Yaml for a new spec), **Save**,
 **Save As** and **Discard**. It takes the place of Apicurio's title bar with the API's name
-(hidden by `apicurioTheme.css`); Apicurio's undo, redo and Issues stay at its right, and
+(hidden by `theme/apicurio-mapping.css`); Apicurio's undo, redo and Issues stay at its right, and
 **API Overview** opens the spec's own details (Info, Tag Definitions and Base Path; Contact,
 License and Security are hidden, though a spec that has them keeps them and Source shows them;
 Vendor Extensions is hidden on every page, the same way), which a click on that
@@ -98,12 +98,14 @@ Builder ships Apicurio's own prebuilt editor (from the Apicurio Registry UI imag
 Spring Security's default `DENY`.
 
 Being same-origin also lets the Builder theme the editor without changing the vendored copy:
-`ApicurioEditorHost` injects `src/apispec/apicurioTheme.css` into the frame and copies the active
-theme's colours onto it (`apicurioTheme.ts`). It restyles the font (Inter), title bar, outline
-selection, links, Design/Source tabs, buttons, fields, dialogs and the code editor. Apicurio is
-built on PatternFly 3, which has no dark mode, so under graphite the editor stays light. The CSS
-targets Apicurio's class names: after refreshing the editor with `update-apicurio-editor.sh`,
-check the Openapi Design view in each theme (the `api-spec` e2e test checks the theme is applied).
+`ApicurioEditorHost` injects the theme file (`src/theme/themes.css`) and Apicurio's mapping onto it
+(`src/theme/apicurio-mapping.css`) into the frame, with the theme's name and the install's brand
+colours (`apicurioTheme.ts`). It restyles the font (Inter), title bar, outline, links, Design/Source
+tabs, buttons, fields, dialogs, wizards and the code editor in the theme's colours, so under graphite
+the editor is dark too. Apicurio is built on PatternFly 3, which has no colour variables, so the
+mapping targets Apicurio's class names: after refreshing the editor with `update-apicurio-editor.sh`,
+run the `themes` e2e test, which fails on text left unreadable in any theme and attaches a
+screenshot of each screen per theme (see [branding.md](branding.md#themes)).
 
 ## Not built yet
 

@@ -4,7 +4,7 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background-color: var(--pf-t--global--background--color--primary--default);
+  background-color: var(--echo-surface);
 }
 .echo-api-spec__message {
   margin: 8px 16px;
@@ -23,7 +23,7 @@
 }
 /*
  * ECHO's bar lies over the left of Apicurio's title bar (42px high), whose API name is hidden
- * (apicurioTheme.css), so the two read as one bar: format, Save, Save As, Discard on the left,
+ * (theme/apicurio-mapping.css), so the two read as one bar: format, Save, Save As, Discard on the left,
  * Apicurio's undo, redo and Issues on the right.
  */
 .echo-api-spec__bar {
@@ -38,7 +38,7 @@
   align-items: center;
   gap: var(--pf-t--global--spacer--sm);
   white-space: nowrap;
-  background-color: var(--pf-t--global--background--color--primary--default);
+  background-color: var(--echo-surface);
 }
 .echo-api-spec__formats {
   display: flex;
@@ -57,7 +57,7 @@
 .echo-api-spec__hint,
 .echo-api-spec__status {
   font-size: var(--pf-t--global--font--size--sm);
-  color: var(--pf-t--global--text--color--subtle);
+  color: var(--echo-text-subtle);
 }
 .echo-api-spec__hint {
   cursor: help;

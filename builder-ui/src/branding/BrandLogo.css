@@ -13,5 +13,5 @@
   font-size: 1.25rem;
 }
 .echo-brand__ey {
-  color: #ffe600; /* EY yellow, part of the product name, not configurable */
+  color: var(--echo-ey-yellow); /* part of the product name, not configurable (theme/themes.css) */
 }

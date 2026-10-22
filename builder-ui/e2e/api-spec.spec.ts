@@ -240,7 +240,12 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   const tagNote = await editor
     .locator('main-form .tags-section .section-label')
     .evaluate((el) => getComputedStyle(el, '::after').content);
-  expect(tagNote).toMatch(/^url\("data:image\/svg\+xml,.*"\) "\u00a0Tags group APIs into sections"$/);
+  expect(tagNote).toBe('"\u00a0Tags group APIs into sections"');
+  // The question-mark icon before the note is drawn in the theme's subtle text colour.
+  const tagIcon = await editor
+    .locator('main-form .tags-section .section-label counter')
+    .evaluate((el) => getComputedStyle(el, '::after').maskImage);
+  expect(tagIcon).toMatch(/^url\("data:image\/svg\+xml,/);
 
   // Servers shows as Base Path: one path, typed and saved (no Apply, description or variables).
   const basePath = editor.locator('main-form .servers-section');

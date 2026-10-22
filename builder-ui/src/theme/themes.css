@@ -1,0 +1,181 @@
+/*
+ * ECHO's themes. This is the one file that defines them, and the only one that holds colour
+ * values: every other stylesheet (ECHO's own screens, kaoto-mapping.css, apicurio-mapping.css)
+ * only refers to the --echo-* tokens below.
+ *
+ * The theme is picked per install with echo.branding.theme in application.yaml and set on <html>
+ * as data-echo-theme (branding/applyBranding.ts). The same file is put into the Openapi Design
+ * editor's frame, so the tokens resolve there too.
+ *
+ * To add a theme: copy a theme's block, give it a new name, change the values, and add the name
+ * to THEMES in branding/applyBranding.ts (and to DARK_THEMES if it is dark).
+ *
+ * Selectors repeat :root so they outrank PatternFly's own tokens whatever order the stylesheets
+ * load in.
+ */
+
+/* ---------- Shared by every theme ---------- */
+
+:root:root[data-echo-theme] {
+  /* Brand colours. The install's echo.branding.colors replace these (set inline on <html>), so
+     they are only what a theme falls back on when the install leaves one out: EY's. */
+  --echo-brand: #ffe600;
+  --echo-brand-hover: #e6cf00;
+  --echo-on-brand: #2e2e38; /* text on brand-coloured buttons */
+  --echo-accent-text: #2e2e38; /* text drawn in the brand colour on light backgrounds */
+  --echo-masthead-background: #2e2e38;
+  --echo-masthead-text: #ffffff;
+
+  /* "EY" in the product name is always EY yellow, whatever the install's colours. */
+  --echo-ey-yellow: #ffe600;
+
+  /* "Download diagram" always draws light colours on white, whatever the theme. */
+  --echo-diagram-node: #ffffff;
+  --echo-diagram-node-border: #dadde3;
+  --echo-diagram-node-label: #2e2e38;
+  --echo-diagram-edge: #6b7180;
+}
+
+/*
+ * Every theme sets the same tokens:
+ *
+ *   --echo-background        the page behind panels
+ *   --echo-surface           panels, forms, editors
+ *   --echo-floating          menus, dialogs, popovers
+ *   --echo-text              body text
+ *   --echo-text-subtle       secondary text, hints, icons
+ *   --echo-border            dividers and outlines
+ *   --echo-shadow            colour of drop shadows (each use sets its own strength)
+ *   --echo-ink / -on-ink     links, and text on ink
+ *   --echo-brand-text        text drawn in the brand colour (open tab, toggles)
+ *   --echo-selected / -on-selected   a selected toggle, and its text
+ *   --echo-canvas, --echo-canvas-grid             the flow canvas and its dots or lines
+ *   --echo-node, --echo-node-border(-hover), --echo-node-label   step cards and their names
+ *   --echo-edge                                   connectors between steps
+ *   --echo-group, --echo-group-border             the route's box
+ *   --echo-code-key / -string / -number           syntax colours of code editors
+ *
+ * plus the shape of the canvas, which is made from those colours:
+ *   --echo-canvas-pattern(-size), --echo-node-radius, --echo-node-accent-top / -left,
+ *   --echo-node-shadow, --echo-group-border-style
+ */
+
+/* ---------- studio: light, dot-grid canvas, cards with a brand-colour top edge ---------- */
+
+:root:root[data-echo-theme='studio'] {
+  --echo-background: #eef0f3;
+  --echo-surface: #ffffff;
+  --echo-floating: #ffffff;
+  --echo-text: #151515;
+  --echo-text-subtle: #4d4d4d;
+  --echo-border: #e0e0e0;
+  --echo-shadow: #141824;
+  --echo-ink: var(--echo-masthead-background);
+  --echo-on-ink: var(--echo-masthead-text);
+  --echo-brand-text: var(--echo-accent-text);
+  --echo-selected: var(--echo-ink);
+  --echo-on-selected: var(--echo-on-ink);
+
+  --echo-canvas: #f7f8fa;
+  --echo-canvas-grid: #c9cdd6;
+  --echo-node: #ffffff;
+  --echo-node-border: #dadde3;
+  --echo-node-border-hover: #b8bdc7;
+  --echo-node-label: var(--echo-text);
+  --echo-edge: #6b7180;
+  --echo-group: rgb(255 255 255 / 70%);
+  --echo-group-border: #dadde3;
+
+  --echo-code-key: #1f4e8c;
+  --echo-code-string: #2f6b3b;
+  --echo-code-number: #8a4b08;
+
+  --echo-canvas-pattern: radial-gradient(var(--echo-canvas-grid) 1px, transparent 1px);
+  --echo-canvas-pattern-size: 18px 18px;
+  --echo-node-radius: 12px;
+  --echo-node-accent-top: 4px solid var(--echo-brand);
+  --echo-node-accent-left: 1px solid var(--echo-node-border);
+  --echo-node-shadow: 0 2px 6px rgb(20 24 36 / 10%);
+  --echo-group-border-style: solid;
+}
+
+/* ---------- graphite: dark throughout, deeper canvas, brand-coloured accents ---------- */
+
+:root:root[data-echo-theme='graphite'] {
+  --echo-background: #16171d;
+  --echo-surface: #1e2028;
+  --echo-floating: #262832;
+  --echo-text: #ffffff;
+  --echo-text-subtle: #c7c7c7;
+  --echo-border: #4d4d4d;
+  --echo-shadow: #000000;
+  --echo-ink: #e6e7eb;
+  --echo-on-ink: #16171d;
+  --echo-brand-text: var(--echo-brand);
+  --echo-selected: var(--echo-brand);
+  --echo-on-selected: var(--echo-on-brand);
+
+  --echo-canvas: #121318;
+  --echo-canvas-grid: #2c2f3a;
+  /* Step icons are drawn for light backgrounds, so the cards stay light. */
+  --echo-node: #f4f5f7;
+  --echo-node-border: #3a3d4a;
+  --echo-node-border-hover: #5a5e6e;
+  --echo-node-label: #e6e7eb;
+  --echo-edge: #8a8f9e;
+  --echo-group: rgb(255 255 255 / 3%);
+  --echo-group-border: #2e313c;
+
+  --echo-code-key: #8cb4f0;
+  --echo-code-string: #9fd49a;
+  --echo-code-number: #f0b37e;
+
+  --echo-canvas-pattern: radial-gradient(var(--echo-canvas-grid) 1.2px, transparent 1.2px);
+  --echo-canvas-pattern-size: 20px 20px;
+  --echo-node-radius: 12px;
+  --echo-node-accent-top: 2px solid var(--echo-node-border);
+  --echo-node-accent-left: 2px solid var(--echo-node-border);
+  --echo-node-shadow: 0 0 0 4px var(--echo-surface);
+  --echo-group-border-style: solid;
+}
+
+/* ---------- blueprint: light app, dark grid canvas, brand connectors and card edges ---------- */
+
+:root:root[data-echo-theme='blueprint'] {
+  --echo-background: #f2f2f2;
+  --echo-surface: #ffffff;
+  --echo-floating: #ffffff;
+  --echo-text: #151515;
+  --echo-text-subtle: #4d4d4d;
+  --echo-border: #e0e0e0;
+  --echo-shadow: #141824;
+  --echo-ink: var(--echo-masthead-background);
+  --echo-on-ink: var(--echo-masthead-text);
+  --echo-brand-text: var(--echo-accent-text);
+  --echo-selected: var(--echo-ink);
+  --echo-on-selected: var(--echo-on-ink);
+
+  --echo-canvas: #1f2433;
+  --echo-canvas-grid: rgb(255 255 255 / 5%);
+  --echo-node: #ffffff;
+  --echo-node-border: transparent;
+  --echo-node-border-hover: transparent;
+  --echo-node-label: #e9ecf2;
+  --echo-edge: var(--echo-brand);
+  --echo-group: rgb(255 255 255 / 3%);
+  --echo-group-border: rgb(255 255 255 / 25%);
+
+  --echo-code-key: #1f4e8c;
+  --echo-code-string: #2f6b3b;
+  --echo-code-number: #8a4b08;
+
+  --echo-canvas-pattern:
+    linear-gradient(var(--echo-canvas-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--echo-canvas-grid) 1px, transparent 1px);
+  --echo-canvas-pattern-size: 24px 24px;
+  --echo-node-radius: 6px;
+  --echo-node-accent-top: 1px solid var(--echo-node-border);
+  --echo-node-accent-left: 5px solid var(--echo-brand);
+  --echo-node-shadow: 0 4px 12px rgb(0 0 0 / 35%);
+  --echo-group-border-style: dashed;
+}

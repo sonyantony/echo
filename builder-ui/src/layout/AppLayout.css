@@ -1,14 +1,11 @@
-/* Masthead colours come from echo.branding (see branding/applyBranding.ts). */
+/* Masthead colours come from echo.branding, else the theme (theme/themes.css). */
 .echo-masthead.pf-v6-c-masthead {
-  --pf-v6-c-masthead--BackgroundColor: var(
-    --echo-masthead-background,
-    var(--pf-t--global--background--color--secondary--default)
-  );
-  color: var(--echo-masthead-text, inherit);
+  --pf-v6-c-masthead--BackgroundColor: var(--echo-masthead-background);
+  color: var(--echo-masthead-text);
   /* accent-text is chosen for light backgrounds; on the masthead use the brand colour itself. */
-  --pf-t--global--text--color--brand--default: var(--pf-t--global--color--brand--default);
-  --pf-t--global--text--color--brand--hover: var(--pf-t--global--color--brand--hover);
-  --pf-t--global--text--color--brand--clicked: var(--pf-t--global--color--brand--clicked);
+  --pf-t--global--text--color--brand--default: var(--echo-brand);
+  --pf-t--global--text--color--brand--hover: var(--echo-brand-hover);
+  --pf-t--global--text--color--brand--clicked: var(--echo-brand-hover);
 }
 .echo-masthead .echo-brand__name {
   white-space: nowrap;

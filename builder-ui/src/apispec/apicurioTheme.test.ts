@@ -13,7 +13,7 @@ afterEach(() => {
 describe("Apicurio editor's theme", () => {
   it("copies the Builder's theme and colours into the editor's frame, with ECHO's stylesheet", () => {
     document.documentElement.dataset.echoTheme = 'studio';
-    document.documentElement.style.setProperty('--pf-t--global--color--brand--default', '#ffe600');
+    document.documentElement.style.setProperty('--echo-brand', '#ffe600');
     const frame = frameDocument();
 
     applyApicurioTheme(frame);
@@ -38,10 +38,11 @@ describe("Apicurio editor's theme", () => {
     const stop = followApicurioTheme(frame);
 
     document.documentElement.dataset.echoTheme = 'graphite';
-    document.documentElement.classList.add('pf-v6-theme-dark');
     await vi.waitFor(() => expect(frame.documentElement.dataset.echoTheme).toBe('graphite'));
-    // PatternFly 3 has no dark mode, so the editor stays light under a dark theme.
-    expect(frame.documentElement.style.getPropertyValue('--echo-surface')).toBe('#ffffff');
+    // The colours come from the theme file in the frame; only the install's brand colours are copied.
+    document.documentElement.style.setProperty('--echo-brand', '#123456');
+    await vi.waitFor(() => expect(frame.documentElement.style.getPropertyValue('--echo-brand')).toBe('#123456'));
+    expect(frame.documentElement.style.getPropertyValue('--echo-surface')).toBe('');
     stop();
   });
 });

@@ -134,7 +134,7 @@
   inset-inline: 0;
   bottom: 0;
   z-index: 10;
-  background-color: var(--pf-t--global--background--color--primary--default);
+  background-color: var(--echo-surface);
 }
 .echo-kaoto-host__cover[hidden] {
   display: none;
