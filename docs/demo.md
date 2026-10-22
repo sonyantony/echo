@@ -119,12 +119,15 @@ Locally:
 
 ```bash
 git clone <flow repo> /tmp/flows
-pipeline/build-flow.sh /tmp/flows/flows/orders --local-image          # echo-flow-orders:1.0.0
+pipeline/build-flow.sh /tmp/flows/flows --mode per-flow --local-image   # echo-flow-orders:1.0.0
+# or all flows in one image (the default mode): pipeline/build-flow.sh /tmp/flows/flows --local-image  # echo-flows:1.0.0
 # or push: pipeline/build-flow.sh <folder> --registry registry.example.com/echo
 ```
 
-The script exports the flow to a Spring Boot app with Camel JBang, packages it with Maven
-and builds the image with Jib.
+The script exports the flows to a Spring Boot app with Camel JBang, packages it with Maven
+and builds the image with Jib. By default (`--mode bundle`) every flow goes into one image; flows
+then share port 8080, so each needs its own Base Path, and the build lists any clash and stops.
+`--mode per-flow` builds one image per flow. The sample Jenkinsfile has the same `BUILD_MODE` setting.
 
 ## 6. Run and call it
 

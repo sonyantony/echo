@@ -19,7 +19,7 @@ Sources: `Initial Requirements.md` (including "Version 1 decisions") and the pro
 | Git publishing | **JGit** (Eclipse JGit) over HTTPS with a token or username/password | Works with any Git server (GitHub, GitLab, Bitbucket, Azure Repos), so no provider lock-in |
 | YAML validation | **Camel YAML DSL JSON Schema** (from `camel-yaml-dsl`) checked with `networknt json-schema-validator`, plus a Camel route-load check | Catches broken flows before they reach Git |
 | Secrets | `application.yaml` / environment variables (Spring property binding) | V1 decision; Spring's property sources let a vault be plugged in later |
-| Runtime (per flow) | **Apache Camel 4.x on Spring Boot**, produced by **Camel JBang `camel export --runtime=spring-boot`** | V1 decision: exported Camel apps, not the Camel K operator |
+| Runtime | **Apache Camel 4.x on Spring Boot**, produced by **Camel JBang `camel export --runtime=spring-boot`**; by default all flows in one app and image (`bundle`), or one per flow (`per-flow`) | V1 decision: exported Camel apps, not the Camel K operator. Build mode: decision 0009 |
 | Messaging | HTTP + JSON only: `platform-http` (inbound), `http` component (outbound), Jackson | V1 scope |
 | CI (sample) | **Jenkinsfile** in the flow repo: export, `mvn package`, Docker build, push to a registry (e.g. JFrog Artifactory) | One working example; any CI can run the same steps |
 | Container image | **Jib** (Maven plugin) or a plain Dockerfile | Jib needs no Docker daemon in CI, which suits more buyer pipelines |
@@ -45,7 +45,7 @@ Spring Boot Builder backend  ── H2 (file) : users' drafts, flow metadata, pu
 Buyer's Git repo (one repo, one folder per flow, fixed branch)
             │  webhook / poll
             ▼
-Buyer's CI (sample Jenkinsfile): camel export → mvn package → image → registry (e.g. JFrog)
+Buyer's CI (sample Jenkinsfile): camel export → mvn package → image (all flows, or one per flow) → registry (e.g. JFrog)
             ▼
 Buyer runs the image wherever they like (EY ECHO's responsibility ends here)
 ```
@@ -141,7 +141,7 @@ Each milestone is small enough for a few Claude Code sessions, ends with somethi
 
 ### M8. Sample pipeline and runtime template
 - `runtime-template/`: settings the export needs (Camel version, Spring Boot version, Actuator health, JSON logging), so every flow image is built the same way.
-- `pipeline/Jenkinsfile`: detect changed `flows/*` folders, run `camel export --runtime=spring-boot`, `mvn package`, build the image with Jib, push to a registry from parameters (`REGISTRY_URL`, credentials ID). No environment promotion; that stays with the buyer.
+- `pipeline/Jenkinsfile`: detect changed `flows/*` folders, run `camel export --runtime=spring-boot`, `mvn package`, build the image with Jib, push to a registry from parameters (`REGISTRY_URL`, credentials ID). No environment promotion; that stays with the buyer. Since 2026-10-21 a `BUILD_MODE` parameter builds all flows into one image (`bundle`, the default) or one image per changed flow (`per-flow`); see `docs/decisions/0009-bundle-flows-in-one-image.md`.
 - A shell script with the same steps, for buyers without Jenkins.
 - **Done when:** running the script locally on the M1 sample flow produces an image that answers the `curl` test from `docker run`.
 

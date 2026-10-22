@@ -25,7 +25,7 @@ app and built into an image by the buyer's pipeline).
 | `builder-ui/` | React 19 + TypeScript, Vite, PatternFly 6, Kaoto 2.13 embedded; pnpm |
 | `samples/` | Golden flows used by tests at every level (`flows/orders`) |
 | `runtime-template/` | Versions and runtime defaults every flow image is built with |
-| `pipeline/` | `build-flow.sh` (export → jar → Jib image), sample `Jenkinsfile`, smoke test |
+| `pipeline/` | `build-flow.sh` (export → jar → Jib image; `--mode bundle` (default, all flows in one image, `BundleCheck.java` fails on clashes) or `per-flow`), sample `Jenkinsfile`, smoke test |
 
 ## Pinned versions (change together)
 
@@ -53,7 +53,9 @@ pnpm build        # production bundle in dist/
 ECHO_E2E_BUNDLED=1 pnpm e2e   # against the packaged jar (after pnpm build + mvn -Pwith-ui package)
 
 # Flow images (needs Java, Maven; Docker only for --local-image and the smoke test)
-pipeline/build-flow.sh samples/flows/orders --local-image
+pipeline/build-flow.sh samples/flows --local-image          # bundle (default): echo-flows:1.0.0
+pipeline/smoke-test-orders.sh --bundle
+pipeline/build-flow.sh samples/flows --mode per-flow --local-image   # echo-flow-<flow>:1.0.0
 pipeline/smoke-test-orders.sh
 
 # Builder image (UI + backend in one jar); config/application.yaml is mounted at /config

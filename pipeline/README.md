@@ -1,13 +1,38 @@
 # Sample pipeline
 
-Turns a published flow folder into a container image. EY ECHO's job ends at a runnable image;
+Turns published flow folders into container images. EY ECHO's job ends at a runnable image;
 where it runs and how it is promoted is up to you.
 
 | File | What |
 |---|---|
 | `build-flow.sh` | `camel export --runtime=spring-boot` → `mvn package` → image with Jib. Works in any CI. |
-| `Jenkinsfile` | Sample Jenkins pipeline: builds every changed `flows/*` folder and pushes to a registry. |
-| `smoke-test-orders.sh` | Runs the golden `orders` image against a mock downstream and checks the response. |
+| `BundleCheck.java` | Run by `build-flow.sh` in bundle mode: fails the build if flows clash (see below). |
+| `Jenkinsfile` | Sample Jenkins pipeline: builds `flows/*` and pushes to a registry. |
+| `smoke-test-orders.sh` | Runs the golden `orders` image (or the bundle, with `--bundle`) against a mock downstream and checks the responses. |
+
+## Build mode
+
+| Mode | Image | When the Jenkinsfile builds |
+|---|---|---|
+| `bundle` (default) | `echo-flows:<version>`: every flow in `flows/`, one app on port 8080 | When any flow changes; tagged `1.0.<build number>` |
+| `per-flow` | `echo-flow-<flow>:<version>`, one per flow | For each flow changed since the last successful build |
+
+Set it with the Jenkinsfile's `BUILD_MODE` parameter, or `--mode` / `BUILD_MODE` for the script.
+Bundle is lighter for a small install. Per-flow lets you release, roll back and scale each flow on
+its own, keeps a broken flow from affecting the others, and gives each container only that flow's
+secrets. `templates/` is never built.
+
+Bundled flows run in one app on one port, so before exporting, the build lists every clash and
+stops:
+
+- two flows on the same **Base Path** (the spec's server URL in Openapi Design; none counts as `/`)
+  or the same `platform-http` path;
+- the same `direct:` endpoint: contract-first operations go to `direct:<operationId>`, so
+  operationIds must differ between flows too;
+- the same route or step id, a file name with different content, a property with different values,
+  or different REST configurations (Client Request Validation, Enable CORS: Camel has one per app).
+
+Fix the flows, or use `per-flow`.
 
 ## Use it in your flow repository
 
@@ -17,23 +42,31 @@ where it runs and how it is promoted is up to you.
    the script from your own CI:
 
 ```bash
-# Push to a registry (no Docker daemon needed)
-REGISTRY_USERNAME=... REGISTRY_PASSWORD=... pipeline/build-flow.sh flows/orders --registry mycompany.jfrog.io/echo-docker
+# All flows in one image, pushed to a registry (no Docker daemon needed)
+REGISTRY_USERNAME=... REGISTRY_PASSWORD=... pipeline/build-flow.sh flows --version 1.0.7 --registry mycompany.jfrog.io/echo-docker
+
+# One image per flow
+pipeline/build-flow.sh flows --mode per-flow --registry mycompany.jfrog.io/echo-docker
+pipeline/build-flow.sh flows/orders --mode per-flow --registry mycompany.jfrog.io/echo-docker
 
 # Or build into the local Docker daemon, or just the jar
-pipeline/build-flow.sh flows/orders --local-image
-pipeline/build-flow.sh flows/orders --jar-only
+pipeline/build-flow.sh flows --local-image
+pipeline/build-flow.sh flows --jar-only
 ```
 
-The image is `echo-flow-<flow>:<version>`; the version is `1.0.<n>` where `n` is the publish
-number in `echo-flow.json`, or `--version`. Images listen on port 8080 and expose
-`/actuator/health/liveness` and `/actuator/health/readiness`. Flow settings come from the flow's
-`application.properties`; override them at run time with environment variables
-(for example `FULFILMENT_URL=https://...` overrides `fulfilment.url`).
+A folder argument is either one flow folder or a folder of flows. In per-flow mode the version is
+`1.0.<n>`, where `n` is the publish number in `echo-flow.json`, or `--version`; in bundle mode it is
+`--version` (default `1.0.0`). Images listen on port 8080 and expose `/actuator/health/liveness`
+and `/actuator/health/readiness`. Flow settings come from the flows' `application.properties`;
+override them at run time with environment variables (for example `FULFILMENT_URL=https://...`
+overrides `fulfilment.url`).
 
-## Try the golden flow locally
+## Try the golden flows locally
 
 ```bash
-pipeline/build-flow.sh samples/flows/orders --local-image
+pipeline/build-flow.sh samples/flows --local-image                  # echo-flows:1.0.0 (orders + greetings)
+pipeline/smoke-test-orders.sh --bundle
+
+pipeline/build-flow.sh samples/flows --mode per-flow --local-image  # echo-flow-orders:1.0.0, echo-flow-greetings:1.0.0
 pipeline/smoke-test-orders.sh
 ```

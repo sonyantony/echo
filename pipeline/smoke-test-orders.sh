@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
 # Smoke test for the golden "orders" flow image: starts the mock fulfilment service, runs the
-# image, checks its health endpoint and that POST /orders returns the mapped response.
+# image, checks its health endpoint and that POST /orders returns the mapped response. With
+# --bundle the image is a bundle of samples/flows, and the greetings flow is checked too.
 #
-#   pipeline/smoke-test-orders.sh [image]     (default: echo-flow-orders:1.0.0, built with --local-image)
+#   pipeline/smoke-test-orders.sh [image] [--bundle]
+#     image default: echo-flow-orders:1.0.0 (per-flow), or echo-flows:1.0.0 with --bundle
 #
 # Needs Docker and Java. Uses host networking so the flow reaches the mock on localhost:9090.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$HERE/.."
-IMAGE="${1:-echo-flow-orders:1.0.0}"
+BUNDLE=""; IMAGE=""
+for arg in "$@"; do
+  if [[ "$arg" == --bundle ]]; then BUNDLE=1; else IMAGE="$arg"; fi
+done
+IMAGE="${IMAGE:-$([[ -n "$BUNDLE" ]] && echo echo-flows:1.0.0 || echo echo-flow-orders:1.0.0)}"
 CAMEL_VERSION="$(grep -E '^camel.version=' "$ROOT/runtime-template/versions.properties" | cut -d= -f2-)"
 QUARKUS_VERSION="$(grep -E '^quarkus.version=' "$ROOT/runtime-template/versions.properties" | cut -d= -f2-)"
 JAR="${CAMEL_LAUNCHER_JAR:-$HOME/.echo/camel-launcher-$CAMEL_VERSION.jar}"
@@ -54,4 +60,12 @@ grep -q '"lines":\[{"product":"SKU-1","quantity":2}' "$LOGS/mock.log" || {
   echo "The downstream request was not mapped as expected" >&2; tail -20 "$LOGS/mock.log"; exit 1; }
 docker logs echo-smoke-orders >"$LOGS/flow.log" 2>&1
 grep -q '"@timestamp"' "$LOGS/flow.log" || { echo "Logs are not JSON" >&2; tail -20 "$LOGS/flow.log"; exit 1; }
+if [[ -n "$BUNDLE" ]]; then
+  echo "==> GET /greetings/Ann and DELETE /greetings/Ann (contract-first flow in the same image)"
+  RESPONSE="$(curl -fsS localhost:8080/greetings/Ann)"
+  echo "$RESPONSE"
+  [[ "$RESPONSE" == '{"greeting":"Hello Ann"}' ]] || { echo "Unexpected greeting" >&2; docker logs echo-smoke-orders | tail -30; exit 1; }
+  STATUS="$(curl -s -o /dev/null -w '%{http_code}' -XDELETE localhost:8080/greetings/Ann)"
+  [[ "$STATUS" == 404 ]] || { echo "DELETE has no route, expected 404, got $STATUS" >&2; exit 1; }
+fi
 echo "Smoke test passed"

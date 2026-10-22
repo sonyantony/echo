@@ -59,9 +59,15 @@ jobs:
           path: builder-ui/playwright-report
           retention-days: 7
 
-  pipeline:
-    # Builds the golden orders flow into an image with the sample pipeline script and checks it answers.
+  pipeline-modes:
+    # Builds the sample flows into images with the sample pipeline script, in both build modes, and
+    # checks they answer: bundle (all samples/flows in one image) and per-flow (one image per flow).
+    name: pipeline (${{ matrix.mode }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [bundle, per-flow]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -69,10 +75,30 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Build the orders flow image
-        run: pipeline/build-flow.sh samples/flows/orders --local-image
+      - name: Build the sample flow images (${{ matrix.mode }})
+        run: pipeline/build-flow.sh samples/flows --mode ${{ matrix.mode }} --local-image
       - name: Smoke test the image
-        run: pipeline/smoke-test-orders.sh
+        run: pipeline/smoke-test-orders.sh ${{ matrix.mode == 'bundle' && '--bundle' || '' }}
+      - name: A bundle with two flows on one Base Path fails clearly
+        if: matrix.mode == 'bundle'
+        run: |
+          clash="$(mktemp -d)"
+          cp -r samples/flows/greetings "$clash/greetings"
+          cp -r samples/flows/greetings "$clash/hello"
+          mv "$clash/hello/greetings.camel.yaml" "$clash/hello/hello.camel.yaml"
+          if pipeline/build-flow.sh "$clash" --jar-only --out "$clash/build" 2> "$clash/err.txt"; then
+            echo "The bundle build should have failed"; exit 1
+          fi
+          cat "$clash/err.txt"
+          grep -q 'Base Path or path /greetings is used by more than one flow: greetings, hello' "$clash/err.txt"
+
+  pipeline:
+    # The check branch protection requires: passes only when both build modes passed.
+    needs: pipeline-modes
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.pipeline-modes.result }}" = success
 
   image:
     # Builds the Builder's own Docker image and checks it starts healthy and serves the UI.

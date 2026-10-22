@@ -21,7 +21,7 @@ Version 1 decisions
 - Secrets are kept in application.yaml in Version 1.
 - The Builder will store its own data in an H2 database running in file mode (embedded), while the flows themselves are stored in Git.
 - Expected load is low, about 10 concurrent Builder users.
-- The buyer's pipeline builds a Docker image and pushes it to the buyer's container registry, such as JFrog Artifactory.
+- The buyer's pipeline builds Docker images and pushes them to the buyer's container registry, such as JFrog Artifactory. By default all flows go into one image (bundle mode); one image per flow (per-flow mode) is also available, chosen in the buyer's pipeline (2026-10-21).
 - In Version 1, the Builder commits directly to a branch.
 - In Version 1, all flows go into one repository.
 
