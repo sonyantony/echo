@@ -179,6 +179,10 @@ test('the canvas route list reads Routes and has no search box', async ({ page }
   await expect(list.getByRole('textbox')).toBeHidden();
   await expect(list.getByTestId('toggle-btn-all-flows')).toBeVisible();
   await expect(list.getByRole('row')).toHaveCount(2);
+  // "All routes" heads the list in the same size as the route names.
+  const header = await list.locator('thead th').first().evaluate((el) => getComputedStyle(el, '::before').fontSize);
+  const routeName = await list.locator('tbody td').first().evaluate((el) => getComputedStyle(el).fontSize);
+  expect(header).toBe(routeName);
 });
 
 test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate and Publish replace copy to clipboard', async ({ page }) => {
