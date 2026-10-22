@@ -39,14 +39,18 @@ describe('New From Samples dialog', () => {
     });
   });
 
-  it('warns when it replaces the spec, and lets GET go without a request sample', async () => {
+  it('warns when it replaces the spec, and lets GET go without a request sample, with a sample query', async () => {
     const user = userEvent.setup();
-    render(<SamplesSpecModal replaces="cards.yaml is overwritten when you save" onGenerate={() => {}} onClose={() => {}} />);
+    const onGenerate = vi.fn();
+    render(<SamplesSpecModal replaces="cards.yaml is overwritten when you save" onGenerate={onGenerate} onClose={() => {}} />);
     expect(screen.getByText(/A flow has one OpenAPI spec: cards.yaml is overwritten/)).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Method'), 'GET');
-    await user.type(screen.getByLabelText(/Path/), '/cards');
+    await user.type(screen.getByLabelText(/Path/), '/cards?status=ACTIVE&limit=10');
+    // The sample query is not part of the operationId.
+    expect(screen.getByLabelText(/operationId/)).toHaveValue('getCards');
     await user.click(screen.getByLabelText(/Sample response/));
     await user.paste('[]');
-    expect(screen.getByRole('button', { name: 'Replace' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Replace' }));
+    expect(onGenerate).toHaveBeenCalledWith({ method: 'GET', path: '/cards', query: 'status=ACTIVE&limit=10', operationId: 'getCards', request: undefined, response: [] });
   });
 });
