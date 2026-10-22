@@ -164,6 +164,23 @@ test('the canvas New menu shows Route without its long description', async ({ pa
   await expect(page.getByTestId('new-entity-list').getByText('Error Handling')).toBeVisible();
 });
 
+test('the canvas route list reads Routes and has no search box', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('routes');
+  await createFlow(page, name);
+  const label = page.getByTestId('flows-list-route-id');
+  // Kaoto writes the route's name; ECHO shows "Routes" in its place.
+  await expect(page.getByTestId('flows-list-dropdown')).toBeVisible();
+  expect(await label.evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"Routes"');
+  expect(await label.evaluate((el) => getComputedStyle(el).fontSize)).toBe('0px');
+  await page.getByTestId('flows-list-dropdown').click();
+  const list = page.getByTestId('flows-list-table');
+  await expect(list).toBeVisible();
+  await expect(list.getByRole('textbox')).toBeHidden();
+  await expect(list.getByTestId('toggle-btn-all-flows')).toBeVisible();
+  await expect(list.getByRole('row')).toHaveCount(2);
+});
+
 test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate and Publish replace copy to clipboard', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
