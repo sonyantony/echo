@@ -18,18 +18,20 @@ import {
 import { useState, type FormEvent } from 'react';
 import {
   bodyOptional,
-  normalizePath,
   OPERATION_ID_PATTERN,
   operationIdFor,
   parseSample,
   PATH_PATTERN,
   SAMPLE_METHODS,
+  splitPath,
   type SampleMethod,
 } from './specFromSamples';
 
 export interface SamplesSpec {
   method: SampleMethod;
   path: string;
+  /** The sample query string typed after '?', if any. */
+  query?: string;
   operationId: string;
   request?: unknown;
   response: unknown;
@@ -54,7 +56,7 @@ export function SamplesSpecModal({ replaces, onGenerate, onClose }: Props) {
   const [request, setRequest] = useState('');
   const [response, setResponse] = useState('');
 
-  const fullPath = path.trim() ? normalizePath(path) : '';
+  const { path: fullPath, query } = splitPath(path);
   const operationId = typedOperationId ?? (fullPath ? operationIdFor(method, fullPath) : '');
   const pathValid = PATH_PATTERN.test(fullPath);
   const operationIdValid = OPERATION_ID_PATTERN.test(operationId);
@@ -66,7 +68,7 @@ export function SamplesSpecModal({ replaces, onGenerate, onClose }: Props) {
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     if (!valid) return;
-    onGenerate({ method, path: fullPath, operationId, request: requestSample.value, response: responseSample.value });
+    onGenerate({ method, path: fullPath, ...(query ? { query } : {}), operationId, request: requestSample.value, response: responseSample.value });
   };
 
   return (
@@ -91,14 +93,14 @@ export function SamplesSpecModal({ replaces, onGenerate, onClose }: Props) {
                 id="spec-samples-path"
                 value={path}
                 onChange={(_e, v) => setPath(v)}
-                placeholder="/cards/{cardId}/activate"
+                placeholder="/cards/{cardId}/activate or /cards?status=ACTIVE&limit=10"
                 validated={path.trim() && !pathValid ? 'error' : 'default'}
                 autoFocus
               />
               <FormHelperText>
                 <HelperText>
                   <HelperTextItem variant={path.trim() && !pathValid ? 'error' : 'default'}>
-                    {path.trim() && !pathValid ? 'Segments of letters, digits, - _ . or a {name}, split by /.' : 'Each {name} becomes a path parameter.'}
+                    {path.trim() && !pathValid ? 'Segments of letters, digits, - _ . or a {name}, split by /, then an optional ?query.' : 'Each {name} becomes a path parameter. A sample query after ? (e.g. ?status=ACTIVE&limit=10) gives optional query parameters.'}
                   </HelperTextItem>
                 </HelperText>
               </FormHelperText>

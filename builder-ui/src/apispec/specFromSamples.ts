@@ -21,6 +21,52 @@ export function normalizePath(path: string): string {
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
+/** A path as typed, split at '?': /cards?status=ACTIVE is the path /cards and the sample query status=ACTIVE. */
+export function splitPath(typed: string): { path: string; query: string } {
+  const trimmed = typed.trim();
+  const at = trimmed.indexOf('?');
+  const path = at < 0 ? trimmed : trimmed.slice(0, at);
+  return { path: path ? normalizePath(path) : '', query: at < 0 ? '' : trimmed.slice(at + 1) };
+}
+
+/**
+ * The query parameters of a sample query string. Each is optional (a sample does not show what a
+ * caller must send), typed from its value, with the value as example; a key given more than once
+ * is an array.
+ */
+export function queryParameters(query: string): Record<string, unknown>[] {
+  const values = new Map<string, string[]>();
+  for (const [key, value] of new URLSearchParams(query)) {
+    if (key) values.set(key, [...(values.get(key) ?? []), value]);
+  }
+  return [...values].map(([name, vals]) => {
+    const item = queryType(vals);
+    const typed = vals.map((v) => queryValue(v, item.type));
+    return {
+      name,
+      in: 'query',
+      required: false,
+      schema: vals.length > 1 ? { type: 'array', items: item } : item,
+      ...(vals.some((v) => v !== '') ? { example: vals.length > 1 ? typed : typed[0] } : {}),
+    };
+  });
+}
+
+/** The narrowest type every value fits: integer, number, boolean, else string. */
+function queryType(values: string[]): { type: string } {
+  const all = (re: RegExp) => values.every((v) => re.test(v));
+  if (all(/^-?\d+$/)) return { type: 'integer' };
+  if (all(/^-?(\d+\.?\d*|\.\d+)$/)) return { type: 'number' };
+  if (all(/^(true|false)$/)) return { type: 'boolean' };
+  return { type: 'string' };
+}
+
+function queryValue(value: string, type: string): unknown {
+  if (type === 'integer' || type === 'number') return Number(value);
+  if (type === 'boolean') return value === 'true';
+  return value;
+}
+
 /** The names in {braces}, in order. */
 export function pathParameters(path: string): string[] {
   return [...path.matchAll(/\{([^}/]+)\}/g)].map((m) => m[1]);
@@ -118,6 +164,8 @@ function stringFormat(value: string): Schema {
 export interface SamplesInput {
   method: SampleMethod;
   path: string;
+  /** A sample query string (without '?'), whose keys become query parameters. */
+  query?: string;
   operationId: string;
   /** The parsed sample request body; undefined when there is none. */
   request?: unknown;
@@ -140,7 +188,10 @@ export function specFromSamples(input: SamplesInput): string {
     content: { 'application/json': { schema: builder.of(name, sample), example: sample } },
   });
 
-  const params = pathParameters(path).map((name) => ({ name, in: 'path', required: true, schema: { type: 'string' } }));
+  const params = [
+    ...pathParameters(path).map((name) => ({ name, in: 'path', required: true, schema: { type: 'string' } })),
+    ...queryParameters(input.query ?? ''),
+  ];
   const operation: Record<string, unknown> = {
     operationId,
     ...(params.length ? { parameters: params } : {}),
