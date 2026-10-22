@@ -1,5 +1,6 @@
 import { Dropdown, DropdownList, MenuToggle } from '@patternfly/react-core';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useDismissMenu } from './menuDismiss';
 
 const tabButton = (testId: string) =>
   document.querySelector<HTMLElement>(`.echo-kaoto-host [data-testid='${testId}'] [role='tab']`);
@@ -46,6 +47,7 @@ export interface KaotoTabMenuProps {
  */
 export function KaotoTabMenu({ label, tabTestId, opensTab, className, children }: KaotoTabMenuProps) {
   const [open, setOpen] = useState(false);
+  useDismissMenu(open, setOpen);
   const current = useKaotoTabSelected(tabTestId);
 
   return (

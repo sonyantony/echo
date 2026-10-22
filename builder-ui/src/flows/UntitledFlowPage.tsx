@@ -25,6 +25,7 @@ import { flowsApi } from '../api/flows';
 import { InMemoryFlowFiles } from '../editor/flowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useKaotoTabSelected } from '../editor/KaotoTabMenu';
+import { useDismissMenu } from '../editor/menuDismiss';
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { Shortcut } from './FlowEditorPage';
 import { FlowFormModal } from './FlowFormModal';
@@ -53,6 +54,7 @@ export function UntitledFlowPage() {
   // The "No flow is open" card belongs to the canvas; About, Rest and the other views show as usual.
   const designOpen = useKaotoTabSelected('design-tab', true);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  useDismissMenu(fileMenuOpen, setFileMenuOpen);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [openingTemplate, setOpeningTemplate] = useState(false);

@@ -37,6 +37,7 @@ import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
 import { CopySpecModal } from '../apispec/CopySpecModal';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
+import { useDismissMenu } from '../editor/menuDismiss';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { FlowFormModal } from './FlowFormModal';
@@ -108,6 +109,10 @@ function FlowEditor() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [runMenuOpen, setRunMenuOpen] = useState(false);
   const [specMenuOpen, setSpecMenuOpen] = useState(false);
+  useDismissMenu(fileMenuOpen, setFileMenuOpen);
+  useDismissMenu(moreMenuOpen, setMoreMenuOpen);
+  useDismissMenu(runMenuOpen, setRunMenuOpen);
+  useDismissMenu(specMenuOpen, setSpecMenuOpen);
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
