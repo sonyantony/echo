@@ -21,6 +21,8 @@
     <!-- Keep in step with builder-ui/scripts/copy-camel-catalog.mjs and runtime-template/. -->
     <camel.version>4.22.1</camel.version>
     <jgit.version>7.8.0.202609011348-r</jgit.version>
+    <!-- Keep in step with runtime-template/versions.properties (VersionAlignmentTest checks it). -->
+    <swagger-ui.version>5.33.1</swagger-ui.version>
   </properties>
 
   <dependencyManagement>
@@ -98,6 +100,18 @@
     <dependency>
       <groupId>org.apache.camel</groupId>
       <artifactId>camel-rest-openapi</artifactId>
+    </dependency>
+    <!-- With Client Request Validation on, checks request bodies against the spec's schemas too (400
+         naming the field). Camel finds it on the classpath; flow images get it from build-flow.sh. -->
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-openapi-validator</artifactId>
+    </dependency>
+    <!-- Swagger UI at <Base Path>/docs of a running flow (RestFromSpec serves it from the webjar). -->
+    <dependency>
+      <groupId>org.webjars</groupId>
+      <artifactId>swagger-ui</artifactId>
+      <version>${swagger-ui.version}</version>
     </dependency>
     <!-- Reads the approved API specs (echo.apis), converting Swagger 2.0 to OpenAPI 3. Same version
          as the swagger-parser-v3 that camel-rest-openapi brings. -->

@@ -236,6 +236,52 @@ class FlowRunnerTest {
     }
 
     @Test
+    void servesSwaggerUiForTheSpecNextToItsOperations() throws Exception {
+        String spec = """
+                openapi: 3.0.3
+                info: {title: Customers, version: 1.0.0}
+                servers:
+                  - url: http://api.example.com/myurlbase
+                paths:
+                  /customers/{id}:
+                    get:
+                      operationId: getCustomer
+                      responses: {"200": {description: ok}}
+                """;
+        var files = com.ey.echo.builder.flow.RestFromSpec.apply("customers.camel.yaml", java.util.Optional.of("customer-api.yaml"), Map.of(
+                "customers.camel.yaml", """
+                        - route:
+                            from:
+                              uri: direct:getCustomer
+                              steps:
+                                - setBody:
+                                    simple: '{"id":"${header.id}"}'
+                        """,
+                "customer-api.yaml", spec));
+        var run = runner.start(1, "customers", "customers.camel.yaml", files, "designer");
+
+        assertThat(run.docsPath).isEqualTo("/myurlbase/docs");
+        assertThat(run.endpoints).containsExactly(new FlowRun.Endpoint("/myurlbase/customers/{id}", List.of("GET")));
+        var page = get(run.port, "/myurlbase/docs");
+        assertThat(page.statusCode()).isEqualTo(200);
+        assertThat(page.headers().firstValue("Content-Type")).hasValueSatisfying(t -> assertThat(t).startsWith("text/html"));
+        assertThat(page.body()).contains("<title>Customers - API docs</title>", "SwaggerUIBundle(");
+        var served = get(run.port, "/myurlbase/docs/openapi");
+        assertThat(served.statusCode()).isEqualTo(200);
+        assertThat(served.body()).isEqualTo(spec);
+        String webjar = "META-INF/resources/webjars/swagger-ui/" + FlowRunner.swaggerUiVersion() + "/";
+        for (String asset : List.of("swagger-ui-bundle.js", "swagger-ui.css")) {
+            var response = get(run.port, "/myurlbase/docs/" + asset);
+            assertThat(response.statusCode()).as(asset).isEqualTo(200);
+            try (var in = getClass().getClassLoader().getResourceAsStream(webjar + asset)) {
+                assertThat(response.body()).as(asset).isEqualTo(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            }
+        }
+        // The operations still work next to it.
+        assertThat(get(run.port, "/myurlbase/customers/C7").body()).isEqualTo("{\"id\":\"C7\"}");
+    }
+
+    @Test
     void theFlowDesignMenusRestSettingsApplyToTheServiceMadeFromTheSpec() throws Exception {
         String spec = """
                 openapi: 3.0.3
@@ -269,8 +315,8 @@ class FlowRunnerTest {
                 "orders-api.yaml", spec));
         var run = runner.start(1, "orders", "orders.camel.yaml", files, "designer");
 
-        // Camel's client request validation checks the content type and that a required body, query
-        // parameter or header is there; it does not check the body against the schema.
+        // Client request validation checks the content type, that a required body, query parameter or
+        // header is there, and (camel-openapi-validator) the body against the spec's schema.
         var noBody = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/orders"))
                 .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.noBody()).build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -278,7 +324,18 @@ class FlowRunnerTest {
         var wrongType = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/orders"))
                 .header("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString("sku=X")).build(),
                 HttpResponse.BodyHandlers.ofString());
-        assertThat(wrongType.statusCode()).isEqualTo(415);
+        assertThat(wrongType.statusCode()).isBetween(400, 415);
+        var missingField = post(run.port, "/orders", "{\"qty\":2}");
+        assertThat(missingField.statusCode()).isEqualTo(400);
+        assertThat(missingField.body()).contains("missing required properties", "sku");
+        var wrongField = post(run.port, "/orders", "{\"sku\":7}");
+        assertThat(wrongField.statusCode()).isEqualTo(400);
+        assertThat(wrongField.body()).contains("/sku", "string");
+        var asJson = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/orders"))
+                .header("Content-Type", "application/json").header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"sku\":7}")).build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(asJson.statusCode()).isEqualTo(400);
+        assertThat(asJson.body()).contains("\"instance\" : \"/sku\"");
         var good = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/orders"))
                 .header("Content-Type", "application/json").header("Origin", "http://web.example")
                 .POST(HttpRequest.BodyPublishers.ofString("{\"sku\":\"X\"}")).build(), HttpResponse.BodyHandlers.ofString());

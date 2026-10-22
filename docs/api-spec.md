@@ -1,7 +1,8 @@
 # Openapi Design: a flow's OpenAPI spec
 
 Version 2 makes flows contract-first: each flow can carry an OpenAPI spec describing the REST API
-it offers. This page covers the editor; using the spec at runtime is the next step (below).
+it offers. This page covers the editor and what the spec does when the flow runs (REST service,
+request validation, Swagger UI).
 
 ## Editing
 
@@ -73,13 +74,67 @@ itself keeps only what is designed, so the service always follows the spec's cur
   `direct:<operationId>` and it takes over. A path that is not in the spec is a 404 too.
 - The **Client Request Validation** and **Enable CORS** checkboxes, stacked just before Publish on
   the Flow Design toolbar, turn the REST configuration's
-  settings on and off (`restConfiguration` in the route file). They need a spec. Camel's request
-  validation answers 400 when a body, query parameter or header the spec requires is missing, and
-  415/406 for a content type the operation does not take or give; it does not check a body against
-  its schema.
-- The Run panel lists the spec's paths, Base Path included, to call.
+  settings on and off (`restConfiguration` in the route file). They need a spec. See
+  [Request validation](#request-validation) below.
+- **Swagger UI** for the spec is at **`<Base Path>/docs`** of the running flow (below).
+- The Run panel lists the spec's paths, Base Path included, to call, and links the flow's Swagger UI.
 - Upload, Edit as draft and Open Template take the generated part out again, so it never shows up
   in the draft. A flow with its own hand-written (code-first) `rest` keeps it.
+
+### Request validation
+
+With **Client Request Validation** ticked, every request is checked against the spec before the
+flow's route sees it, and a request that does not fit gets **400** with what is wrong:
+
+- the request body against the operation's schema: required fields, types, formats, enums,
+  lengths, and fields the schema does not have (Atlassian's swagger-request-validator rejects
+  those unless the schema allows them with `additionalProperties`);
+- required query parameters, path parameters and headers, and their types;
+- the Content-Type the operation takes and the Accept it can answer.
+
+The answer names each field by its JSON path, for example:
+
+```
+Validation failed.
+[ERROR][REQUEST][POST /orders @body] [Path '/qty'] Instance type (string) does not match any allowed primitive type (allowed: ["integer"])
+[ERROR][REQUEST][POST /orders @body] Object has missing required properties (["sku"])
+```
+
+A caller that sends `Accept: application/json` gets the same as a JSON report (`messages`, each
+with a `key`, `message` and `context.pointers.instance`, e.g. `/qty`). The plain report is sent
+with the request's Content-Type, so Swagger UI shows it under "can't parse JSON".
+
+This is Camel's own client request validation with `camel-openapi-validator` on the classpath
+(docs/decisions/0010): in the Builder (Run) as a dependency, in flow images through
+`pipeline/build-flow.sh`, in both build modes. It is not a step in the flow, so there is nothing to
+add in the editor and nothing to allow in `echo.validation.allowed-components`. Untick the
+checkbox and nothing is checked. A flow with its own hand-written (code-first) `rest` gets no
+checks at all from the checkbox, since this validator works from a spec.
+
+### Swagger UI
+
+Every flow with a spec serves Swagger UI at **`<Base Path>/docs`** (`/docs` without a Base Path),
+in Run and in flow images, so the flow documents itself wherever it runs. It shows the operations
+and their schemas, and **Try it out** calls the same flow: requests go to the server the page came
+from, whatever host the spec's server URL names. With Client Request Validation ticked, a body
+that does not fit gets the 400 above, which makes Swagger UI an easy way to show it.
+
+| Path | What |
+|---|---|
+| `<Base Path>/docs` | the page |
+| `<Base Path>/docs/openapi` | the flow's spec, as it is in the flow |
+| `<Base Path>/docs/swagger-ui-bundle.js`, `swagger-ui.css` | Swagger UI itself |
+
+`RestFromSpec` adds four small routes for these (`echo-docs-<flow>`, `-spec`, `-script`, `-style`)
+next to the REST service, and takes them out again like the rest of the generated part. They read
+Swagger UI from the `org.webjars:swagger-ui` jar on the classpath (version
+`echo.swagger-ui.version`, from `runtime-template/versions.properties` in images and the Builder's
+own jar in Run), so nothing is fetched from the internet. In a bundle image every flow has its own
+page under its own Base Path; two bundled flows without a Base Path would both want `/docs`, and
+the bundle check stops the build.
+
+Run panel: **Open API docs (Swagger UI)** opens the page of the running draft in a new tab, at the
+run port (`echo.run.public-url`).
 
 ### A schema from a sample JSON
 
@@ -109,8 +164,8 @@ screenshot of each screen per theme (see [branding.md](branding.md#themes)).
 
 ## Not built yet
 
-1. **Body validation.** Checking request bodies against their schema (Camel's client request
-   validation does not), and Validate reporting operations without a route before Run.
-2. **Swagger UI on the runtime.** Serve the flow's spec from the flow image (e.g. `/openapi.json`)
-   plus Swagger UI (`camel-openapi-java` or a static Swagger UI bundle) at `/api-docs`.
+1. **Validate and missing routes.** Validate could list the operations without a route before Run
+   (today they answer 404).
+2. **Response validation.** Camel can check the flow's responses against the spec too
+   (`clientResponseValidation`); there is no checkbox for it.
 3. **Build checks.** Validation should report an invalid spec, and Publish should refuse one.

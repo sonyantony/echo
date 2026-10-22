@@ -15,6 +15,7 @@ const run: RunInfo = {
   port: 8081,
   url: 'http://localhost:8081',
   endpoints: [{ path: '/firsttestflow', methods: ['POST'], url: 'http://localhost:8081/firsttestflow' }],
+  docsUrl: null,
   startedBy: 'designer',
   startedAt: '2026-10-16T19:00:00Z',
   idleMinutes: 30,
@@ -33,6 +34,22 @@ describe('RunPanel', () => {
     expect(screen.getByText('firsttestflow on port 8081', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('http://localhost:8081/firsttestflow')).toBeInTheDocument();
     expect(await screen.findByText('got {"hello":"world"}')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /API docs/ })).not.toBeInTheDocument();
+  });
+
+  it('links Swagger UI when the flow has an OpenAPI spec', async () => {
+    mockFetch({ 'GET /api/flows/2/run/log?after=0': { status: 200, body: [] } });
+    render(
+      <RunPanel
+        flowId={2}
+        run={{ ...run, docsUrl: 'http://localhost:8081/shop/docs' }}
+        onStop={() => undefined}
+        stopping={false}
+      />,
+    );
+    const link = screen.getByRole('link', { name: 'Open API docs (Swagger UI)' });
+    expect(link).toHaveAttribute('href', 'http://localhost:8081/shop/docs');
+    expect(link).toHaveAttribute('target', '_blank');
   });
 
   it('sends a test request and shows the reply', async () => {

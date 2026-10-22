@@ -20,9 +20,13 @@ class VersionAlignmentTest {
     private static final Path ROOT = Path.of("..");
 
     private static String runtimeCamelVersion() throws IOException {
+        return runtimeVersion("camel.version");
+    }
+
+    private static String runtimeVersion(String key) throws IOException {
         var props = new Properties();
         props.load(new StringReader(Files.readString(ROOT.resolve("runtime-template/versions.properties"))));
-        return props.getProperty("camel.version");
+        return props.getProperty(key);
     }
 
     private static String uiCatalogCamelVersion() throws IOException {
@@ -45,5 +49,12 @@ class VersionAlignmentTest {
         assertThat(runtimeCamelVersion()).as("runtime-template").isEqualTo(backend);
         assertThat(uiCatalogCamelVersion()).as("Kaoto catalog copied by the UI").isEqualTo(backend);
         assertThat(uiRuntimeCatalogName()).as("Kaoto runtime catalog selected by the UI").isEqualTo(backend);
+    }
+
+    /** Swagger UI (RestFromSpec's docs routes) reads the webjar of this version in Run and in images. */
+    @Test
+    void swaggerUiVersionIsTheSameInRunAndInImages() throws IOException {
+        assertThat(com.ey.echo.builder.run.FlowRunner.swaggerUiVersion()).isNotBlank()
+                .isEqualTo(runtimeVersion("swagger-ui.version"));
     }
 }

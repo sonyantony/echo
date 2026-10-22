@@ -51,6 +51,12 @@ class FlowValidatorTest {
     }
 
     @Test
+    void contractFirstSampleWithItsGeneratedRestAndSwaggerUiIsValid() {
+        var result = validator.validate("greetings.camel.yaml", folder(Path.of("../samples/flows/greetings")));
+        assertThat(result.problems()).isEmpty();
+    }
+
+    @Test
     void malformedYamlIsReportedWithItsLine() {
         var result = validateFixture("malformed.camel.yaml");
         assertThat(result.valid()).isFalse();

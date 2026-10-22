@@ -5,7 +5,7 @@ where it runs and how it is promoted is up to you.
 
 | File | What |
 |---|---|
-| `build-flow.sh` | `camel export --runtime=spring-boot` → `mvn package` → image with Jib. Works in any CI. |
+| `build-flow.sh` | `camel export --runtime=spring-boot` → `mvn package` → image with Jib. Works in any CI. Adds the two dependencies export cannot see in the routes: `camel-openapi-validator` (request bodies checked against the spec when Client Request Validation is on) and the Swagger UI webjar (`<Base Path>/docs`). |
 | `BundleCheck.java` | Run by `build-flow.sh` in bundle mode: fails the build if flows clash (see below). |
 | `Jenkinsfile` | Sample Jenkins pipeline: builds `flows/*` and pushes to a registry. |
 | `smoke-test-orders.sh` | Runs the golden `orders` image (or the bundle, with `--bundle`) against a mock downstream and checks the responses. |
@@ -26,7 +26,8 @@ Bundled flows run in one app on one port, so before exporting, the build lists e
 stops:
 
 - two flows on the same **Base Path** (the spec's server URL in Openapi Design; none counts as `/`)
-  or the same `platform-http` path;
+  or the same `platform-http` path (each flow with a spec also serves Swagger UI at `<Base Path>/docs`,
+  so two flows without a Base Path clash on `/docs`);
 - the same `direct:` endpoint: contract-first operations go to `direct:<operationId>`, so
   operationIds must differ between flows too;
 - the same route or step id, a file name with different content, a property with different values,

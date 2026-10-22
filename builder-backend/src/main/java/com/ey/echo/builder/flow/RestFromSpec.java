@@ -25,7 +25,10 @@ import org.yaml.snakeyaml.nodes.SequenceNode;
  * {@code openApi.specification} is the spec file, so Camel sends each operation to
  * {@code direct:<operationId>} under the spec's Base Path (its server URL). An operation the flow
  * has no route for answers 404: ECHO adds a small route for it, and the service's
- * {@code missingOperation} is {@code ignore}, so the flow starts anyway.
+ * {@code missingOperation} is {@code ignore}, so the flow starts anyway. Swagger UI for the spec is
+ * served at {@code <Base Path>/docs}, by a few more routes ({@code echo-docs-<flow>}) that read
+ * Swagger UI from its webjar and the spec from the classpath, so it works the same in Run and in
+ * flow images, bundled or not.
  *
  * <p>The draft keeps only what the user designs (routes, and the REST configuration the checkboxes
  * next to Publish set); this is added to the route file whenever the flow leaves the editor (Run,
@@ -37,6 +40,13 @@ public final class RestFromSpec {
 
     /** Routes ECHO adds for operations the flow does not implement. */
     static final String MISSING_ROUTE_PREFIX = "echo-missing-";
+    /** Routes ECHO adds to serve Swagger UI; the page's route is {@code echo-docs-<flow>}. */
+    public static final String DOCS_ROUTE_PREFIX = "echo-docs-";
+    /**
+     * Where the routes find Swagger UI. The property is set to the webjar version the Builder (Run)
+     * or the image (build-flow.sh, runtime-template/versions.properties) carries.
+     */
+    static final String SWAGGER_UI = "META-INF/resources/webjars/swagger-ui/{{echo.swagger-ui.version}}/";
     private static final Set<String> VERBS = Set.of("get", "put", "post", "delete", "options", "head", "patch", "trace");
     /** A rest service with only these keys is a contract-first one, the kind ECHO makes. */
     private static final Set<String> CONTRACT_FIRST_KEYS = Set.of("id", "description", "openApi");
@@ -56,12 +66,14 @@ public final class RestFromSpec {
             return files;
         }
         var result = new TreeMap<>(files);
-        result.put(routeFile, applyTo(route, spec.orElse(null), spec.map(files::get).orElse(null)));
+        String flowName = routeFile.endsWith(".camel.yaml") ? routeFile.substring(0, routeFile.length() - ".camel.yaml".length())
+                : routeFile;
+        result.put(routeFile, applyTo(route, flowName, spec.orElse(null), spec.map(files::get).orElse(null)));
         return result;
     }
 
     /** The route YAML with the REST part for this spec; unchanged if it is not a YAML list (Validate says why). */
-    static String applyTo(String yaml, String specName, String specContent) {
+    static String applyTo(String yaml, String flowName, String specName, String specContent) {
         var root = compose(yaml);
         if (root == null) {
             return yaml;
@@ -87,6 +99,11 @@ public final class RestFromSpec {
             if (spec.hasBasePath()) {
                 restConfiguration(root).ifPresent(conf -> conf.getValue().removeIf(t -> key(t).equals("contextPath")));
             }
+            String base = spec.hasBasePath() ? spec.basePath()
+                    : restConfiguration(root).flatMap(conf -> scalar(conf, "contextPath")).orElse("");
+            for (String route : docsRoutes(flowName, docsPath(base), specName, spec.title())) {
+                entries.add(compose(route).getValue().getFirst());
+            }
             changed = true;
         }
         return changed ? serialize(root) : yaml;
@@ -110,7 +127,8 @@ public final class RestFromSpec {
                         && rest.getValue().stream().allMatch(t -> CONTRACT_FIRST_KEYS.contains(key(t)));
             }
             return key(only).equals("route") && only.getValueNode() instanceof MappingNode route
-                    && scalar(route, "id").filter(id -> id.startsWith(MISSING_ROUTE_PREFIX)).isPresent();
+                    && scalar(route, "id").filter(id -> id.startsWith(MISSING_ROUTE_PREFIX)
+                            || id.startsWith(DOCS_ROUTE_PREFIX)).isPresent();
         });
     }
 
@@ -133,6 +151,81 @@ public final class RestFromSpec {
                         - setBody:
                             constant: %s
                 """.formatted(quoted(MISSING_ROUTE_PREFIX + operation), quoted("direct:" + operation), quoted(body));
+    }
+
+    /** Where Swagger UI is for a flow served under this base path (Base Path or Context Path). */
+    public static String docsPath(String base) {
+        String b = base == null ? "" : base.strip();
+        while (b.endsWith("/")) {
+            b = b.substring(0, b.length() - 1);
+        }
+        return (b.isEmpty() || b.startsWith("/") ? b : "/" + b) + "/docs";
+    }
+
+    /**
+     * Swagger UI for the spec: the page at {@code docs}, Swagger UI's script and style next to it
+     * (relative links, so it also works behind a proxy), and the spec. Try it out calls the server
+     * the page came from, whatever host the spec's server URL names, so it tests this flow.
+     */
+    private static List<String> docsRoutes(String flowName, String docs, String specName, String title) {
+        String id = DOCS_ROUTE_PREFIX + flowName;
+        String page = """
+                <!doctype html>
+                <html lang="en">
+                <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>%s</title>
+                <link rel="stylesheet" href="docs/swagger-ui.css">
+                </head>
+                <body>
+                <div id="swagger-ui"></div>
+                <script src="docs/swagger-ui-bundle.js"></script>
+                <script>
+                window.ui = SwaggerUIBundle({
+                  url: 'docs/openapi',
+                  dom_id: '#swagger-ui',
+                  deepLinking: true,
+                  requestInterceptor: function (request) {
+                    var url = new URL(request.url, window.location.href);
+                    if (url.origin !== window.location.origin) {
+                      request.url = window.location.origin + url.pathname + url.search;
+                    }
+                    return request;
+                  }
+                });
+                </script>
+                </body>
+                </html>
+                """.formatted(html((title == null || title.isBlank() ? flowName : title) + " - API docs"));
+        boolean json = specName.toLowerCase(java.util.Locale.ROOT).endsWith(".json");
+        return List.of(
+                // One line: YAML would fold the line breaks of a quoted string anyway.
+                docsRoute(id, docs, "text/html; charset=utf-8", String.join("", page.lines().map(String::strip).toList())),
+                docsRoute(id + "-spec", docs + "/openapi", json ? "application/json" : "application/yaml",
+                        "resource:classpath:" + specName),
+                docsRoute(id + "-script", docs + "/swagger-ui-bundle.js", "text/javascript",
+                        "resource:classpath:" + SWAGGER_UI + "swagger-ui-bundle.js"),
+                docsRoute(id + "-style", docs + "/swagger-ui.css", "text/css",
+                        "resource:classpath:" + SWAGGER_UI + "swagger-ui.css"));
+    }
+
+    private static String docsRoute(String id, String path, String contentType, String body) {
+        return """
+                - route:
+                    id: %s
+                    description: Made by EY ECHO; Swagger UI for the flow's OpenAPI spec
+                    from:
+                      uri: %s
+                      parameters:
+                        httpMethodRestrict: GET
+                      steps:
+                        - setHeader:
+                            name: Content-Type
+                            constant: %s
+                        - setBody:
+                            constant: %s
+                """.formatted(quoted(id), quoted("platform-http:" + path), quoted(contentType), quoted(body));
     }
 
     /** The operations the flow has a {@code direct:} route for. */
@@ -187,7 +280,7 @@ public final class RestFromSpec {
     }
 
     /** What ECHO needs from the spec: its operations and its Base Path (the path of its server URL). */
-    record Spec(List<Operation> operations, String basePath) {
+    record Spec(List<Operation> operations, String basePath, String title) {
 
         boolean hasBasePath() {
             return !basePath.isEmpty();
@@ -202,10 +295,10 @@ public final class RestFromSpec {
             try {
                 doc = new Yaml(new SafeConstructor(new LoaderOptions())).load(content);
             } catch (RuntimeException e) {
-                return new Spec(List.of(), ""); // Camel reports a broken spec when the flow starts
+                return new Spec(List.of(), "", null); // Camel reports a broken spec when the flow starts
             }
             if (!(doc instanceof Map<?, ?> map)) {
-                return new Spec(List.of(), "");
+                return new Spec(List.of(), "", null);
             }
             var operations = new ArrayList<Operation>();
             if (map.get("paths") instanceof Map<?, ?> paths) {
@@ -221,7 +314,8 @@ public final class RestFromSpec {
                     }
                 });
             }
-            return new Spec(List.copyOf(operations), basePath(map));
+            String title = map.get("info") instanceof Map<?, ?> info && info.get("title") instanceof String t ? t.strip() : null;
+            return new Spec(List.copyOf(operations), basePath(map), title);
         }
 
         /** Like Camel's RestOpenApiHelper: the path of the (last) server URL, without a trailing slash. */
@@ -283,6 +377,11 @@ public final class RestFromSpec {
             node = m.getValue().stream().filter(t -> key(t).equals(key)).map(NodeTuple::getValueNode).findFirst().orElse(null);
         }
         return node instanceof ScalarNode s ? Optional.of(s.getValue()) : Optional.empty();
+    }
+
+    private static String html(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+                .replace("{", "&#123;"); // {{ would be a Camel property placeholder
     }
 
     /** A YAML single-quoted string. */

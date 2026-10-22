@@ -19,6 +19,9 @@
   color: var(--echo-text-subtle);
   font-size: var(--pf-t--global--font--size--sm);
 }
+.echo-run-panel__docs {
+  margin-top: 6px;
+}
 .echo-run-panel__hint {
   margin-top: 4px;
 }

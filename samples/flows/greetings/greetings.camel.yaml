@@ -1,3 +1,5 @@
+- restConfiguration:
+    clientRequestValidation: true
 - route:
     id: greeting
     from:
@@ -11,16 +13,29 @@
         - setBody:
             id: set-greeting
             simple: '{"greeting":"Hello ${header.name}"}'
+- route:
+    id: create-greeting
+    from:
+      id: from-create-greeting
+      uri: direct:createGreeting
+      steps:
+        - setHeader:
+            id: set-created-content-type
+            name: Content-Type
+            constant: application/json
+        - setBody:
+            id: set-created-greeting
+            constant: '{"created":true}'
 - rest:
     id: echo-openapi
     openApi:
-      specification: greetings-api.yaml
+      specification: 'greetings-api.yaml'
       missingOperation: ignore
 - route:
-    id: echo-missing-deleteGreeting
+    id: 'echo-missing-deleteGreeting'
     description: Made by EY ECHO; the flow has no route for this operation of its OpenAPI spec
     from:
-      uri: direct:deleteGreeting
+      uri: 'direct:deleteGreeting'
       steps:
         - setHeader:
             name: CamelHttpResponseCode
@@ -30,3 +45,55 @@
             constant: application/json
         - setBody:
             constant: '{"error":"Not found","message":"This flow does not implement the operation deleteGreeting yet."}'
+- route:
+    id: 'echo-docs-greetings'
+    description: Made by EY ECHO; Swagger UI for the flow's OpenAPI spec
+    from:
+      uri: 'platform-http:/greetings/docs'
+      parameters:
+        httpMethodRestrict: GET
+      steps:
+        - setHeader:
+            name: Content-Type
+            constant: 'text/html; charset=utf-8'
+        - setBody:
+            constant: '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Greetings - API docs</title><link rel="stylesheet" href="docs/swagger-ui.css"></head><body><div id="swagger-ui"></div><script src="docs/swagger-ui-bundle.js"></script><script>window.ui = SwaggerUIBundle({url: ''docs/openapi'',dom_id: ''#swagger-ui'',deepLinking: true,requestInterceptor: function (request) {var url = new URL(request.url, window.location.href);if (url.origin !== window.location.origin) {request.url = window.location.origin + url.pathname + url.search;}return request;}});</script></body></html>'
+- route:
+    id: 'echo-docs-greetings-spec'
+    description: Made by EY ECHO; Swagger UI for the flow's OpenAPI spec
+    from:
+      uri: 'platform-http:/greetings/docs/openapi'
+      parameters:
+        httpMethodRestrict: GET
+      steps:
+        - setHeader:
+            name: Content-Type
+            constant: 'application/yaml'
+        - setBody:
+            constant: 'resource:classpath:greetings-api.yaml'
+- route:
+    id: 'echo-docs-greetings-script'
+    description: Made by EY ECHO; Swagger UI for the flow's OpenAPI spec
+    from:
+      uri: 'platform-http:/greetings/docs/swagger-ui-bundle.js'
+      parameters:
+        httpMethodRestrict: GET
+      steps:
+        - setHeader:
+            name: Content-Type
+            constant: 'text/javascript'
+        - setBody:
+            constant: 'resource:classpath:META-INF/resources/webjars/swagger-ui/{{echo.swagger-ui.version}}/swagger-ui-bundle.js'
+- route:
+    id: 'echo-docs-greetings-style'
+    description: Made by EY ECHO; Swagger UI for the flow's OpenAPI spec
+    from:
+      uri: 'platform-http:/greetings/docs/swagger-ui.css'
+      parameters:
+        httpMethodRestrict: GET
+      steps:
+        - setHeader:
+            name: Content-Type
+            constant: 'text/css'
+        - setBody:
+            constant: 'resource:classpath:META-INF/resources/webjars/swagger-ui/{{echo.swagger-ui.version}}/swagger-ui.css'

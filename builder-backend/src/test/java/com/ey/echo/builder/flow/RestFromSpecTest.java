@@ -39,8 +39,8 @@ class RestFromSpecTest {
 
     @Test
     void addsTheRestServiceAndA404RouteForEachMissingOperation() {
-        String yaml = RestFromSpec.applyTo(ROUTE, "customer-api.yaml", SPEC);
-        assertThat(yaml).isEqualTo("""
+        String yaml = RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", SPEC);
+        assertThat(yaml).startsWith("""
                 - restConfiguration:
                     clientRequestValidation: true
                 - route:
@@ -74,9 +74,9 @@ class RestFromSpecTest {
 
     @Test
     void isTheSameWhenAppliedAgainAndStripsBackToTheDraft() {
-        String once = RestFromSpec.applyTo(ROUTE, "customer-api.yaml", SPEC);
-        assertThat(RestFromSpec.applyTo(once, "customer-api.yaml", SPEC)).isEqualTo(once);
-        assertThat(RestFromSpec.strip(once)).doesNotContain("rest:", "echo-missing").contains("get-customer");
+        String once = RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", SPEC);
+        assertThat(RestFromSpec.applyTo(once, "customers", "customer-api.yaml", SPEC)).isEqualTo(once);
+        assertThat(RestFromSpec.strip(once)).doesNotContain("rest:", "echo-missing", "echo-docs").contains("get-customer");
     }
 
     @Test
@@ -91,7 +91,7 @@ class RestFromSpecTest {
                       steps:
                         - log: hi
                 """;
-        String yaml = RestFromSpec.applyTo(old, "customer-api.yaml", SPEC);
+        String yaml = RestFromSpec.applyTo(old, "customers", "customer-api.yaml", SPEC);
         assertThat(yaml).doesNotContain("old-name").containsOnlyOnce("- rest:").contains("specification: 'customer-api.yaml'");
     }
 
@@ -114,12 +114,52 @@ class RestFromSpecTest {
         assertThat(RestFromSpec.apply("f.camel.yaml", Optional.empty(), Map.of("f.camel.yaml", yaml)).get("f.camel.yaml"))
                 .doesNotContain("gone.yaml").contains("path: /hello");
         String plain = "- route:\n    from:\n      uri: direct:x\n";
-        assertThat(RestFromSpec.applyTo(plain, null, null)).isSameAs(plain);
+        assertThat(RestFromSpec.applyTo(plain, "customers", null, null)).isSameAs(plain);
     }
 
     @Test
     void keepsTheContextPathWhenTheSpecHasNoBasePath() {
         String spec = SPEC.replace("servers:\n  - url: /myurlbase\n", "");
-        assertThat(RestFromSpec.applyTo(ROUTE, "customer-api.yaml", spec)).contains("contextPath: /old");
+        assertThat(RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", spec)).contains("contextPath: /old")
+                .contains("uri: 'platform-http:/old/docs'");
+    }
+
+    @Test
+    void servesSwaggerUiForTheSpecUnderTheBasePath() {
+        String yaml = RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", SPEC);
+        assertThat(yaml).contains("""
+                - route:
+                    id: 'echo-docs-customers-spec'
+                    description: Made by EY ECHO; Swagger UI for the flow's OpenAPI spec
+                    from:
+                      uri: 'platform-http:/myurlbase/docs/openapi'
+                      parameters:
+                        httpMethodRestrict: GET
+                      steps:
+                        - setHeader:
+                            name: Content-Type
+                            constant: 'application/yaml'
+                        - setBody:
+                            constant: 'resource:classpath:customer-api.yaml'
+                """)
+                .contains("id: 'echo-docs-customers'", "uri: 'platform-http:/myurlbase/docs'",
+                        "<title>Customers - API docs</title>", "href=\"docs/swagger-ui.css\"", "url: ''docs/openapi''")
+                .contains("uri: 'platform-http:/myurlbase/docs/swagger-ui-bundle.js'",
+                        "constant: 'resource:classpath:META-INF/resources/webjars/swagger-ui/{{echo.swagger-ui.version}}/swagger-ui-bundle.js'")
+                .contains("uri: 'platform-http:/myurlbase/docs/swagger-ui.css'");
+        // The flow's name keeps the ids apart when several flows share one bundle image.
+        assertThat(RestFromSpec.applyTo(ROUTE, "orders", "customer-api.yaml", SPEC)).contains("id: 'echo-docs-orders'");
+        // A JSON spec is served as JSON; a title that looks like a placeholder is not one.
+        String json = RestFromSpec.applyTo(ROUTE, "customers", "api.json",
+                "{\"openapi\": \"3.0.3\", \"info\": {\"title\": \"A <b> {{x}}\", \"version\": \"1\"}, \"paths\": {}}");
+        assertThat(json).contains("constant: 'application/json'", "<title>A &lt;b&gt; &#123;&#123;x}} - API docs</title>",
+                "uri: 'platform-http:/old/docs'"); // no Base Path: under the old Context Path
+    }
+
+    @Test
+    void docsPathFollowsTheBasePath() {
+        assertThat(RestFromSpec.docsPath("")).isEqualTo("/docs");
+        assertThat(RestFromSpec.docsPath("/shop/")).isEqualTo("/shop/docs");
+        assertThat(RestFromSpec.docsPath("shop")).isEqualTo("/shop/docs");
     }
 }
