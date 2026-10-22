@@ -78,3 +78,21 @@
 .echo-copy-spec__warning {
   margin-top: var(--pf-t--global--spacer--md);
 }
+
+/* Openapi Design > New From Samples (SamplesSpecModal). */
+.echo-samples-spec__route {
+  display: flex;
+  gap: var(--pf-t--global--spacer--md);
+  align-items: flex-start;
+}
+.echo-samples-spec__method {
+  flex: 0 0 8rem;
+}
+.echo-samples-spec__path {
+  flex: 1;
+  min-width: 0;
+}
+.echo-samples-spec__json textarea {
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--sm);
+}
