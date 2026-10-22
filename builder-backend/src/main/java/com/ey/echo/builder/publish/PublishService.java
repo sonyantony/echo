@@ -32,11 +32,13 @@ public class PublishService {
     private final PublishEventRepository events;
     private final Clock clock;
     private final ApiCatalog apis;
+    private final EndpointClashes clashes;
     private final ObjectMapper json = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
     public PublishService(FlowService flows, FlowValidator validator, PublishTargets targets,
-            PublishEventRepository events, Clock clock, ApiCatalog apis) {
+            PublishEventRepository events, Clock clock, ApiCatalog apis, EndpointClashes clashes) {
         this.flows = flows;
+        this.clashes = clashes;
         this.apis = apis;
         this.validator = validator;
         this.targets = targets;
@@ -52,6 +54,9 @@ public class PublishService {
         record Published(PublishEvent event, List<TargetOutcome> targets, boolean changed) implements Outcome {}
 
         record Invalid(ValidationResult validation) implements Outcome {}
+
+        /** The flow would serve endpoints (or use operationIds) a published flow already does. */
+        record Clashes(List<String> clashes) implements Outcome {}
     }
 
     /**
@@ -71,6 +76,11 @@ public class PublishService {
         }
 
         var previous = events.findFirstByFlowIdOrderByPublishedAtDescIdDesc(flowId);
+        String previousName = previous.map(PublishEvent::getFlowName).orElse(null);
+        var clashing = clashes.check(flow.getName(), previousName, files);
+        if (!clashing.isEmpty()) {
+            return new Outcome.Clashes(clashing);
+        }
         long version = events.countByFlowId(flowId) + 1;
         var now = clock.instant();
         files.put(METADATA_FILE, metadata(flow.getName(), flow.getDescription(), version, user, now.toString()));
@@ -78,7 +88,6 @@ public class PublishService {
         String commitMessage = message == null || message.isBlank()
                 ? "Publish flow %s (version %d)".formatted(flow.getName(), version)
                 : message.strip();
-        String previousName = previous.map(PublishEvent::getFlowName).orElse(null);
         var outcomes = new ArrayList<TargetOutcome>();
         for (var target : enabled) {
             try {

@@ -135,6 +135,25 @@ class PublishControllerTest {
     }
 
     @Test
+    void aFlowServingAPathAPublishedFlowServesIsNotPublished() throws Exception {
+        long first = create("shipments");
+        mvc.perform(as(post("/api/flows/{id}/publish", first))).andExpect(status().isOk());
+        long second = create("shipments-copy");
+        mvc.perform(as(put("/api/flows/{id}/files/shipments-copy.camel.yaml", second)).contentType(MediaType.TEXT_PLAIN)
+                .content("- route:\n    from:\n      uri: platform-http:/shipments\n      parameters:\n"
+                        + "        httpMethodRestrict: POST\n      steps:\n        - log:\n            message: hi\n"))
+                .andExpect(status().isNoContent());
+        var before = REMOTE.head("main");
+
+        mvc.perform(as(post("/api/flows/{id}/publish", second)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.clashes[0]").value("POST /shipments is already used by flow shipments"));
+        assertThat(REMOTE.head("main").getName()).isEqualTo(before.getName());
+        // Publishing the first flow again does not clash with its own published version.
+        mvc.perform(as(post("/api/flows/{id}/publish", first))).andExpect(status().isOk());
+    }
+
+    @Test
     void deletingAPublishedFlowRemovesItFromTheBuilderAndFromGit() throws Exception {
         long id = create("payments");
         mvc.perform(as(post("/api/flows/{id}/publish", id))).andExpect(status().isOk());
