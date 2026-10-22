@@ -156,6 +156,8 @@ public class FlowRunner {
         if (applicationProperties != null) {
             props.load(new StringReader(applicationProperties));
         }
+        // Swagger UI at <Base Path>/docs comes from the webjar the Builder carries.
+        props.putIfAbsent("echo.swagger-ui.version", swaggerUiVersion());
         camel.getPropertiesComponent().setInitialProperties(props);
         // REST DSL always runs on platform-http (the editor hides the Component setting).
         camel.getRestConfiguration().setComponent("platform-http");
@@ -223,7 +225,13 @@ public class FlowRunner {
     private static List<Endpoint> endpoints(FlowRun run) {
         var list = new ArrayList<Endpoint>();
         for (var route : run.camel.getRoutes()) {
-            if (route.getEndpoint() instanceof PlatformHttpEndpoint http) {
+            if (route.getRouteId().startsWith(RestFromSpec.DOCS_ROUTE_PREFIX)) {
+                // Swagger UI: the run panel links its page instead of listing its files.
+                if (route.getRouteId().equals(RestFromSpec.DOCS_ROUTE_PREFIX + run.flowName)
+                        && route.getEndpoint() instanceof PlatformHttpEndpoint http) {
+                    run.docsPath = http.getPath().startsWith("/") ? http.getPath() : "/" + http.getPath();
+                }
+            } else if (route.getEndpoint() instanceof PlatformHttpEndpoint http) {
                 String restrict = http.getHttpMethodRestrict();
                 List<String> methods = restrict == null || restrict.isBlank() ? List.of()
                         : Arrays.stream(restrict.split(",")).map(String::strip).map(String::toUpperCase).toList();
@@ -243,6 +251,20 @@ public class FlowRunner {
             }
         }
         return list;
+    }
+
+    /** The version of the Swagger UI webjar on the Builder's classpath. */
+    public static String swaggerUiVersion() {
+        try (var in = FlowRunner.class.getClassLoader()
+                .getResourceAsStream("META-INF/maven/org.webjars/swagger-ui/pom.properties")) {
+            var props = new Properties();
+            if (in != null) {
+                props.load(in);
+            }
+            return props.getProperty("version", "");
+        } catch (IOException e) {
+            return "";
+        }
     }
 
     private int freePort() {

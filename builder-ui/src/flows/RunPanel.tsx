@@ -132,6 +132,14 @@ export function RunPanel({
                 </ClipboardCopy>
               </div>
             ))}
+            {run.docsUrl && (
+              <p className="echo-run-panel__docs">
+                <a href={run.docsUrl} target="_blank" rel="noreferrer">
+                  Open API docs (Swagger UI)
+                </a>{' '}
+                <span className="echo-run-panel__subtle">to read the operations and try them out.</span>
+              </p>
+            )}
             <p className="echo-run-panel__hint">
               The flow runs inside the Builder. To call a service on your own computer from an http step, use
               host.docker.internal instead of localhost. The run stops after {run.idleMinutes} minutes without

@@ -83,6 +83,7 @@ prop() { grep -E "^$1=" "$TEMPLATE/versions.properties" | cut -d= -f2-; }
 CAMEL_VERSION="$(prop camel.version)"
 QUARKUS_VERSION="$(prop quarkus.version)"
 JIB_VERSION="$(prop jib.version)"
+SWAGGER_UI_VERSION="$(prop swagger-ui.version)"
 BASE_IMAGE="$(prop base.image)"
 
 # Camel JBang: the launcher jar of the pinned version (downloaded once). The launcher jar fixes the
@@ -126,9 +127,14 @@ copy_flow() { # flow-dir, src, rest-id-suffix
 build_app() { # name, version, out, image-name
   local name="$1" version="$2" out="$3" image_name="$4" src="$3/src-flow" app="$3/app" jar image
   sed -i.bak "s/\${ECHO_FLOW_NAME:echo-flow}/$name/" "$src/application.properties" && rm -f "$src/application.properties.bak"
+  # Swagger UI at <Base Path>/docs (the routes RestFromSpec adds read it from this webjar).
+  printf '\n# Swagger UI webjar (build-flow.sh)\necho.swagger-ui.version=%s\n' "$SWAGGER_UI_VERSION" >> "$src/application.properties"
 
   echo "==> Exporting $name $version (Camel $CAMEL_VERSION, Spring Boot runtime)"
+  # Export finds components from the routes; these two it cannot see: the validator that checks
+  # request bodies against the spec (Client Request Validation) and Swagger UI.
   (cd "$src" && camel export ./* --runtime=spring-boot \
+    --dep="camel:openapi-validator,org.webjars:swagger-ui:$SWAGGER_UI_VERSION" \
     --quarkus-version="$QUARKUS_VERSION" --gav="com.ey.echo.flows:$name:$version" --directory="$app")
 
   echo "==> Building the app"

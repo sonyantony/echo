@@ -62,9 +62,10 @@ public class RunController {
      *
      * @param url where users call it, e.g. http://localhost:8081
      * @param endpoints its platform-http paths, each with the full URL to call
+     * @param docsUrl Swagger UI for the flow's spec, or null when it has none
      */
     public record RunInfo(long flowId, String flowName, int port, String url, List<EndpointInfo> endpoints,
-            String startedBy, Instant startedAt, int idleMinutes) {}
+            String docsUrl, String startedBy, Instant startedAt, int idleMinutes) {}
 
     public record EndpointInfo(String path, List<String> methods, String url) {}
 
@@ -152,6 +153,6 @@ public class RunController {
         String base = runner.properties().publicUrl().replaceAll("/+$", "") + ":" + run.port;
         return new RunInfo(run.flowId, run.flowName, run.port, base,
                 run.endpoints.stream().map(e -> new EndpointInfo(e.path(), e.methods(), base + e.path())).toList(),
-                run.startedBy, run.startedAt, runner.properties().idleMinutes());
+                run.docsPath == null ? null : base + run.docsPath, run.startedBy, run.startedAt, runner.properties().idleMinutes());
     }
 }

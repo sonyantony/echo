@@ -5,6 +5,22 @@ info:
 servers:
   - url: /greetings
 paths:
+  /:
+    post:
+      operationId: createGreeting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: A greeting
   /{name}:
     get:
       operationId: getGreeting

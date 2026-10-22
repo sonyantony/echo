@@ -230,6 +230,8 @@ export interface RunInfo {
   port: number;
   url: string;
   endpoints: RunEndpoint[];
+  /** Swagger UI for the flow's OpenAPI spec (Base Path + /docs); null when the flow has no spec. */
+  docsUrl: string | null;
   startedBy: string;
   startedAt: string;
   /** The run stops after this many minutes without requests. */

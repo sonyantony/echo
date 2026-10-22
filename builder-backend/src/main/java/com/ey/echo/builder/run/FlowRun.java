@@ -37,6 +37,8 @@ final class FlowRun {
     Path dir;
     URLClassLoader classLoader;
     List<Endpoint> endpoints = List.of();
+    /** Where Swagger UI for the flow's spec is, or null when the flow has no spec. */
+    String docsPath;
 
     FlowRun(long flowId, String flowName, int port, String startedBy, Clock clock) {
         this.flowId = flowId;

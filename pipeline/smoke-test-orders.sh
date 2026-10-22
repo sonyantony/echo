@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Smoke test for the golden "orders" flow image: starts the mock fulfilment service, runs the
 # image, checks its health endpoint and that POST /orders returns the mapped response. With
-# --bundle the image is a bundle of samples/flows, and the greetings flow is checked too.
+# --bundle the image is a bundle of samples/flows, and the greetings flow is checked too (its
+# operations, body validation and Swagger UI).
 #
 #   pipeline/smoke-test-orders.sh [image] [--bundle]
 #     image default: echo-flow-orders:1.0.0 (per-flow), or echo-flows:1.0.0 with --bundle
@@ -67,5 +68,13 @@ if [[ -n "$BUNDLE" ]]; then
   [[ "$RESPONSE" == '{"greeting":"Hello Ann"}' ]] || { echo "Unexpected greeting" >&2; docker logs echo-smoke-orders | tail -30; exit 1; }
   STATUS="$(curl -s -o /dev/null -w '%{http_code}' -XDELETE localhost:8080/greetings/Ann)"
   [[ "$STATUS" == 404 ]] || { echo "DELETE has no route, expected 404, got $STATUS" >&2; exit 1; }
+  echo "==> POST /greetings/ with a body that does not fit the spec (Client Request Validation)"
+  BAD="$(curl -s -w ' %{http_code}' -XPOST localhost:8080/greetings/ -H 'Content-Type: application/json' -d '{"nam":"Ann"}')"
+  echo "$BAD"
+  [[ "$BAD" == *"missing required properties"*'"name"'*" 400" ]] || { echo "Expected a 400 naming the field" >&2; exit 1; }
+  echo "==> Swagger UI at /greetings/docs"
+  curl -fsS localhost:8080/greetings/docs | grep -q 'SwaggerUIBundle' || { echo "No Swagger UI page" >&2; exit 1; }
+  curl -fsS -o /dev/null localhost:8080/greetings/docs/swagger-ui-bundle.js || { echo "No Swagger UI script" >&2; exit 1; }
+  curl -fsS localhost:8080/greetings/docs/openapi | grep -q 'operationId: getGreeting' || { echo "No spec" >&2; exit 1; }
 fi
 echo "Smoke test passed"

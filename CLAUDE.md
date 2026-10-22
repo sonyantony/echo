@@ -13,6 +13,8 @@ app and built into an image by the buyer's pipeline).
   (`kaoto-mapping.css`, `apicurio-mapping.css`), never with colour values of their own.
 - Publish targets (Git, S3; each with `enabled`) are per install config: `docs/publishing.md`.
 - A flow's OpenAPI spec (Openapi Design; one file per flow under its own name, YAML or JSON, edited in the vendored Apicurio editor): `docs/api-spec.md`.
+  Request body validation (`camel-openapi-validator`, on with Client Request Validation) and Swagger UI at
+  `<Base Path>/docs` (webjar, routes added by `RestFromSpec`): `docs/decisions/0010-validation-and-swagger-ui.md`.
 - Downstream APIs flows may call (approved specs per install, `echo.apis`, REST OpenApi steps): `docs/apis.md`.
 - Version 1 is a demo prototype: prefer simple over production-hardened, but keep the seams
   (auth, Git provider, CI, secrets, database) swappable. No cloud SDKs, no provider-specific

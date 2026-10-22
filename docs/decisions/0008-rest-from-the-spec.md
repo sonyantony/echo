@@ -27,6 +27,6 @@ REST part by hand, so the editor has no Rest tab.
   are written to the route's `restConfiguration` (where Camel reads them and older flows have
   them) by loading the changed YAML into Kaoto, so they are saved like any other edit. Camel's
   client request validation checks content type and required body, query parameters and headers;
-  it does not check a body against its schema.
+  on its own it does not check a body against its schema (0010 adds that, and Swagger UI).
 - **Hand-written REST still works.** A `rest` with its own verbs (code-first) is left alone. A
   contract-first `rest` the old Rest tab wrote is replaced by the generated one.
