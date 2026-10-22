@@ -27,7 +27,9 @@ import {
   withFormat,
   type SpecFormat,
 } from './apiSpec';
+import { SamplesSpecModal } from './SamplesSpecModal';
 import { SpecNameModal } from './SpecNameModal';
+import { specFromSamples } from './specFromSamples';
 import './ApiSpecPanel.css';
 
 export interface ApiSpecPanelHandle {
@@ -35,6 +37,8 @@ export interface ApiSpecPanelHandle {
   saveIfChanged(): Promise<boolean>;
   /** Openapi Design > Upload: picks a .yaml or .json spec and stores it in the flow under its own name. */
   upload(): void;
+  /** Openapi Design > New From Samples: asks for a sample request and response and puts the spec made from them on screen, unsaved. */
+  newFromSamples(): void;
   /** Openapi Design > Download Openapi File As Yaml / Json: what is on screen, unsaved edits included. */
   download(format: SpecFormat): void;
   /** Opens the spec stored in the flow again, e.g. after Copy From Another Flow replaced it; unsaved edits are dropped. */
@@ -60,6 +64,7 @@ interface Loaded {
 type Dialog =
   | { kind: 'name'; saveAs: boolean }
   | { kind: 'discard' }
+  | { kind: 'samples' }
   | { kind: 'replace'; fileName: string; text: string }
   | { kind: 'rename-upload'; fileName: string; text: string };
 
@@ -247,6 +252,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   useImperativeHandle(ref, () => ({
     saveIfChanged: async () => (dirty ? save() : true),
     upload: pickUpload,
+    newFromSamples: () => setDialog({ kind: 'samples' }),
     download,
     reload: async () => {
       const { data } = await spec.refetch();
@@ -379,6 +385,27 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
             </Button>
           </ModalFooter>
         </Modal>
+      )}
+      {dialog?.kind === 'samples' && (
+        <SamplesSpecModal
+          replaces={[
+            dirty && 'your unsaved edits are lost',
+            storedName && `${storedName} is overwritten when you save`,
+          ]
+            .filter(Boolean)
+            .join(', and ')}
+          onClose={() => setDialog(undefined)}
+          onGenerate={(samples) => {
+            setDialog(undefined);
+            const json = specFromSamples({ ...samples, current: currentJson(), flowName, flowDescription });
+            latest.current = json;
+            setInitialJson(json);
+            setEditorKey((k) => k + 1);
+            setContentDirty(json !== saved.current);
+            setDialogOpen(false);
+            setStatus({ variant: 'success', text: `Made ${samples.method} ${samples.path} from the samples: save to keep it.` });
+          }}
+        />
       )}
       {dialog?.kind === 'discard' && (
         <Modal isOpen variant="small" onClose={() => setDialog(undefined)} aria-labelledby="spec-discard-title">

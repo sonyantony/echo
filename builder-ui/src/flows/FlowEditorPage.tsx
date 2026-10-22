@@ -20,7 +20,7 @@ import {
   Title,
 } from '@patternfly/react-core';
 import { UNDERLINED_CLASS } from '../editor/tabUnderline';
-import { CheckCircleIcon, CopyIcon, DownloadIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon, CodeIcon, CopyIcon, DownloadIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -493,6 +493,14 @@ function FlowEditor() {
             description="Start this flow's spec from a copy of another flow's"
           >
             Copy From Another Flow
+          </DropdownItem>
+          <DropdownItem
+            key="samples"
+            icon={<CodeIcon />}
+            onClick={() => specPanel.current?.newFromSamples()}
+            description="Make the spec from a sample request and response"
+          >
+            New From Samples
           </DropdownItem>
           <DropdownItem
             key="yaml"
