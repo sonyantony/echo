@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createFlow, designMenu, fileMenu, login, uniqueName } from './helpers';
+import { createFlow, fileMenu, login, uniqueName } from './helpers';
 
 // V2: the flow's REST service comes from its OpenAPI spec. There is no Rest tab; ECHO adds the
 // contract-first service when the flow runs or is published, the spec's server URL is the Base
@@ -35,7 +35,7 @@ const ROUTE = `- route:
             simple: '{"id":"\${header.id}"}'
 `;
 
-test('the REST service is made from the spec: Base Path, 404 for missing operations, settings in Flow Design', async ({ page }) => {
+test('the REST service is made from the spec: Base Path, 404 for missing operations, settings next to Publish', async ({ page }) => {
   await login(page);
   const name = uniqueName('restspec');
   await createFlow(page, name);
@@ -43,9 +43,10 @@ test('the REST service is made from the spec: Base Path, 404 for missing operati
   await expect(page.getByRole('tab', { name: 'Rest' })).toBeHidden();
 
   // With no spec the settings wait for one.
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: /Client Request Validation/ })).toHaveClass(/pf-m-disabled/);
-  await page.keyboard.press('Escape');
+  const validation = page.getByRole('checkbox', { name: 'Client Request Validation' });
+  const cors = page.getByRole('checkbox', { name: 'Enable CORS' });
+  await expect(validation).toBeDisabled();
+  await expect(cors).toBeDisabled();
 
   const headers = { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': await csrf(page) };
   await page.request.put(`/api/flows/${flowId}/api-spec/shop-api.yaml`, { data: SPEC, headers });
@@ -53,13 +54,12 @@ test('the REST service is made from the spec: Base Path, 404 for missing operati
   await page.reload();
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
 
-  await designMenu(page, /Client Request Validation/);
+  await validation.click();
   await expect(page.getByTestId('unsaved')).toBeVisible();
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: /Client Request Validation/ }).getByRole('checkbox')).toBeChecked();
-  await expect(page.getByRole('menuitem', { name: /Enable CORS/ }).getByRole('checkbox')).not.toBeChecked();
-  await page.screenshot({ path: 'test-results/rest-settings-menu.png' });
-  await page.keyboard.press('Escape');
+  await expect(validation).toBeChecked();
+  await expect(cors).not.toBeChecked();
+  await expect(cors).toBeEnabled();
+  await page.screenshot({ path: 'test-results/rest-settings-toolbar.png' });
   await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const draft = await (await page.request.get(`/api/flows/${flowId}/files/${name}.camel.yaml`)).text();

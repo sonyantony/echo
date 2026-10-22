@@ -71,7 +71,8 @@ itself keeps only what is designed, so the service always follows the spec's cur
   service has `missingOperation: ignore` (so the flow starts), and ECHO adds a small
   `echo-missing-<operationId>` route for each such operation; add a route from
   `direct:<operationId>` and it takes over. A path that is not in the spec is a 404 too.
-- **Flow Design > Client Request Validation** and **Enable CORS** turn the REST configuration's
+- The **Client Request Validation** and **Enable CORS** checkboxes, stacked just before Publish on
+  the Flow Design toolbar, turn the REST configuration's
   settings on and off (`restConfiguration` in the route file). They need a spec. Camel's request
   validation answers 400 when a body, query parameter or header the spec requires is missing, and
   415/406 for a content type the operation does not take or give; it does not check a body against

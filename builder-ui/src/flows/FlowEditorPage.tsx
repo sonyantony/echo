@@ -3,6 +3,7 @@ import {
   AlertActionCloseButton,
   Bullseye,
   Button,
+  Checkbox,
   Divider,
   Dropdown,
   DropdownItem,
@@ -514,7 +515,7 @@ function FlowEditor() {
     </div>
   );
 
-  // Downloads, Validate and Publish on the Flow Design canvas toolbar, where Kaoto's copy to clipboard was.
+  // Downloads, Validate, the REST settings and Publish on the Flow Design canvas toolbar, where Kaoto's copy to clipboard was.
   const canvasActions = (
     <div className="echo-canvas-actions echo-no-print">
       <DownloadButtons onDownloadZip={download} onDownloadImage={downloadDiagram} zipBusy={saving} imageBusy={drawing} />
@@ -528,6 +529,7 @@ function FlowEditor() {
       >
         Validate
       </Button>
+      <RestSettingChecks settings={restSettings} hasSpec={!!flow.data.apiSpec} toggle={toggleRestSetting} />
       <Button
         variant="primary"
         icon={<UploadIcon />}
@@ -656,8 +658,6 @@ function FlowEditor() {
               zipBusy: saving,
               imageBusy: drawing,
             }),
-            <Divider component="li" key="rest-divider" />,
-            ...restSettingItems(restSettings, !!flow.data.apiSpec, toggleRestSetting),
           ]}
           tabBarActions={actions}
           cover={
@@ -789,34 +789,38 @@ function FlowEditor() {
 }
 
 /**
- * The Flow Design menu's REST settings, written to the route's restConfiguration. They apply to the
+ * The REST settings next to Publish, written to the route's restConfiguration. They apply to the
  * REST service ECHO makes from the flow's OpenAPI spec, so they wait for a spec (but one already on
  * can always be turned off).
  */
-function restSettingItems(
-  settings: RestSettings | undefined,
-  hasSpec: boolean,
-  toggle: (key: RestSetting) => void,
-) {
-  const item = (key: RestSetting, label: string, description: string) => {
+function RestSettingChecks({
+  settings,
+  hasSpec,
+  toggle,
+}: {
+  settings: RestSettings | undefined;
+  hasSpec: boolean;
+  toggle: (key: RestSetting) => void;
+}) {
+  const check = (key: RestSetting, label: string, description: string) => {
     const on = !!settings?.[key];
     return (
-      <DropdownItem
-        key={key}
-        hasCheckbox
-        isSelected={on}
+      <Checkbox
+        id={`echo-rest-${key}`}
+        label={label}
+        isChecked={on}
         isDisabled={!settings || (!hasSpec && !on)}
-        onClick={() => toggle(key)}
-        description={hasSpec || on ? description : 'Needs an OpenAPI spec: design one in Openapi Design'}
-      >
-        {label}
-      </DropdownItem>
+        onChange={() => toggle(key)}
+        title={hasSpec || on ? description : 'Needs an OpenAPI spec: design one in Openapi Design'}
+      />
     );
   };
-  return [
-    item('clientRequestValidation', 'Client Request Validation', 'A request missing a body, query parameter or header the spec requires, or of the wrong content type, gets a 4xx before the flow runs'),
-    item('enableCORS', 'Enable CORS', 'Lets web pages on other sites call this flow from the browser'),
-  ];
+  return (
+    <div className="echo-rest-settings">
+      {check('clientRequestValidation', 'Client Request Validation', 'A request missing a body, query parameter or header the spec requires, or of the wrong content type, gets a 4xx before the flow runs')}
+      {check('enableCORS', 'Enable CORS', 'Lets web pages on other sites call this flow from the browser')}
+    </div>
+  );
 }
 
 /** The keyboard shortcut shown at the right of a menu item (not part of its name for screen readers). */
