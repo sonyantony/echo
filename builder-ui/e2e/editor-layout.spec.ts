@@ -144,12 +144,10 @@ test('Advanced > Java Beans opens the Beans view, before About; Flow Design take
   await expect(page.locator('.shell__tab-content--scrollable')).toBeVisible();
   await expect(advanced).toHaveClass(/echo-tab-menu--current/);
   await expect(page.getByRole('button', { name: 'Flow Design', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
-  // Flow Design opens the canvas and its menu of downloads and REST settings.
+  // Flow Design opens the canvas and its menu of downloads.
   await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
-  await expect(page.getByRole('menuitem')).toHaveCount(4);
-  await expect(page.getByRole('menuitem', { name: /Client Request Validation/ })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /Enable CORS/ })).toBeVisible();
+  await expect(page.getByRole('menuitem')).toHaveCount(2);
   await expect(advanced).not.toHaveClass(/echo-tab-menu--current/);
 });
 
@@ -196,7 +194,7 @@ test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate 
   await expect(page.getByRole('menuitem')).toHaveCount(1);
   await page.keyboard.press('Escape');
 
-  // Download Flow, Download Flow As Image, Validate and Publish take the place of Kaoto's copy to
+  // Download Flow, Download Flow As Image, Validate, the REST settings and Publish take the place of Kaoto's copy to
   // clipboard, after undo and redo.
   await expect(page.getByTestId('clipboardButton')).toBeHidden();
   const redo = (await page.getByRole('button', { name: 'Redo' }).boundingBox())!;
@@ -210,7 +208,16 @@ test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate 
   const validateBox = (await validate.boundingBox())!;
   const publishBox = (await publish.boundingBox())!;
   expect(validateBox.x).toBeGreaterThanOrEqual(clipboard.x + clipboard.width);
-  expect(publishBox.x).toBeGreaterThanOrEqual(validateBox.x + validateBox.width);
+  // Client Request Validation over Enable CORS, between Validate and Publish.
+  const validation = (await page.getByRole('checkbox', { name: 'Client Request Validation' }).boundingBox())!;
+  const cors = (await page.getByRole('checkbox', { name: 'Enable CORS' }).boundingBox())!;
+  expect(validation.x).toBeGreaterThanOrEqual(validateBox.x + validateBox.width);
+  expect(Math.abs(cors.x - validation.x)).toBeLessThan(2);
+  expect(cors.y).toBeGreaterThanOrEqual(validation.y + validation.height);
+  expect(validation.y).toBeGreaterThanOrEqual(publishBox.y - 6);
+  expect(cors.y + cors.height).toBeLessThanOrEqual(publishBox.y + publishBox.height + 6);
+  const settingsRight = (await page.locator('.echo-rest-settings').boundingBox())!;
+  expect(publishBox.x).toBeGreaterThanOrEqual(settingsRight.x + settingsRight.width);
   expect(Math.abs(validateBox.y + validateBox.height / 2 - (clipboard.y + clipboard.height / 2))).toBeLessThan(4);
   await validate.click();
   await expect(page.getByTestId('validation-result')).toBeVisible();

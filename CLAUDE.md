@@ -72,8 +72,8 @@ Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar 
   that list and its jar to `builder-backend/pom.xml` together, or Run cannot start flows using it.
 - REST DSL always runs on platform-http: Run and `runtime-template` set it; Validate rejects another
   component, binding or API docs. There is no Rest tab: ECHO adds the flow's REST service from its
-  OpenAPI spec whenever the flow leaves the editor (`RestFromSpec`, docs/decisions/0008); the Flow
-  Design menu sets Client Request Validation and Enable CORS in the route's `restConfiguration`.
+  OpenAPI spec whenever the flow leaves the editor (`RestFromSpec`, docs/decisions/0008); the
+  checkboxes before Publish set Client Request Validation and Enable CORS in the route's `restConfiguration`.
 - Kaoto stays unmodified; Builder code wraps it (`builder-ui/src/editor/`). Kaoto is rendered
   in its own React root because it brings its own router.
 - A flow is a folder: `<name>.camel.yaml` plus side files next to it (DataMapper

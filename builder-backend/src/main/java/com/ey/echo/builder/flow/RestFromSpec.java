@@ -27,8 +27,8 @@ import org.yaml.snakeyaml.nodes.SequenceNode;
  * has no route for answers 404: ECHO adds a small route for it, and the service's
  * {@code missingOperation} is {@code ignore}, so the flow starts anyway.
  *
- * <p>The draft keeps only what the user designs (routes, and the REST configuration the Flow
- * Design menu sets); this is added to the route file whenever the flow leaves the editor (Run,
+ * <p>The draft keeps only what the user designs (routes, and the REST configuration the checkboxes
+ * next to Publish set); this is added to the route file whenever the flow leaves the editor (Run,
  * Validate, Publish, Download, Save As Template), so it always follows the spec as it is then,
  * and the published flow is complete for the pipeline. {@link #strip} takes it out again when a
  * published or downloaded flow comes back as a draft.
