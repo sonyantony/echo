@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Size;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,7 +56,16 @@ public class PublishController {
             case PublishService.Outcome.Published p ->
                     ResponseEntity.ok(view(p.event(), p.targets(), p.changed()));
             case PublishService.Outcome.Invalid i -> ResponseEntity.unprocessableEntity().body(i.validation());
+            case PublishService.Outcome.Clashes c -> ResponseEntity.status(HttpStatus.CONFLICT).body(clashes(c.clashes()));
         };
+    }
+
+    private static ProblemDetail clashes(List<String> clashes) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "Not published: published flows already use these endpoints.");
+        problem.setTitle("Endpoints already used");
+        problem.setProperty("clashes", clashes);
+        return problem;
     }
 
     /** Deletes the flow from the Builder and, if it was published, from every publish target. */

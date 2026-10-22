@@ -43,6 +43,15 @@ set, so an unset variable never blanks a value in `application.yaml`. After chan
   the others: the editor says where the flow went and which target failed, and the publish
   history records each target's result. Publishing again fills in the target that failed. Only
   when every target fails is the publish an error.
+- **Endpoints must be free.** Before anything is written, Publish compares the flow with the
+  flows already published (in the first enabled target; drafts and the flow's own published
+  version do not count) and stops, listing each clash in the Publish dialog, when it would serve
+  the same method on the same effective path (Base Path + path, or a platform-http route's path),
+  or use an operationId another flow uses. Path parameters match whatever their names
+  (`/cards/{id}` is `/cards/{cardId}`), and a platform-http route without `httpMethodRestrict`
+  takes every method. Swagger UI at `<Base Path>/docs` counts too, so two flows cannot share a
+  Base Path (or both have none). The pipeline's `BundleCheck.java` catches the same clashes when
+  it builds a bundle.
 - **Delete** tries every enabled target. If one fails, the Builder keeps the draft and shows the
   error; deleting again finishes the job.
 - **The Flows page** lists published flows from the first enabled target (Git, else S3).

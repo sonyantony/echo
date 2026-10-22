@@ -264,19 +264,28 @@ public final class RestFromSpec {
      * operation's path. For the Run panel.
      */
     public static Map<String, List<String>> servedPaths(String specContent, String contextPath) {
-        var spec = Spec.read(specContent);
-        String base = contextPath != null && !contextPath.isBlank() ? contextPath : spec.basePath();
-        base = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
         var paths = new java.util.LinkedHashMap<String, List<String>>();
-        for (var op : spec.operations()) {
-            String path = base + (op.path().startsWith("/") ? op.path() : "/" + op.path());
-            paths.computeIfAbsent(path.startsWith("/") ? path : "/" + path, p -> new ArrayList<>()).add(op.method());
+        for (var op : servedOperations(specContent, contextPath)) {
+            paths.computeIfAbsent(op.path(), p -> new ArrayList<>()).add(op.method());
         }
         return paths;
     }
 
-    /** One operation of the spec. */
-    record Operation(String method, String path, String operationId) {
+    /** Each operation of the spec with the full path it is served at (see {@link #servedPaths}). */
+    public static List<Operation> servedOperations(String specContent, String contextPath) {
+        var spec = Spec.read(specContent);
+        String base = contextPath != null && !contextPath.isBlank() ? contextPath : spec.basePath();
+        base = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+        var operations = new ArrayList<Operation>();
+        for (var op : spec.operations()) {
+            String path = base + (op.path().startsWith("/") ? op.path() : "/" + op.path());
+            operations.add(new Operation(op.method(), path.startsWith("/") ? path : "/" + path, op.operationId()));
+        }
+        return operations;
+    }
+
+    /** One operation of the spec; the method is upper case, the operationId null if it has none. */
+    public record Operation(String method, String path, String operationId) {
     }
 
     /** What ECHO needs from the spec: its operations and its Base Path (the path of its server URL). */

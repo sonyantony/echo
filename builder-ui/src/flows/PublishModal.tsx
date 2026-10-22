@@ -3,6 +3,8 @@ import {
   Button,
   Form,
   FormGroup,
+  List,
+  ListItem,
   Modal,
   ModalBody,
   ModalFooter,
@@ -26,6 +28,8 @@ interface Props {
 export function PublishModal({ flowId, flowName, beforePublish, onPublished, onInvalid, onClose }: Props) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string>();
+  /** Endpoints or operationIds published flows already use; Publish is blocked until they are gone. */
+  const [clashes, setClashes] = useState<string[]>();
   const [publishing, setPublishing] = useState(false);
   const [targets, setTargets] = useState<PublishTarget[]>();
 
@@ -36,6 +40,7 @@ export function PublishModal({ flowId, flowName, beforePublish, onPublished, onI
   const publish = async () => {
     setPublishing(true);
     setError(undefined);
+    setClashes(undefined);
     try {
       if (!(await beforePublish())) {
         setError('Could not save the flow before publishing.');
@@ -45,6 +50,8 @@ export function PublishModal({ flowId, flowName, beforePublish, onPublished, onI
     } catch (e) {
       if (e instanceof ApiError && e.status === 422) {
         onInvalid(e.details as ValidationResult);
+      } else if (e instanceof ApiError && e.status === 409) {
+        setClashes((e.details as { clashes?: string[] } | undefined)?.clashes ?? [e.message]);
       } else {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -63,6 +70,16 @@ export function PublishModal({ flowId, flowName, beforePublish, onPublished, onI
             <Alert variant="warning" isInline isPlain title="No publish target is enabled in application.yaml." />
           )}
           {error && <Alert variant="danger" isInline isPlain title={error} />}
+          {clashes && (
+            <Alert variant="danger" isInline title="Not published: other published flows already use these">
+              <List aria-label="Clashes">
+                {clashes.map((c) => (
+                  <ListItem key={c}>{c}</ListItem>
+                ))}
+              </List>
+              <p>Give this flow its own Base Path or paths in Openapi Design, or rename the operationIds, then publish again.</p>
+            </Alert>
+          )}
           <FormGroup label="Description" fieldId="publish-message">
             <TextArea
               id="publish-message"

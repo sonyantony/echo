@@ -51,6 +51,25 @@ describe('PublishModal', () => {
     expect(props.onPublished).not.toHaveBeenCalled();
   });
 
+  it('lists endpoints other published flows already use and stays open', async () => {
+    mockFetch({
+      'POST /api/flows/7/publish': {
+        status: 409,
+        body: {
+          detail: 'Not published: published flows already use these endpoints.',
+          clashes: ['POST /api/cards is already used by flow card-orders', 'Swagger UI at /docs is already used by flow card-orders'],
+        },
+      },
+    });
+    const props = renderModal();
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(await screen.findByText('POST /api/cards is already used by flow card-orders')).toBeInTheDocument();
+    expect(screen.getByText('Swagger UI at /docs is already used by flow card-orders')).toBeInTheDocument();
+    expect(props.onPublished).not.toHaveBeenCalled();
+    expect(props.onInvalid).not.toHaveBeenCalled();
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
   it('shows Git errors in the dialog', async () => {
     mockFetch({ 'POST /api/flows/7/publish': { status: 502, body: { detail: 'Git error: connection refused' } } });
     renderModal();
