@@ -127,3 +127,23 @@
   display: none;
 }
 
+
+/* Kaoto's route list at the top left of the canvas. Its toggle names the route when only one is
+   shown; ECHO always calls it "Routes" (the visible/total count stays). Kaoto sets the text, so
+   it is hidden and replaced here. */
+.echo-kaoto-host__editor [data-testid='flows-list-route-id'] {
+  font-size: 0;
+}
+.echo-kaoto-host__editor [data-testid='flows-list-route-id']::before {
+  content: 'Routes';
+  font-size: var(--pf-t--global--font--size--body--default);
+}
+/* The list has no search box (a flow has a handful of routes); its header row keeps the show/hide
+   all and delete all buttons, labelled "All routes". The list may be rendered outside the host. */
+#flows-list .flows-list-table thead th:first-child > * {
+  display: none;
+}
+#flows-list .flows-list-table thead th:first-child::before {
+  content: 'All routes';
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
