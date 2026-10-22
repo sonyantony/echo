@@ -145,5 +145,7 @@
 }
 #flows-list .flows-list-table thead th:first-child::before {
   content: 'All routes';
+  /* Table headers use a smaller font; match the route names below. */
+  font-size: var(--pf-t--global--font--size--body--default);
   font-weight: var(--pf-t--global--font--weight--body--bold);
 }
