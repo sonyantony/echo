@@ -16,7 +16,7 @@ export interface DownloadMenuItemsProps extends DownloadActions {
   name: string;
 }
 
-/** The Flow Design menu's items: the flow as a .zip of all its files, and its diagram as a PNG. */
+/** The Flow menu's items: the flow as a .zip of all its files, and its diagram as a PNG. */
 export function downloadMenuItems({ name, onDownloadZip, onDownloadImage, zipBusy, imageBusy }: DownloadMenuItemsProps) {
   return [
     <DropdownItem
@@ -38,7 +38,7 @@ export function downloadMenuItems({ name, onDownloadZip, onDownloadImage, zipBus
   ];
 }
 
-/** Download Flow (the .zip) and Download Flow As Image (the PNG), on the Flow Design canvas toolbar. */
+/** Download Flow (the .zip) and Download Flow As Image (the PNG), on the Flow canvas toolbar. */
 export function DownloadButtons({ onDownloadZip, onDownloadImage, zipBusy, imageBusy }: DownloadActions) {
   return (
     <>

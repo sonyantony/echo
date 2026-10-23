@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createFlow, login, uniqueName } from './helpers';
+import { createFlow, designMenu, login, uniqueName } from './helpers';
 
 test('editor fits the page and prints the whole open tab', async ({ page }) => {
   await login(page);
@@ -19,7 +19,7 @@ test('editor fits the page and prints the whole open tab', async ({ page }) => {
   await page.emulateMedia({ media: 'print' });
   const clipped = await tab.evaluate((el) => el.scrollHeight - el.clientHeight);
   expect(clipped).toBeLessThanOrEqual(1);
-  await expect(page.getByRole('button', { name: 'Openapi Design' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Openapi', exact: true })).toBeHidden();
   const pdf = await page.pdf({ format: 'A4' });
   const pages = pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? [];
   expect(pages.length).toBeGreaterThan(1);
@@ -27,20 +27,21 @@ test('editor fits the page and prints the whole open tab', async ({ page }) => {
 
 test("the editor's controls share the line with Kaoto's tabs", async ({ page }) => {
   await login(page);
-  await createFlow(page, uniqueName('tabline'));
+  const flowName = uniqueName('tabline');
+  await createFlow(page, flowName);
   const tabBar = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"]');
   const top = async (name: string) => (await page.getByRole('button', { name, exact: true }).boundingBox())!.y;
   const tabBox = (await tabBar.boundingBox())!;
-  for (const name of ['File', 'Run', 'Advanced', 'Openapi Design', 'History']) {
+  for (const name of ['File', 'Run', 'Advanced', 'Openapi']) {
     const y = await top(name);
     expect(y).toBeGreaterThanOrEqual(tabBox.y);
     expect(y).toBeLessThan(tabBox.y + tabBox.height);
   }
-  // File comes first, as in most desktop software, then Openapi Design (API-first flows start from the
+  // File comes first, as in most desktop software, then Openapi (API-first flows start from the
   // spec), then Kaoto's Design tab.
   const file = (await page.getByRole('button', { name: 'File', exact: true }).boundingBox())!;
-  const spec = (await page.getByRole('button', { name: 'Openapi Design', exact: true }).boundingBox())!;
-  const design = (await page.getByRole('button', { name: 'Flow Design', exact: true }).boundingBox())!;
+  const spec = (await page.getByRole('button', { name: 'Openapi', exact: true }).boundingBox())!;
+  const design = (await page.getByRole('button', { name: 'Flow', exact: true }).boundingBox())!;
   expect(file.x + file.width).toBeLessThanOrEqual(spec.x);
   expect(spec.x + spec.width).toBeLessThanOrEqual(design.x);
   await page.getByRole('button', { name: 'File', exact: true }).click();
@@ -49,24 +50,29 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   }
   await page.keyboard.press('Escape');
 
-  // On a narrow screen History moves into the More menu.
+  // The right end of the line names the flow. History is in the Flow menu, so there is no More menu either.
+  const nameTag = page.getByTestId('flow-name-tag');
+  await expect(nameTag).toHaveText(`Flow: ${flowName}`);
+  const tagBox = (await nameTag.boundingBox())!;
+  expect(tagBox.y).toBeGreaterThanOrEqual(tabBox.y);
+  expect(tagBox.y + tagBox.height).toBeLessThanOrEqual(tabBox.y + tabBox.height);
+  await expect(page.getByRole('button', { name: 'History', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'More actions' })).toHaveCount(0);
+
   await page.setViewportSize({ width: 1100, height: 900 });
-  await expect(page.getByRole('button', { name: 'History', exact: true })).toBeHidden();
-  await page.getByRole('button', { name: 'More actions' }).click();
-  await expect(page.getByRole('menuitem', { name: 'History' })).toBeVisible();
-  const more = (await page.getByRole('button', { name: 'More actions' }).boundingBox())!;
-  expect(more.x + more.width).toBeLessThanOrEqual(1100);
   // The tab line still fits on one line: no taller than at full width, every item on it.
   const narrowBox = (await tabBar.boundingBox())!;
+  const narrowTag = (await nameTag.boundingBox())!;
+  expect(narrowTag.x + narrowTag.width).toBeLessThanOrEqual(1100);
   expect(narrowBox.height).toBeLessThanOrEqual(tabBox.height + 1);
-  for (const name of ['File', 'Openapi Design', 'Flow Design', 'Run', 'Advanced']) {
+  for (const name of ['File', 'Openapi', 'Flow', 'Run', 'Advanced']) {
     const y = await top(name);
     expect(y).toBeGreaterThanOrEqual(narrowBox.y);
     expect(y).toBeLessThan(narrowBox.y + narrowBox.height);
   }
 });
 
-test('the tab underline moves to the menu clicked, and to Flow Design and Advanced while their view is open', async ({ page }) => {
+test('the tab underline moves to the menu clicked, and to Flow and Advanced while their view is open', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('underline'));
   const list = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"] > .pf-v6-c-tabs__list');
@@ -83,16 +89,15 @@ test('the tab underline moves to the menu clicked, and to Flow Design and Advanc
     await expect.poll(async () => Math.round((await underline()).length)).toBe(Math.round(box.width));
   };
 
-  await under('Flow Design');
+  await under('Flow');
   // From About straight to Advanced > Java Beans: the underline leaves About for Advanced.
   await page.getByRole('tab', { name: /About/ }).click();
-  await expect(page.getByRole('button', { name: 'Flow Design', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
+  await expect(page.getByRole('button', { name: 'Flow', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
   await page.getByRole('button', { name: 'Advanced', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Java Beans/ }).click();
   await under('Advanced');
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
-  await page.keyboard.press('Escape');
-  await under('Flow Design');
+  await designMenu(page, /^Design/);
+  await under('Flow');
 
   // Clicking File, Run or Advanced moves it there, and it stays after Escape closes the menu.
   for (const menu of ['File', 'Run', 'Advanced']) {
@@ -122,15 +127,15 @@ test('About opens on the blank canvas after login', async ({ page }) => {
   await page.getByRole('tab', { name: /About/ }).click();
   await expect(page.getByText('EY ECHO (V2.0).', { exact: true })).toBeVisible();
   await expect(page.getByText('No flow is open')).toBeHidden();
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await designMenu(page, /^Design/);
   await expect(page.getByText('No flow is open')).toBeVisible();
 });
 
-test('Advanced > Java Beans opens the Beans view, before About; Flow Design takes the Design tab\'s place', async ({ page }) => {
+test('Advanced > Java Beans opens the Beans view, before About; Flow takes the Design tab\'s place', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('advanced'));
   await expect(page.getByRole('tab', { name: /Design/ })).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Flow Design', exact: true })).toHaveClass(/echo-tab-menu--current/);
+  await expect(page.getByRole('button', { name: 'Flow', exact: true })).toHaveClass(/echo-tab-menu--current/);
   await expect(page.getByRole('tab', { name: /Beans/ })).toBeHidden();
   const advanced = page.getByRole('button', { name: 'Advanced', exact: true });
   const advancedBox = (await advanced.boundingBox())!;
@@ -143,11 +148,14 @@ test('Advanced > Java Beans opens the Beans view, before About; Flow Design take
   await expect(page).toHaveURL(/#\/beans$/);
   await expect(page.locator('.shell__tab-content--scrollable')).toBeVisible();
   await expect(advanced).toHaveClass(/echo-tab-menu--current/);
-  await expect(page.getByRole('button', { name: 'Flow Design', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
-  // Flow Design opens the canvas and its menu of downloads.
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Flow', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
+  // Flow only opens its menu: Design, History and the downloads. Design opens the canvas.
+  await page.getByRole('button', { name: 'Flow', exact: true }).click();
+  await expect(page.getByRole('menuitem')).toHaveCount(4);
+  await expect(page.getByRole('menuitem', { name: /^History/ })).toBeEnabled();
+  await expect(page).toHaveURL(/#\/beans$/);
+  await page.getByRole('menuitem', { name: /^Design/ }).click();
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
-  await expect(page.getByRole('menuitem')).toHaveCount(2);
   await expect(advanced).not.toHaveClass(/echo-tab-menu--current/);
 });
 
@@ -229,8 +237,7 @@ test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate 
   // They come back with the canvas after another tab.
   await page.getByRole('tab', { name: /DataMapper/ }).click();
   await expect(validate).toBeHidden();
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
-  await page.keyboard.press('Escape');
+  await designMenu(page, /^Design/);
   await expect(validate).toBeVisible();
   await expect(publish).toBeVisible();
 });

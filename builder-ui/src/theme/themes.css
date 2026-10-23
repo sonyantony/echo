@@ -4,7 +4,7 @@
  * only refers to the --echo-* tokens below.
  *
  * The theme is picked per install with echo.branding.theme in application.yaml and set on <html>
- * as data-echo-theme (branding/applyBranding.ts). The same file is put into the Openapi Design
+ * as data-echo-theme (branding/applyBranding.ts). The same file is put into the Openapi
  * editor's frame, so the tokens resolve there too.
  *
  * To add a theme: copy a theme's block, give it a new name, change the values, and add the name

@@ -1,8 +1,22 @@
-import { Alert, EmptyState, Modal, ModalBody, ModalHeader, Spinner } from '@patternfly/react-core';
+import { Alert, DropdownItem, EmptyState, Modal, ModalBody, ModalHeader, Spinner } from '@patternfly/react-core';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { flowHistory } from '../api/flows';
 import { targetLabel } from './publishSummary';
+
+/** The Flow menu's History item; greyed out (no `onOpen`) until the flow has been named and saved. */
+export function historyMenuItem(onOpen?: () => void) {
+  return (
+    <DropdownItem
+      key="history"
+      onClick={onOpen}
+      isDisabled={!onOpen}
+      description={onOpen ? 'When and where the flow was published' : 'Save the flow first'}
+    >
+      History
+    </DropdownItem>
+  );
+}
 
 export function HistoryModal({ flowId, onClose }: { flowId: number; onClose(): void }) {
   const history = useQuery({ queryKey: ['flow', flowId, 'history'], queryFn: () => flowHistory(flowId) });

@@ -58,17 +58,6 @@
 .echo-tab-actions .pf-v6-c-menu-toggle__icon {
   color: var(--pf-t--global--icon--color--brand--default, currentColor);
 }
-.echo-tab-actions__more {
-  display: none;
-}
-@media (max-width: 1250px) {
-  .echo-tab-actions .echo-tab-actions__wide {
-    display: none;
-  }
-  .echo-tab-actions .echo-tab-actions__more {
-    display: inline-flex;
-  }
-}
 .echo-tab-actions .pf-v6-c-menu-toggle__button {
   color: inherit;
   font-weight: inherit;
@@ -81,9 +70,17 @@
 .echo-tab-actions .pf-v6-c-menu-toggle__toggle-icon {
   color: var(--echo-text-subtle);
 }
-.echo-tab-actions .echo-tab-actions__more,
-.echo-tab-actions .echo-tab-actions__more .pf-v6-c-menu-toggle__icon {
-  color: var(--echo-text-subtle);
+
+/* Flow: <name> at the right end of the tab line; a long name is cut short with an ellipsis. */
+.echo-tab-actions.echo-flow-name-tag {
+  display: block;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-inline: 12px;
+  color: var(--echo-text);
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: 700;
 }
 
 /* Keyboard shortcuts in the File menu, at the right of the item's name. */
@@ -94,7 +91,7 @@
   font-size: var(--pf-t--global--font--size--body--sm);
 }
 
-/* File, Run, Flow Design and Advanced read like desktop menu bar entries: no dropdown arrow. */
+/* File, Run, Flow and Advanced read like desktop menu bar entries: no dropdown arrow. */
 .echo-tab-actions .echo-file-menu .pf-v6-c-menu-toggle__controls,
 .echo-tab-actions .echo-run-menu .pf-v6-c-menu-toggle__controls,
 .echo-tab-actions .echo-tab-menu .pf-v6-c-menu-toggle__controls {

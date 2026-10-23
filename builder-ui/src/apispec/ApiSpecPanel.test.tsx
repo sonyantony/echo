@@ -36,7 +36,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('Openapi Design panel', () => {
+describe('Openapi panel', () => {
   it('opens a new spec in Apicurio and saves it as YAML under the name asked for', async () => {
     const { calls } = mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
@@ -54,7 +54,9 @@ describe('Openapi Design panel', () => {
 
     // Once the frame has loaded, the spec (a starter one named after the flow) is sent to it.
     const posted = vi.spyOn(frame.contentWindow!, 'postMessage');
-    vi.useFakeTimers();
+    // Only setInterval (the resend loop) is faked: React's own scheduling must keep running, or the
+    // editor opened when the spec arrives may never start listening for its changes.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     fireEvent.load(frame);
     act(() => vi.advanceTimersByTime(250));
     vi.useRealTimers();

@@ -1,11 +1,12 @@
 import { KaotoEditorFactory } from '@kaoto/kaoto';
+import { DropdownItem } from '@patternfly/react-core';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { SpecSchemaPickerModal } from '../datamapper/SpecSchemaPickerModal';
 import { isGeneratedSchemaName, makeJsonSchema, schemaFileName, serializeSchema, type SpecSchemaPart } from '../datamapper/specSchemas';
 import { AdvancedMenu } from './AdvancedMenu';
-import { KaotoTabMenu } from './KaotoTabMenu';
+import { KaotoTabMenu, openKaotoTab } from './KaotoTabMenu';
 import type { FlowFiles } from './flowFiles';
 import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
@@ -17,7 +18,7 @@ export interface KaotoEditorHandle {
   getContent(): Promise<string>;
   /** Saves the whole flow diagram to the user's computer as a PNG called `fileName`. */
   downloadDiagram(fileName: string): Promise<void>;
-  /** Loads changed Camel YAML into the editor (e.g. a REST setting from the Flow Design menu); counts as an edit. */
+  /** Loads changed Camel YAML into the editor (e.g. a REST setting from the Flow menu); counts as an edit. */
   setContent(content: string): Promise<void>;
 }
 
@@ -34,7 +35,7 @@ export interface KaotoEditorHostProps {
   tabBarActions?: ReactNode;
   /** Builder menus shown among Kaoto's tabs, just before the Advanced menu (e.g. a Run menu). */
   tabBarMenus?: ReactNode;
-  /** Items of the Flow Design menu, which stands in for Kaoto's Design tab (e.g. downloads). */
+  /** Items of the Flow menu after Design (which opens the canvas, Kaoto's Design tab): History and the downloads. */
   designMenuItems?: ReactNode;
   /** Builder controls shown on Kaoto's Design canvas toolbar, right after its copy to clipboard button. */
   canvasToolbarActions?: ReactNode;
@@ -166,7 +167,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   }, []);
 
   // Kaoto renders its tab bar when it starts; put slots for the Builder's controls at its start and
-  // end, the Flow Design menu's in place of Kaoto's Design tab, and the Advanced menu's just before
+  // end, the Flow menu's in place of Kaoto's Design tab, and the Advanced menu's just before
   // Kaoto's About tab.
   // Put them back should Kaoto ever render the tab bar again.
   useEffect(() => {
@@ -219,7 +220,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     };
     // The cover sits just below the tab bar, whose height depends on the theme and font.
     const heights = new ResizeObserver(([entry]) => setTabBarHeight((entry.target as HTMLElement).offsetHeight));
-    // Kaoto's tabs, and the hidden ones the Flow Design and Advanced menus press, all carry a "-tab" test id.
+    // Kaoto's tabs, and the hidden ones the Flow and Advanced menus press, all carry a "-tab" test id.
     const onClick = (event: MouseEvent) => {
       const tab = (event.target as Element | null)?.closest("[data-testid$='-tab']");
       if (tab?.closest(".shell > div[role='region']")) onKaotoViewPickedRef.current?.();
@@ -280,7 +281,10 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       {tabBarSlot && tabBarActions && createPortal(tabBarActions, tabBarSlot)}
       {designSlot &&
         createPortal(
-          <KaotoTabMenu label="Flow Design" tabTestId="design-tab" opensTab className="echo-design-menu">
+          <KaotoTabMenu label="Flow" tabTestId="design-tab" className="echo-design-menu">
+            <DropdownItem key="design" onClick={() => openKaotoTab('design-tab')} description="The drag and drop canvas">
+              Design
+            </DropdownItem>
             {designMenuItems}
           </KaotoTabMenu>,
           designSlot,

@@ -1,7 +1,7 @@
 import { isMap, isScalar, isSeq, parseDocument, YAMLMap, YAMLSeq } from 'yaml';
 
 /**
- * The REST settings the Flow Design menu turns on and off. They live in the route file's
+ * The REST settings the Flow menu turns on and off. They live in the route file's
  * `restConfiguration`, where Camel reads them; ECHO adds the rest service itself from the flow's
  * OpenAPI spec when the flow runs or is published (RestFromSpec in the backend).
  */

@@ -47,9 +47,9 @@ export async function fileMenu(page: Page, item: string | RegExp) {
   await menuItem.click();
 }
 
-/** Picks an item from the Flow Design menu (which also opens the canvas). */
+/** Picks an item from the Flow menu (Design opens the canvas). */
 export async function designMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Flow', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();
 }
 

@@ -31,8 +31,9 @@ import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHo
 import { useKaotoTabSelected } from '../editor/KaotoTabMenu';
 import { useDismissMenu } from '../editor/menuDismiss';
 import { DownloadButtons, downloadMenuItems } from './downloads';
-import { apiSpecPath, Shortcut } from './FlowEditorPage';
+import { apiSpecPath, FlowNameTag, Shortcut } from './FlowEditorPage';
 import { FlowFormModal } from './FlowFormModal';
+import { historyMenuItem } from './HistoryModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { UploadFlowModal } from './UploadFlowModal';
@@ -40,7 +41,7 @@ import './FlowEditorPage.css';
 import './UntitledFlowPage.css';
 
 const UNTITLED_PATH = 'untitled.camel.yaml';
-/** The untitled flow's name in Openapi Design (its starter spec's title): not offered as the flow's name on Save. */
+/** The untitled flow's name in Openapi (its starter spec's title): not offered as the flow's name on Save. */
 const UNTITLED_NAME = 'untitled';
 
 /** Kaoto reports an empty canvas as one of these. */
@@ -49,7 +50,7 @@ const isEmpty = (yaml: string | undefined) => !yaml || ['', '[]'].includes(yaml.
 /**
  * Where you land after logging in: a blank canvas with the File menu open. Nothing is stored until
  * you save, which asks for a name and creates the draft then (so logging in leaves no stray drafts,
- * and there is nothing to autosave). Openapi Design works here too, so a flow can start from its
+ * and there is nothing to autosave). Openapi works here too, so a flow can start from its
  * API: the spec stays on screen until that Save, which also asks for its file name.
  */
 export function UntitledFlowPage() {
@@ -86,7 +87,7 @@ export function UntitledFlowPage() {
     navigate(spec ? apiSpecPath(id) : `/flows/${id}`);
   };
 
-  /** File > Save and Ctrl+S: asks for the flow's name, and its spec's file name when Openapi Design has one. */
+  /** File > Save and Ctrl+S: asks for the flow's name, and its spec's file name when Openapi has one. */
   const startSave = useCallback(() => setSaving({ spec: specPanel.current?.unsavedSpec() }), []);
 
   /** Set once the draft is created, so trying again after a failed write does not create it twice. */
@@ -94,7 +95,7 @@ export function UntitledFlowPage() {
 
   /**
    * Creates the draft with what is on the canvas (an empty canvas keeps the usual starter route) and
-   * the spec in Openapi Design, stored under specFileName in the format its extension says.
+   * the spec in Openapi, stored under specFileName in the format its extension says.
    */
   const saveAsFlow = async (name: string, description: string, specFileName?: string) => {
     const yaml = await editor.current!.getContent();
@@ -269,7 +270,7 @@ export function UntitledFlowPage() {
           <div className="echo-untitled__empty">
             <EmptyState titleText="No flow is open" headingLevel="h2" variant="sm">
               <EmptyStateBody>
-                Start a new flow, or open an existing one, from the File menu. To start from the flow's API, pick Openapi Design.
+                Start a new flow, or open an existing one, from the File menu. To start from the flow's API, pick Openapi.
               </EmptyStateBody>
             </EmptyState>
           </div>
@@ -290,7 +291,12 @@ export function UntitledFlowPage() {
               <ApiSpecMenu current={showSpec} onShow={openSpec} panel={specPanel} onCopy={() => setCopyingSpec(true)} />
             </>
           }
-          designMenuItems={downloadMenuItems({ name: 'Untitled flow', onDownloadImage: dirty ? downloadDiagram : undefined })}
+          tabBarActions={<FlowNameTag name="Untitled flow" />}
+          designMenuItems={[
+            historyMenuItem(),
+            <Divider component="li" key="history-divider" />,
+            ...downloadMenuItems({ name: 'Untitled flow', onDownloadImage: dirty ? downloadDiagram : undefined }),
+          ]}
           cover={
             specOpened && (
               <ApiSpecPanel

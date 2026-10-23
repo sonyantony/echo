@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { createFlow, login, uniqueName } from './helpers';
+import { createFlow, designMenu, login, uniqueName } from './helpers';
 
 const git = (...args: string[]) =>
   execFileSync('git', ['--git-dir', process.env.ECHO_E2E_GIT_REPO!, ...args], { encoding: 'utf8' });
@@ -25,7 +25,7 @@ test('publishes a flow to Git', async ({ page }) => {
   expect(git('show', `main:flows/${name}/${name}.camel.yaml`)).toContain(`platform-http:/${name}`);
   expect(git('show', `main:flows/${name}/echo-flow.json`)).toContain(`"name" : "${name}"`);
 
-  await page.getByRole('button', { name: 'History' }).click();
+  await designMenu(page, /^History/);
   await expect(page.getByRole('dialog').getByText(`First version of ${name}`)).toBeVisible();
 });
 

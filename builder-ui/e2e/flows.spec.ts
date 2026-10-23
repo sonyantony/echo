@@ -160,7 +160,7 @@ test('downloads the flow diagram as a PNG', async ({ page }, testInfo) => {
   // Kaoto's own image button is hidden; the Builder's button presses it.
   await expect(page.getByTestId('exportImageButton')).toBeHidden();
 
-  // Works from another Kaoto tab too: Flow Design opens the canvas as well as its menu.
+  // Works from another Kaoto tab too.
   await page.getByRole('tab', { name: /DataMapper/ }).click();
   const downloading = page.waitForEvent('download');
   await designMenu(page, new RegExp(`^Download ${name} As Image`));

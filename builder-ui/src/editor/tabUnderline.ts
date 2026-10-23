@@ -12,7 +12,7 @@ export const CURRENT_ATTRIBUTE = 'data-echo-tab-current';
 /**
  * Keeps Kaoto's tab underline (PatternFly's animated accent, drawn by the tab list) on the right
  * item of the editor's tab line, Builder menus included:
- * - a menu (File, Flow Design, Run, Advanced) takes it when clicked, and keeps it after its dropdown
+ * - a menu (File, Flow, Run, Advanced) takes it when clicked, and keeps it after its dropdown
  *   closes;
  * - a Kaoto tab takes it back when clicked, or when another view opens;
  * - while Kaoto's Design or Beans view is open and no menu was clicked since, it sits under the menu

@@ -3,7 +3,7 @@ import { createFlow, fileMenu, login, uniqueName } from './helpers';
 
 // V2: the flow's REST service comes from its OpenAPI spec. There is no Rest tab; ECHO adds the
 // contract-first service when the flow runs or is published, the spec's server URL is the Base
-// Path, an operation without a route answers 404, and the Flow Design menu holds the two REST
+// Path, an operation without a route answers 404, and the Flow menu holds the two REST
 // settings.
 
 const flowIdOf = (page: Page) => page.url().replace(/.*\/flows\/(\d+).*/, '$1');

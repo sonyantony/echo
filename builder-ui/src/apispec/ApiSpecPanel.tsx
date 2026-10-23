@@ -36,11 +36,11 @@ import './ApiSpecPanel.css';
 export interface ApiSpecPanelHandle {
   /** Saves the spec if it has unsaved edits (asking for a name if it has none). Resolves to false when it was not saved. */
   saveIfChanged(): Promise<boolean>;
-  /** Openapi Design > Upload: picks a .yaml or .json spec and stores it in the flow under its own name. */
+  /** Openapi > Upload: picks a .yaml or .json spec and stores it in the flow under its own name. */
   upload(): void;
-  /** Openapi Design > New From Samples: asks for a sample request and response and puts the spec made from them on screen, unsaved. */
+  /** Openapi > New From Samples: asks for a sample request and response and puts the spec made from them on screen, unsaved. */
   newFromSamples(): void;
-  /** Openapi Design > Download Openapi File As Yaml / Json: what is on screen, unsaved edits included. */
+  /** Openapi > Download Openapi File As Yaml / Json: what is on screen, unsaved edits included. */
   download(format: SpecFormat): void;
   /** Saves what is on screen as fileName, which replaces the spec stored in the flow (the breadcrumb's rename). */
   rename(fileName: string): Promise<boolean>;
@@ -92,7 +92,7 @@ type Dialog =
 
 /**
  * The flow's OpenAPI spec, edited in Apicurio's editor. Shown by the flow editor in place of
- * Kaoto's views when Openapi Design is picked on its tab line. The spec is one file in the flow
+ * Kaoto's views when Openapi is picked on its tab line. The spec is one file in the flow
  * folder, under the name it was uploaded or saved with, in YAML or JSON (the format buttons).
  */
 export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSpecPanel(

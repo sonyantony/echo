@@ -28,9 +28,12 @@ test('logs in and lands on a blank canvas', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Download Flow', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Download Flow As Image', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Flow', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: /^Download Untitled flow(?! As)/ })).toBeDisabled();
   await expect(page.getByRole('menuitem', { name: /^Download Untitled flow As Image/ })).toBeDisabled();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
+  // History needs a named, saved flow.
+  await expect(page.getByRole('menuitem', { name: /^History/ })).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('current-user')).toHaveText('designer');
   await expect(page.getByRole('banner')).toContainText('User: designer');

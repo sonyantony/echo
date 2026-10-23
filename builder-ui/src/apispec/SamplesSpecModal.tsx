@@ -45,7 +45,7 @@ interface Props {
 }
 
 /**
- * Openapi Design > New From Samples: method, path, operationId and a sample request and response,
+ * Openapi > New From Samples: method, path, operationId and a sample request and response,
  * from which the flow's spec is made (specFromSamples). The operationId follows the method and
  * path until the user types their own.
  */

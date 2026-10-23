@@ -1,5 +1,5 @@
 /**
- * Openapi Design > New From Samples: a whole spec (schemas, path and operation) made from one
+ * Openapi > New From Samples: a whole spec (schemas, path and operation) made from one
  * sample request and one sample response. What the samples cannot say (formats, enums, which
  * fields are optional) is left for the user to tweak in the editor afterwards.
  */
