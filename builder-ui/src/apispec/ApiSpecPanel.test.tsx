@@ -157,11 +157,15 @@ describe('Openapi panel', () => {
         <ApiSpecPanel ref={panel} flowName="untitled" onSaveFlow={onSaveFlow} onDirtyChange={onDirtyChange} />
       </QueryClientProvider>,
     );
-    const frame = (await screen.findByTitle('OpenAPI editor')) as HTMLIFrameElement;
+    await screen.findByTitle('OpenAPI editor');
     expect(panel.current!.unsavedSpec()).toBeUndefined();
 
-    edit(frame, { ...edited, info: { title: 'Card API', version: '1.0.0' } });
-    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true));
+    // The editor can open again while the settings load, with a new frame: the edit is sent from
+    // the frame on screen until the panel takes it.
+    await waitFor(() => {
+      edit(screen.getByTitle('OpenAPI editor') as HTMLIFrameElement, { ...edited, info: { title: 'Card API', version: '1.0.0' } });
+      expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+    });
     await userEvent.click(screen.getByRole('radio', { name: 'Json' }));
     expect(panel.current!.unsavedSpec()).toEqual({ json: expect.stringContaining('Card API'), format: 'json', name: null });
 
