@@ -60,6 +60,20 @@ public class PublishedFlowController {
         return ResponseEntity.created(URI.create("/api/flows/" + flow.getId())).body(flows.detail(flow.getId()));
     }
 
+    /** Keeps the flow in Git but marks it disabled, so the pipeline leaves it out of images. */
+    @PostMapping("/{name}/disable")
+    public ResponseEntity<Void> disable(@PathVariable String name, Principal user) {
+        service.setDisabled(name, true, user.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Lets the pipeline build the flow again. */
+    @PostMapping("/{name}/enable")
+    public ResponseEntity<Void> enable(@PathVariable String name, Principal user) {
+        service.setDisabled(name, false, user.getName());
+        return ResponseEntity.noContent().build();
+    }
+
     /** Removes the flow from Git and, if the Builder has it, from the Builder too. */
     @DeleteMapping("/{name}")
     public ResponseEntity<Void> delete(@PathVariable String name, Principal user) {

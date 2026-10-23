@@ -174,4 +174,28 @@ class PublishedFlowControllerTest {
         mvc.perform(as(get("/api/flows/{id}", id))).andExpect(status().isNotFound());
         mvc.perform(as(delete("/api/published-flows/orders"))).andExpect(status().isNotFound());
     }
+
+    @Test
+    void disablingAFlowKeepsItInGitMarkedDisabledUntilEnabled() throws Exception {
+        long id = createAndPublish("orders");
+
+        mvc.perform(as(post("/api/published-flows/orders/disable"))).andExpect(status().isNoContent());
+        assertThat(REMOTE.read("main", "flows/orders/echo-flow.json")).contains("\"disabled\" : true");
+        assertThat(REMOTE.files("main")).contains("flows/orders/orders.camel.yaml");
+        assertThat(REMOTE.head("main").getFullMessage()).isEqualTo("Disable flow orders");
+        mvc.perform(as(get("/api/published-flows"))).andExpect(jsonPath("$[0].disabled").value(true));
+
+        // A new version stays disabled.
+        mvc.perform(as(put("/api/flows/{id}/files/application.properties", id))
+                .contentType(MediaType.TEXT_PLAIN).content("x=1\n")).andExpect(status().isNoContent());
+        mvc.perform(as(post("/api/flows/{id}/publish", id))).andExpect(status().isOk());
+        assertThat(REMOTE.read("main", "flows/orders/echo-flow.json")).contains("\"version\" : 2")
+                .contains("\"disabled\" : true");
+
+        mvc.perform(as(post("/api/published-flows/orders/enable"))).andExpect(status().isNoContent());
+        assertThat(REMOTE.read("main", "flows/orders/echo-flow.json")).doesNotContain("disabled")
+                .contains("\"version\" : 2");
+        mvc.perform(as(get("/api/published-flows"))).andExpect(jsonPath("$[0].disabled").value(false));
+        mvc.perform(as(post("/api/published-flows/missing/disable"))).andExpect(status().isNotFound());
+    }
 }

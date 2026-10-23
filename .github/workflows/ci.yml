@@ -91,6 +91,17 @@ jobs:
           fi
           cat "$clash/err.txt"
           grep -q 'Base Path or path /greetings is used by more than one flow: greetings, hello' "$clash/err.txt"
+      - name: A disabled flow is left out of the bundle
+        if: matrix.mode == 'bundle'
+        run: |
+          off="$(mktemp -d)"
+          cp -r samples/flows/greetings "$off/greetings"
+          cp -r samples/flows/greetings "$off/hello"
+          mv "$off/hello/greetings.camel.yaml" "$off/hello/hello.camel.yaml"
+          printf '{\n  "name" : "hello",\n  "disabled" : true\n}\n' > "$off/hello/echo-flow.json"
+          pipeline/build-flow.sh "$off" --jar-only --out "$off/build" 2> "$off/err.txt" || { cat "$off/err.txt"; exit 1; }
+          cat "$off/err.txt"
+          grep -q 'hello: the flow is disabled' "$off/err.txt"
 
   pipeline:
     # The check branch protection requires: passes only when both build modes passed.

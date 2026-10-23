@@ -24,7 +24,8 @@ import org.yaml.snakeyaml.nodes.SequenceNode;
  * A flow with a spec serves it contract-first: one {@code rest} service whose
  * {@code openApi.specification} is the spec file, so Camel sends each operation to
  * {@code direct:<operationId>} under the spec's Base Path (its server URL). An operation the flow
- * has no route for answers 404: ECHO adds a small route for it, and the service's
+ * has no route for answers 404, and so does one whose route is switched off ({@code autoStartup:
+ * false}): ECHO adds a small route for it, and the service's
  * {@code missingOperation} is {@code ignore}, so the flow starts anyway. Swagger UI for the spec is
  * served at {@code <Base Path>/docs}, by a few more routes ({@code echo-docs-<flow>}) that read
  * Swagger UI from its webjar and the spec from the classpath, so it works the same in Run and in
@@ -89,10 +90,11 @@ public final class RestFromSpec {
                           specification: %s
                           missingOperation: ignore
                     """.formatted(quoted(specName))).getValue().getFirst());
-            var implemented = directRoutes(root);
+            var implemented = directRoutes(root, true);
+            var switchedOff = directRoutes(root, false);
             for (String operation : spec.operationIds()) {
                 if (!implemented.contains(operation)) {
-                    entries.add(compose(missingRoute(operation)).getValue().getFirst());
+                    entries.add(compose(missingRoute(operation, switchedOff.contains(operation))).getValue().getFirst());
                 }
             }
             // The spec's Base Path decides where the operations are; an older Context Path would replace it.
@@ -132,13 +134,14 @@ public final class RestFromSpec {
         });
     }
 
-    private static String missingRoute(String operation) {
-        String body = "{\"error\":\"Not found\",\"message\":\"This flow does not implement the operation %s yet.\"}"
-                .formatted(operation);
+    private static String missingRoute(String operation, boolean switchedOff) {
+        String message = switchedOff ? "The route for the operation %s is disabled in this flow."
+                : "This flow does not implement the operation %s yet.";
+        String body = "{\"error\":\"Not found\",\"message\":\"%s\"}".formatted(message.formatted(operation));
         return """
                 - route:
                     id: %s
-                    description: Made by EY ECHO; the flow has no route for this operation of its OpenAPI spec
+                    description: Made by EY ECHO; the flow has no %s for this operation of its OpenAPI spec
                     from:
                       uri: %s
                       steps:
@@ -150,7 +153,8 @@ public final class RestFromSpec {
                             constant: application/json
                         - setBody:
                             constant: %s
-                """.formatted(quoted(MISSING_ROUTE_PREFIX + operation), quoted("direct:" + operation), quoted(body));
+                """.formatted(quoted(MISSING_ROUTE_PREFIX + operation), switchedOff ? "enabled route" : "route",
+                quoted("direct:" + operation), quoted(body));
     }
 
     /** Where Swagger UI is for a flow served under this base path (Base Path or Context Path). */
@@ -228,8 +232,11 @@ public final class RestFromSpec {
                 """.formatted(quoted(id), quoted("platform-http:" + path), quoted(contentType), quoted(body));
     }
 
-    /** The operations the flow has a {@code direct:} route for. */
-    private static Set<String> directRoutes(SequenceNode root) {
+    /**
+     * The operations the flow has a {@code direct:} route for: with {@code started}, routes that
+     * start; without, routes switched off with {@code autoStartup: false}.
+     */
+    private static Set<String> directRoutes(SequenceNode root, boolean started) {
         var names = new LinkedHashSet<String>();
         for (Node entry : root.getValue()) {
             if (!(entry instanceof MappingNode map)) {
@@ -237,8 +244,10 @@ public final class RestFromSpec {
             }
             for (NodeTuple t : map.getValue()) {
                 Optional<String> uri = switch (key(t)) {
-                    case "route" -> t.getValueNode() instanceof MappingNode route ? scalar(route, "from", "uri") : Optional.empty();
-                    case "from" -> t.getValueNode() instanceof MappingNode from ? scalar(from, "uri") : Optional.empty();
+                    case "route" -> t.getValueNode() instanceof MappingNode route && switchedOff(route) != started
+                            ? scalar(route, "from", "uri") : Optional.empty();
+                    case "from" -> started && t.getValueNode() instanceof MappingNode from ? scalar(from, "uri")
+                            : Optional.empty();
                     default -> Optional.empty();
                 };
                 uri.map(String::strip).filter(u -> u.startsWith("direct:"))
@@ -247,6 +256,11 @@ public final class RestFromSpec {
             }
         }
         return names;
+    }
+
+    /** True for a route with {@code autoStartup: false}: Camel loads it but does not start it. */
+    public static boolean switchedOff(MappingNode route) {
+        return scalar(route, "autoStartup").map(String::strip).filter("false"::equalsIgnoreCase).isPresent();
     }
 
     private static Optional<MappingNode> restConfiguration(SequenceNode root) {

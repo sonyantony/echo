@@ -51,3 +51,28 @@ test('lists a published flow and deletes it from Git', async ({ page }) => {
   expect(git('ls-tree', '--name-only', 'main', 'flows/')).not.toContain(`flows/${name}`);
   expect(git('log', '-1', '--format=%s|%an', 'main').trim()).toBe(`Delete flow ${name}|designer`);
 });
+
+// Disable keeps the flow in Git but marks it, so the pipeline leaves it out; Enable undoes it.
+test('disables and enables a published flow from the Open Flow page', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('off');
+  await createFlow(page, name);
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByText('Published Successfully')).toBeVisible();
+
+  await page.goto('/flows');
+  const row = page.getByRole('row').filter({ hasText: name }).filter({ hasText: 'Git' });
+  await row.getByRole('button', { name: 'Kebab toggle' }).click();
+  await page.getByRole('menuitem', { name: 'Disable' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Disable' }).click();
+  await expect(row.getByText('Disabled', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'test-results/open-flow-disabled.png' });
+  expect(git('show', `main:flows/${name}/echo-flow.json`)).toContain('"disabled" : true');
+  expect(git('log', '-1', '--format=%s|%an', 'main').trim()).toBe(`Disable flow ${name}|designer`);
+
+  await row.getByRole('button', { name: 'Kebab toggle' }).click();
+  await page.getByRole('menuitem', { name: 'Enable' }).click();
+  await expect(row.getByText('Disabled', { exact: true })).toBeHidden();
+  expect(git('show', `main:flows/${name}/echo-flow.json`)).not.toContain('disabled');
+});

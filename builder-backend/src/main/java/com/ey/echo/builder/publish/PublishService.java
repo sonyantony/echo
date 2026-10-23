@@ -33,11 +33,14 @@ public class PublishService {
     private final Clock clock;
     private final ApiCatalog apis;
     private final EndpointClashes clashes;
+    private final PublishedFlowService published;
     private final ObjectMapper json = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
     public PublishService(FlowService flows, FlowValidator validator, PublishTargets targets,
-            PublishEventRepository events, Clock clock, ApiCatalog apis, EndpointClashes clashes) {
+            PublishEventRepository events, Clock clock, ApiCatalog apis, EndpointClashes clashes,
+            PublishedFlowService published) {
         this.flows = flows;
+        this.published = published;
         this.clashes = clashes;
         this.apis = apis;
         this.validator = validator;
@@ -83,7 +86,10 @@ public class PublishService {
         }
         long version = events.countByFlowId(flowId) + 1;
         var now = clock.instant();
-        files.put(METADATA_FILE, metadata(flow.getName(), flow.getDescription(), version, user, now.toString()));
+        // A flow disabled on the Open Flow page stays disabled when a new version is published.
+        boolean disabled = published.isDisabled(previousName != null ? previousName : flow.getName());
+        files.put(METADATA_FILE, metadata(flow.getName(), flow.getDescription(), version, user, now.toString(),
+                disabled));
 
         String commitMessage = message == null || message.isBlank()
                 ? "Publish flow %s (version %d)".formatted(flow.getName(), version)
@@ -135,13 +141,17 @@ public class PublishService {
         return events.findByFlowIdOrderByPublishedAtDescIdDesc(flowId);
     }
 
-    private String metadata(String name, String description, long version, String author, String publishedAt) {
+    private String metadata(String name, String description, long version, String author, String publishedAt,
+            boolean disabled) {
         var map = new LinkedHashMap<String, Object>();
         map.put("name", name);
         map.put("description", description);
         map.put("version", version);
         map.put("author", author);
         map.put("publishedAt", publishedAt);
+        if (disabled) {
+            map.put("disabled", true);
+        }
         try {
             return json.writeValueAsString(map) + "\n";
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {

@@ -20,7 +20,8 @@ where it runs and how it is promoted is up to you.
 Set it with the Jenkinsfile's `BUILD_MODE` parameter, or `--mode` / `BUILD_MODE` for the script.
 Bundle is lighter for a small install. Per-flow lets you release, roll back and scale each flow on
 its own, keeps a broken flow from affecting the others, and gives each container only that flow's
-secrets. `templates/` is never built.
+secrets. `templates/` is never built, nor is a flow disabled on the Builder's Open Flow page
+(`"disabled": true` in its `echo-flow.json`).
 
 Bundled flows run in one app on one port, so before exporting, the build lists every clash and
 stops:

@@ -125,6 +125,8 @@ export interface PublishedFlowSummary {
   draftChanged: boolean;
   /** Where the flow is, as shown to users, e.g. Git. */
   target?: string | null;
+  /** The pipeline leaves the flow out of images until it is enabled again. */
+  disabled?: boolean;
 }
 
 const publishedPath = (name: string) => `/api/published-flows/${encodeURIComponent(name)}`;
@@ -135,6 +137,9 @@ export const publishedFlowsApi = {
   createDraft: (name: string, replace = false) =>
     api<FlowDetail>(`${publishedPath(name)}/draft${replace ? '?replace=true' : ''}`, { method: 'POST' }),
   remove: (name: string) => api<void>(publishedPath(name), { method: 'DELETE' }),
+  /** Keeps the flow in the publish targets but marks it disabled, so the pipeline does not build it. */
+  setDisabled: (name: string, disabled: boolean) =>
+    api<void>(`${publishedPath(name)}/${disabled ? 'disable' : 'enable'}`, { method: 'POST' }),
   downloadUrl: (name: string) => `${publishedPath(name)}/download`,
 };
 

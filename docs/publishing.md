@@ -54,6 +54,10 @@ set, so an unset variable never blanks a value in `application.yaml`. After chan
   it builds a bundle.
 - **Delete** tries every enabled target. If one fails, the Builder keeps the draft and shows the
   error; deleting again finishes the job.
+- **Disable / Enable** (Open Flow page, a published row's menu) keeps the flow in every target
+  but sets `"disabled": true` in its `echo-flow.json` (Git commit "Disable flow <name>"); the
+  pipeline leaves a disabled flow out of images, and publishing it again keeps it disabled
+  (docs/decisions/0011).
 - **The Flows page** lists published flows from the first enabled target (Git, else S3).
 - **Templates** (Save As Template, Open Template) live in a `templates` folder next to the flows
   folder: `templates/<name>/` in Git, `<parent of prefix>/templates/<name>/` in S3. Saving a

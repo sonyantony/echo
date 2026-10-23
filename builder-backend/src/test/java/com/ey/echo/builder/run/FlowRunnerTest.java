@@ -236,6 +236,49 @@ class FlowRunnerTest {
     }
 
     @Test
+    void anOperationWhoseRouteIsSwitchedOffAnswers404() throws Exception {
+        String spec = """
+                openapi: 3.0.3
+                info: {title: Customers, version: 1.0.0}
+                servers:
+                  - url: /myurlbase
+                paths:
+                  /customers/{id}:
+                    get:
+                      operationId: getCustomer
+                      responses: {"200": {description: ok}}
+                  /orders:
+                    get:
+                      operationId: listOrders
+                      responses: {"200": {description: ok}}
+                """;
+        var files = com.ey.echo.builder.flow.RestFromSpec.apply("customers.camel.yaml", java.util.Optional.of("customer-api.yaml"), Map.of(
+                "customers.camel.yaml", """
+                        - route:
+                            from:
+                              uri: direct:getCustomer
+                              steps:
+                                - setBody:
+                                    simple: '{"id":"${header.id}"}'
+                        - route:
+                            id: list-orders
+                            autoStartup: false
+                            from:
+                              uri: direct:listOrders
+                              steps:
+                                - setBody:
+                                    constant: '[]'
+                        """,
+                "customer-api.yaml", spec));
+
+        var run = runner.start(1, "customers", "customers.camel.yaml", files, "designer");
+        assertThat(get(run.port, "/myurlbase/customers/C7").statusCode()).isEqualTo(200);
+        var off = get(run.port, "/myurlbase/orders");
+        assertThat(off.statusCode()).isEqualTo(404);
+        assertThat(off.body()).contains("listOrders is disabled");
+    }
+
+    @Test
     void servesSwaggerUiForTheSpecNextToItsOperations() throws Exception {
         String spec = """
                 openapi: 3.0.3

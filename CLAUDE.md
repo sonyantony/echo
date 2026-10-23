@@ -8,6 +8,7 @@ app and built into an image by the buyer's pipeline).
 - Decisions: `docs/decisions/` (one short note per significant choice).
 - Save As, Save As Template and Open Template (templates in `templates/` next to `flows/`): `docs/decisions/0007-save-as-and-templates.md`.
 - The REST service made from the flow's spec (Base Path, 404 for missing operations, no Rest tab): `docs/decisions/0008-rest-from-the-spec.md`.
+- Disabling a published flow (`"disabled": true` in `echo-flow.json`, skipped by `build-flow.sh`) and a route (`autoStartup: false` answers 404, "Disabled" badge): `docs/decisions/0011-disable-flows-and-routes.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
   Themes: colours only in `builder-ui/src/theme/themes.css`; Kaoto and Apicurio map onto its tokens
   (`kaoto-mapping.css`, `apicurio-mapping.css`), never with colour values of their own.

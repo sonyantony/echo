@@ -191,6 +191,43 @@ test('the canvas route list reads Routes and has no search box', async ({ page }
   expect(header).toBe(routeName);
 });
 
+test('the canvas route list marks routes switched off with autoStartup false as Disabled', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('offroute');
+  await createFlow(page, name);
+  const flowId = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
+  const token = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
+  const route = `- route:
+    id: get-order
+    from:
+      uri: direct:getOrder
+      steps:
+        - log:
+            message: on
+- route:
+    id: list-orders
+    autoStartup: false
+    from:
+      uri: direct:listOrders
+      steps:
+        - log:
+            message: off
+`;
+  await page.request.put(`/api/flows/${flowId}/files/${name}.camel.yaml`, {
+    data: route,
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': token },
+  });
+  await page.reload();
+  await page.getByTestId('flows-list-dropdown').click();
+  const list = page.getByTestId('flows-list-table');
+  await expect(list).toBeVisible();
+  const badge = (id: string) =>
+    list.getByTestId(`flows-list-row-${id}`).locator('td').first().evaluate((el) => getComputedStyle(el, '::after').content);
+  expect(await badge('list-orders')).toBe('"Disabled"');
+  expect(await badge('get-order')).toBe('none');
+  await page.screenshot({ path: 'test-results/routes-disabled-badge.png' });
+});
+
 test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate and Publish replace copy to clipboard', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
