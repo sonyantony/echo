@@ -140,31 +140,72 @@
 /*
  * Servers, shown as Base Path: the path the flow serves its operations under (Camel takes it from
  * the server URL). One is enough, so Add goes once there is one, and a server's description,
- * variables and details are hidden. Apicurio's own words are swapped by sizing them to 0 and
- * writing ECHO's in ::before. basePath.ts does what CSS cannot (Apply as you type, placeholder).
+ * variables and details are hidden. The value reads "/" while none is set, and a pencil after it
+ * opens the Base Path dialog. Apicurio's own words are swapped by sizing them to 0 and writing
+ * ECHO's in ::before. basePath.ts does what CSS cannot (Apply as you type, placeholder, the
+ * pencil on a set path).
  */
 :root[data-echo-theme] main-form .servers-section .section-label {
   font-size: 0;
 }
 :root[data-echo-theme] main-form .servers-section .section-label::before {
-  content: 'BASE PATH';
+  content: 'Base Path';
   font-size: 15px;
+}
+:root[data-echo-theme] main-form .servers-section .section-label counter .item-counter {
+  display: none;
+}
+:root[data-echo-theme] main-form :is(.tags-section, .servers-section) .section-label counter::after {
+  /* PatternFly's outlined question circle, as before "Schema from a sample", in the theme's subtle text colour. */
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 10px;
+  vertical-align: -1px;
+  background-color: var(--echo-text-subtle);
+  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 512 512'><path d='M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 448c-110.532 0-200-89.431-200-200 0-110.495 89.472-200 200-200 110.491 0 200 89.471 200 200 0 110.53-89.431 200-200 200zm107.244-255.2c0 67.052-72.421 68.084-72.421 92.863V300c0 6.627-5.373 12-12 12h-45.647c-6.627 0-12-5.373-12-12v-8.659c0-35.745 27.1-50.034 47.579-61.516 17.561-9.845 28.324-16.541 28.324-29.579 0-17.246-21.999-28.693-39.784-28.693-23.189 0-33.894 10.977-48.942 29.969-4.057 5.12-11.46 6.071-16.666 2.124l-27.824-21.098c-5.107-3.872-6.251-11.066-2.644-16.363C184.846 131.491 214.94 112 261.794 112c49.071 0 101.45 38.304 101.45 88.8zM298 368c0 23.159-18.841 42-42 42s-42-18.841-42-42 18.841-42 42-42 42 18.841 42 42z'/></svg>") center / contain no-repeat;
+}
+:root[data-echo-theme] main-form :is(.tags-section, .servers-section) .section-label::after {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--echo-text-subtle);
+}
+:root[data-echo-theme] main-form .tags-section .section-label::after {
+  content: '\00a0 Tags group APIs into sections';
+}
+:root[data-echo-theme] main-form .servers-section .section-label::after {
+  content: '\00a0 Base Path will be prepended to all Urls of the flow';
 }
 :root[data-echo-theme] main-form .servers-section context-help,
 :root[data-echo-theme] main-form .servers-section:has(server-row) icon-button[type='add'],
-:root[data-echo-theme] main-form .servers-section server-row :is(.expand, .description, .entity-icon) {
+:root[data-echo-theme] main-form .servers-section server-row :is(.expand, .description, .entity-icon, .actions, .body) {
   display: none !important;
 }
 :root[data-echo-theme] main-form .servers-section signpost :is(span, a) {
   font-size: 0;
 }
 :root[data-echo-theme] main-form .servers-section signpost span::before {
-  content: 'No base path: the operations are served from the root, e.g. /orders.';
+  content: '/';
   font-size: 13px;
 }
-:root[data-echo-theme] main-form .servers-section signpost a::before {
-  content: 'Set a base path';
-  font-size: 13px;
+/* The pencil after the value, as on Info's Version and Description (Apicurio's glyphicon). */
+:root[data-echo-theme] main-form .servers-section :is(signpost a, server-row .url)::after {
+  content: '\270f';
+  font-family: 'Glyphicons Halflings';
+  font-size: 11px;
+  margin-left: 6px;
+  color: var(--echo-text);
+}
+:root[data-echo-theme] main-form .servers-section signpost a {
+  border-bottom: none !important;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+:root[data-echo-theme] main-form .servers-section server-row .url {
+  flex-basis: auto;
 }
 :root[data-echo-theme] .server-entity-editor :is(h1.title, label[for='serverUrl'], .explanation > span) {
   font-size: 0;
@@ -190,25 +231,6 @@
 /* Vendor Extensions (x-… fields) are hidden on every page: overview, paths, operations, data types. */
 :root[data-echo-theme] extensions-section {
   display: none !important;
-}
-:root[data-echo-theme] main-form .tags-section .section-label counter::after {
-  /* PatternFly's outlined question circle, as before "Schema from a sample", in the theme's subtle text colour. */
-  content: '';
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  margin-left: 10px;
-  vertical-align: -1px;
-  background-color: var(--echo-text-subtle);
-  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 512 512'><path d='M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 448c-110.532 0-200-89.431-200-200 0-110.495 89.472-200 200-200 110.491 0 200 89.471 200 200 0 110.53-89.431 200-200 200zm107.244-255.2c0 67.052-72.421 68.084-72.421 92.863V300c0 6.627-5.373 12-12 12h-45.647c-6.627 0-12-5.373-12-12v-8.659c0-35.745 27.1-50.034 47.579-61.516 17.561-9.845 28.324-16.541 28.324-29.579 0-17.246-21.999-28.693-39.784-28.693-23.189 0-33.894 10.977-48.942 29.969-4.057 5.12-11.46 6.071-16.666 2.124l-27.824-21.098c-5.107-3.872-6.251-11.066-2.644-16.363C184.846 131.491 214.94 112 261.794 112c49.071 0 101.45 38.304 101.45 88.8zM298 368c0 23.159-18.841 42-42 42s-42-18.841-42-42 18.841-42 42-42 42 18.841 42 42z'/></svg>") center / contain no-repeat;
-}
-:root[data-echo-theme] main-form .tags-section .section-label::after {
-  content: '\00a0 Tags group APIs into sections';
-  font-size: 12px;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--echo-text-subtle);
 }
 
 /* ---------- Outline on the left: Paths, Data Types, Responses ---------- */
