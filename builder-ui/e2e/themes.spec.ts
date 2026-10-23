@@ -7,7 +7,7 @@ import { createFlow, login, uniqueName } from './helpers';
 // catch text that becomes unreadable on its background, and attach a screenshot of each screen
 // per theme to the report.
 
-const THEMES = ['studio', 'graphite', 'blueprint'] as const;
+const THEMES = ['studio', 'graphite', 'blueprint', 'navy', 'slate', 'contrast'] as const;
 
 const SPEC = `openapi: 3.0.3
 info:
@@ -46,7 +46,13 @@ components:
  */
 function unreadableText(frame: Page | Frame) {
   return frame.evaluate(() => {
-    const rgba = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+    // rgb(r g b / a), or color(srgb r g b / a) with 0-1 channels, which color-mix() computes to.
+    const rgba = (c: string) => {
+      const [r, g, b, a] = (c.match(/[\d.]+/g) ?? []).map(Number);
+      if (r === undefined) return [];
+      const scale = c.startsWith('color(') ? 255 : 1;
+      return [r * scale, g * scale, b * scale, a ?? 1];
+    };
     const luminance = ([r, g, b]: number[]) => {
       const f = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
       return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);

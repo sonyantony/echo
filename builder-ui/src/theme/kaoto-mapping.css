@@ -27,6 +27,10 @@
   --pf-t--global--text--color--brand--default: var(--echo-brand-text);
   --pf-t--global--text--color--brand--hover: var(--echo-brand-text);
   --pf-t--global--text--color--brand--clicked: var(--echo-brand-text);
+  /* Secondary buttons' outlines. */
+  --pf-t--global--border--color--brand--default: var(--echo-outline);
+  --pf-t--global--border--color--brand--hover: var(--echo-outline);
+  --pf-t--global--border--color--brand--clicked: var(--echo-outline);
 
   /* Links use the ink colour instead of PatternFly blue. */
   --pf-t--global--text--color--link--default: var(--echo-ink);
@@ -40,6 +44,14 @@
   --pf-t--global--border--color--brand--subtle--default: var(--echo-ink);
   --pf-t--global--border--color--brand--subtle--hover: var(--echo-ink);
   --pf-t--global--border--color--brand--subtle--clicked: var(--echo-ink);
+}
+
+/* On the masthead, secondary buttons (Log out) are outlined in the brand colour whatever the theme's
+   outline, which can be as dark as the masthead itself. */
+[data-echo-theme] .echo-masthead {
+  --pf-t--global--border--color--brand--default: var(--echo-brand);
+  --pf-t--global--border--color--brand--hover: var(--echo-brand);
+  --pf-t--global--border--color--brand--clicked: var(--echo-brand);
 }
 
 /* Kaoto pulls in IBM Carbon styles that set the body's font and colour (and link blue) globally. */

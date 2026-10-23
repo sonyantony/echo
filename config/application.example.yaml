@@ -57,10 +57,13 @@ echo:
     logo: /branding/logo.svg
     logo-alt: Acme
     # The look of the whole Builder, the flow editor included. One of:
+    #   navy       light, muted corporate navy masthead and accents, line-grid canvas (default)
+    #   slate      light, neutral greys, flat outlined step cards
+    #   contrast   high contrast: black on white, heavy outlines
     #   studio     light, with a dot-grid canvas
     #   graphite   dark throughout
     #   blueprint  light, with a dark grid canvas
-    theme: studio
+    theme: navy
     # favicon: /branding/favicon.svg
     # colors:
     #   primary: "#FFE600"

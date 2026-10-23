@@ -15,11 +15,11 @@ The default colours are EY's: yellow (`#FFE600`) and grey (`#2E2E38`).
 | `logo-alt` | Alt text of the logo | `Company logo` |
 | `favicon` | Browser tab icon | `/branding/favicon.svg` (falls back to `logo`) |
 | `asset-dir` | Folder whose files are served at `/branding/<file>` | `/config/branding` in the image, `./config/branding` otherwise |
-| `theme` | The look of the whole Builder, the flow editor included: `studio` (light, dot-grid canvas), `graphite` (dark throughout) or `blueprint` (light, dark grid canvas). See [Themes](#themes). | `studio` |
+| `theme` | The look of the whole Builder, the flow editor included: `navy` (muted corporate navy, line-grid canvas), `slate` (neutral greys, flat cards), `contrast` (high contrast, black on white), `studio` (light, dot-grid canvas), `graphite` (dark throughout) or `blueprint` (light, dark grid canvas). See [Themes](#themes). | `navy` |
 | `colors.primary` / `primary-hover` | Primary buttons, selected items | `#FFE600` / `#E6CF00` |
 | `colors.on-primary` | Text on primary buttons | `#2E2E38` |
 | `colors.accent-text` | Text PatternFly draws in the brand colour (tabs, toggles) | `#2E2E38` |
-| `colors.masthead-background` / `masthead-text` | Top bar and login page header | `#2E2E38` / `#FFFFFF` |
+| `colors.masthead-background` / `masthead-text` | Top bar and login page header, on every theme | the theme's (navy: `#172A4A`; studio, graphite, blueprint: `#2E2E38`) / `#FFFFFF` |
 
 Leave a colour out to keep the theme's default for it, which is EY's. Each colour sets one theme
 token (`--echo-brand`, `--echo-on-brand` ...; see `builder-ui/src/branding/applyBranding.ts`).
@@ -31,7 +31,8 @@ connectors, route header, tabs, forms, catalog) and the Openapi Design editor (p
 code editor; dark under graphite too), so the editors match the rest of the Builder
 instead of looking like stock Kaoto. Every theme uses the Inter typeface and draws its accents in
 `colors.primary`, so a buyer's own colours carry through. Links and selected toggles use
-`colors.masthead-background` in the light themes.
+`colors.masthead-background` in studio and blueprint, and the theme's own ink (navy, slate grey,
+black) in navy, slate and contrast.
 
 ```yaml
 echo:
@@ -56,7 +57,8 @@ builder-ui/src/theme/
 `themes.css` defines each theme as one block of `--echo-*` tokens: the page, surfaces, menus and
 dialogs, text, borders, links, the canvas, step cards, connectors and code colours, plus the
 canvas pattern made from them. Every theme sets the same tokens, and a comment at the top of the
-file lists what each one is for. A shared block holds what is the same in every theme: the brand
+file lists what each one is for. Each theme also has its own masthead colours, used
+unless the install sets `colors.masthead-*`. A shared block holds what is the same in every theme: the brand
 colour defaults (replaced by `echo.branding.colors`), EY yellow for the product name, and the
 light colours of downloaded diagrams.
 

@@ -73,10 +73,10 @@ describe('Branding', () => {
     expect(document.documentElement).not.toHaveClass('pf-v6-theme-dark');
   });
 
-  it('falls back to the studio theme when none or an unknown one is set', () => {
+  it('falls back to the navy theme when none or an unknown one is set', () => {
     applyBranding({});
-    expect(document.documentElement.dataset.echoTheme).toBe('studio');
+    expect(document.documentElement.dataset.echoTheme).toBe('navy');
     applyBranding({ theme: 'neon' });
-    expect(document.documentElement.dataset.echoTheme).toBe('studio');
+    expect(document.documentElement.dataset.echoTheme).toBe('navy');
   });
 });

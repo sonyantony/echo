@@ -60,18 +60,23 @@ echo:
     favicon: /branding/favicon.svg
     asset-dir: ${ECHO_BRANDING_DIR:./config/branding}
     # The look of the whole Builder, the flow editor included. One of:
+    #   navy       light, muted corporate navy masthead and accents, line-grid canvas (default)
+    #   slate      light, neutral greys, flat outlined step cards
+    #   contrast   high contrast: black on white, heavy outlines
     #   studio     light, with a dot-grid canvas
     #   graphite   dark throughout
     #   blueprint  light, with a dark grid canvas
-    theme: studio
+    theme: navy
     # CSS colours (EY: yellow #FFE600, grey #2E2E38). Leave one out to keep the theme default (EY's).
     colors:
       primary: "#FFE600"            # primary buttons, selected items
       primary-hover: "#E6CF00"
       on-primary: "#2E2E38"         # text on primary buttons
       accent-text: "#2E2E38"        # text drawn in the brand colour (tabs, toggles)
-      masthead-background: "#2E2E38"
-      masthead-text: "#FFFFFF"
+      # The top bar's colours come from the theme (navy's is navy). Set these to use your own
+      # on every theme, e.g. EY grey:
+      # masthead-background: "#2E2E38"
+      # masthead-text: "#FFFFFF"
   catalog:
     # Processors the editor's catalog hides: they need jars the Builder does not bundle, so Run
     # could not start a flow that uses them. Kamelets are hidden unless "kamelet" is an allowed component.

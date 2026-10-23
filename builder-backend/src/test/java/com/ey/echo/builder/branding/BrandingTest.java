@@ -43,14 +43,15 @@ class BrandingTest {
                 .andExpect(jsonPath("$.favicon").value("/branding/favicon.svg"))
                 .andExpect(jsonPath("$.theme").value("blueprint"))
                 .andExpect(jsonPath("$.colors.primary").value("#123456"))
-                .andExpect(jsonPath("$.colors.mastheadBackground").value("#2E2E38"));
+                // The shipped config leaves the masthead to the theme.
+                .andExpect(jsonPath("$.colors.mastheadBackground").doesNotExist());
     }
 
     @Test
-    void themeDefaultsToStudio() {
+    void themeDefaultsToNavy() {
         org.assertj.core.api.Assertions.assertThat(
                         new BrandingProperties(null, null, null, null, null, null).theme().id())
-                .isEqualTo("studio");
+                .isEqualTo("navy");
     }
 
     @Test
