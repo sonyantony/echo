@@ -23,7 +23,7 @@ test('Save As copies the flow to a new name and asks before replacing one', asyn
 
   const copy = uniqueName('copy');
   await saveAs(page, 'Save As', copy);
-  await expect(page.getByRole('heading', { name: copy })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${copy}`);
   expect(page.url()).not.toBe(originalUrl);
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
   await expect(page.getByTestId('unsaved')).toHaveCount(0);
@@ -37,11 +37,11 @@ test('Save As copies the flow to a new name and asks before replacing one', asyn
   const dialog = await saveAs(page, 'Save As', copy);
   await expect(dialog.getByTestId('overwrite-warning')).toContainText(`A flow named '${copy}' already exists`);
   await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('heading', { name: original })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${original}`);
 
   const again = await saveAs(page, 'Save As', copy);
   await again.getByRole('button', { name: 'Replace' }).click();
-  await expect(page.getByRole('heading', { name: copy })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${copy}`);
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toHaveCount(0); // replaced
 });
@@ -74,11 +74,11 @@ test('Save As Template and Open Template', async ({ page }) => {
   const flow = uniqueName('fromtpl');
   await open.getByLabel('New flow name').fill(flow);
   await open.getByRole('button', { name: 'Open' }).click();
-  await expect(page.getByRole('heading', { name: flow })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${flow}`);
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 
   // Templates are not flows: the Flows page does not list them.
-  await page.getByRole('link', { name: 'Flows', exact: true }).click();
+  await fileMenu(page, /^Open Flow/);
   await expect(page.getByRole('link', { name: flow })).toBeVisible();
   await expect(page.getByRole('cell', { name: template, exact: true })).toHaveCount(0);
 });

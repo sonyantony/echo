@@ -8,7 +8,7 @@ test('creates, renames and deletes a flow', async ({ page }) => {
   const name = uniqueName('crud');
   await createFlow(page, name, 'CRUD test');
 
-  await page.getByRole('link', { name: 'Flows' }).click();
+  await fileMenu(page, /^Open Flow/);
   const row = page.getByRole('row').filter({ hasText: name });
   await expect(row).toContainText('CRUD test');
   await expect(row).toContainText('Draft');
@@ -75,7 +75,7 @@ test('warns before leaving with unsaved changes', async ({ page }) => {
   await addStep(page, 1, 'setBody');
   await expect(page.getByTestId('unsaved')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Flows' }).click();
+  await fileMenu(page, /^Open Flow/);
   await expect(page.getByText('Leave without saving?')).toBeVisible();
   await page.getByRole('button', { name: 'Stay' }).click();
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
@@ -138,7 +138,7 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
   await dialog.getByLabel('Name').fill(`${name}-copy`);
   await dialog.getByRole('button', { name: 'Upload' }).click();
 
-  await expect(page.getByRole('heading', { name: `${name}-copy` })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}-copy`);
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 
   // Uploading again from the new draft's File menu opens another draft.
@@ -147,7 +147,7 @@ test('downloads a flow and uploads it again', async ({ page }, testInfo) => {
   await again.getByLabel(/Flow file/).setInputFiles(zip);
   await again.getByLabel('Name').fill(`${name}-copy2`);
   await again.getByRole('button', { name: 'Upload' }).click();
-  await expect(page.getByRole('heading', { name: `${name}-copy2` })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}-copy2`);
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 });
 
@@ -200,7 +200,7 @@ test('saves the blank canvas as a new flow', async ({ page }) => {
   await page.getByRole('dialog').getByLabel(/Name/).fill(name);
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
   await expect(page).toHaveURL(/\/flows\/\d+$/);
-  await expect(page.getByRole('heading', { name })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
   await expect(page.getByTestId(/^custom-node__route/).first()).toBeVisible();
   expect(created).toHaveLength(1);
 });
@@ -212,15 +212,15 @@ test('Cancel on Open Flow goes back', async ({ page }) => {
   await fileMenu(page, /^Open Flow/);
   await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
 
   await page.goto('/flows');
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
 
   const name = uniqueName('last');
   await createFlow(page, name);
   await page.goto('/flows');
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('heading', { name })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
 });
