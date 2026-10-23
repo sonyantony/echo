@@ -81,7 +81,8 @@ Camel JBang: use the `camel-launcher` jar (`java -jar camel-launcher-4.22.1.jar 
 - Kaoto stays unmodified; Builder code wraps it (`builder-ui/src/editor/`). Kaoto is rendered
   in its own React root because it brings its own router.
 - A flow is a folder: `<name>.camel.yaml` plus side files next to it (DataMapper
-  `kaoto-datamapper-*.xsl`, `*.schema.json`, `.kaoto` metadata, `application.properties`,
+  `kaoto-datamapper-*.xsl`, `*.schema.json` (`openapi-*.schema.json` are made from the spec and
+  follow it, docs/api-spec.md), `.kaoto` metadata, `application.properties`,
   the flow's OpenAPI spec, e.g. `customer-api.yaml`, or `openapi.json` in older flows).
 - `builder-ui/public/apicurio-editor/` is Apicurio's prebuilt editor, vendored unmodified; refresh it
   with `builder-ui/scripts/update-apicurio-editor.sh`, don't edit it.

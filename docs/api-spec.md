@@ -144,6 +144,33 @@ types (string, integer, number, boolean), nested objects and arrays. The dialog 
 REST resource (paths and operations) for the type. Then refine it: mark required fields, add
 formats, enums and descriptions. The sample is kept as the schema's `example`.
 
+### DataMapper schemas from the spec
+
+Kaoto's DataMapper reads only standalone JSON Schema (or XSD) files: it never looks inside an
+OpenAPI document (`components/schemas` is not one of the places it reads, and a YAML spec cannot
+even be picked). So when the DataMapper's **Attach Schema** asks for a JSON file, ECHO first shows
+**Attach a schema**: the request and response bodies of the flow's spec (unsaved edits included),
+grouped by operation (`POST /orders (createOrder)`: Request body, Response 200, ...), with
+**Upload File** for a file from the computer instead (`datamapper/SpecSchemaPickerModal.tsx`).
+
+The picked body is written into the flow as a JSON Schema file named after its endpoint, method
+and part: `openapi-orders-post-request.schema.json`, `openapi-orders-post-response-200.schema.json`,
+`openapi-orders-id-put-request.schema.json` (`/` and `{}` become `-`, the path's case is kept, and
+`-2` is added if another file has the name). The body's schema is at the top of the file, the
+schemas it refers to are in its `$defs`, OpenAPI-only keywords (`nullable`, `example`, `x-...`)
+are left out, and `x-echo-openapi` records which body it came from (`datamapper/specSchemas.ts`).
+Attaching the same body again reuses the file.
+
+Each time the spec is stored (Save, autosave, rename, Upload, Copy From Another Flow) and when the
+flow opens, ECHO makes these `openapi-*` files again from the spec; uploaded schemas are never
+touched. It then reads each DataMapper step's `.xsl` (Kaoto names every field it reads and writes)
+against the step's `openapi-*` schemas (from `.kaoto`), and lists, above the editor, the steps that
+map a field the schema no longer has or has with another type, or whose body is gone from the spec:
+"Route orders, step kaoto-datamapper-order-request, source body (...): customer is not in the
+schema." A renamed field shows as missing under its old name. The list is checked again as the
+DataMapper changes the mapping, and clears once nothing is left to review
+(`datamapper/specMappings.ts`, `mappingCheck.ts`).
+
 ## How it is embedded
 
 Apicurio's editor is an Angular app, so it cannot render inside the Builder's React tree. The

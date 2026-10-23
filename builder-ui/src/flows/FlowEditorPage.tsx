@@ -37,7 +37,9 @@ import { ApiSpecMenu } from '../apispec/ApiSpecMenu';
 import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
 import { CopySpecModal } from '../apispec/CopySpecModal';
 import { SpecNameField } from '../apispec/SpecNameField';
-import { formatOf, type SpecFormat } from '../apispec/apiSpec';
+import { formatOf, parseSpec, type SpecFormat } from '../apispec/apiSpec';
+import { SpecMappingWarnings } from '../datamapper/SpecMappingWarnings';
+import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
@@ -93,8 +95,20 @@ function FlowEditor() {
     refetchInterval: 15000,
   });
 
-  const files = useMemo(() => new ApiFlowFiles(id), [id]);
+  const apiFiles = useMemo(() => new ApiFlowFiles(id), [id]);
   const editor = useRef<KaotoEditorHandle>(null);
+  const readSavedSpec = useCallback(async () => {
+    const name = (await flowsApi.get(id)).apiSpec;
+    const text = name ? await flowsApi.readFile(id, name) : undefined;
+    return text === undefined ? undefined : parseSpec(text);
+  }, [id]);
+  // DataMapper schemas made from the spec follow it; mappings using fields it no longer has are listed.
+  const mappingReview = useSpecMappingReview({
+    files: apiFiles,
+    readSpec: readSavedSpec,
+    readRoute: async () => editor.current?.getContent(),
+  });
+  const { files, review: reviewMappings } = mappingReview;
   const savedYaml = useRef<string | undefined>(undefined);
   const latestYaml = useRef<string | undefined>(undefined);
   const [dirty, setDirty] = useState(false);
@@ -142,6 +156,19 @@ function FlowEditor() {
     savedYaml.current = yaml;
     setRestSettings((current) => current ?? readRestSettings(yaml));
   }, [route.data]);
+
+  const reviewed = useRef(false);
+  useEffect(() => {
+    if (route.data === undefined || reviewed.current) return;
+    reviewed.current = true;
+    void reviewMappings(true);
+  }, [route.data, reviewMappings]);
+
+  /** Attach Schema offers the spec on screen, unsaved edits included. */
+  const loadSpecForSchemas = useCallback(async () => {
+    const unsaved = specPanel.current?.unsavedSpec();
+    return unsaved ? (JSON.parse(unsaved.json) as Record<string, unknown>) : readSavedSpec();
+  }, [readSavedSpec]);
 
   // Cancel on the Open Flow page comes back here when it has nowhere else to go.
   useEffect(() => {
@@ -563,6 +590,11 @@ function FlowEditor() {
             actionClose={<AlertActionCloseButton onClose={() => setMessage(undefined)} />}
           />
         )}
+        <SpecMappingWarnings
+          className="echo-flow-editor__message"
+          warnings={mappingReview.warnings}
+          error={mappingReview.error}
+        />
         {validation && (
           <div className="echo-flow-editor__message">
             <ValidationPanel result={validation} onClose={() => setValidation(undefined)} />
@@ -581,6 +613,7 @@ function FlowEditor() {
           path={routeFile!}
           initialContent={route.data ?? ''}
           files={files}
+          loadSpec={loadSpecForSchemas}
           onChange={onChange}
           tabBarStart={
             <>
@@ -610,6 +643,7 @@ function FlowEditor() {
                 onDirtyChange={setSpecDirty}
                 onNameChange={setSpecName}
                 onFormatChange={setSpecFormat}
+                onStored={() => void reviewMappings(true)}
               />
             )
           }
@@ -703,6 +737,7 @@ function FlowEditor() {
               queryClient.invalidateQueries({ queryKey: ['flow', id], exact: true }),
               queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
               specPanel.current?.reload(),
+              reviewMappings(true),
             ])
           }
         />
