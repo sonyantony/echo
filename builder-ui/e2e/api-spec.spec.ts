@@ -30,9 +30,9 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
 
   await openSpec(page);
   await expect(page).toHaveURL(new RegExp(`/flows/${flowId}/api(#.*)?$`));
-  // A spec without a name yet: the breadcrumb (<flow> / Openapi / <file>) says so, and YAML is the format.
-  await expect(page.getByTestId('spec-flow-name')).toHaveText(name);
-  await expect(page.getByTestId('spec-name')).toHaveText('<new>');
+  // A spec without a name yet, in YAML; no line above the editor names the flow or the spec, the tab line does.
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
+  await expect(page.getByTestId('spec-flow-name')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Save As' })).toHaveCount(0);
   await expect(page.getByRole('radio', { name: 'Yaml' })).toBeChecked();
   const editor = editorOf(page);
@@ -51,7 +51,7 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   // keeps unsaved edits.
   await designMenu(page, /^Design/);
   await expect(page).toHaveURL(new RegExp(`/flows/${flowId}(#.*)?$`));
-  await expect(page.getByRole('heading', { name })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
   await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
   await openSpec(page);
   await expect(editor.getByText('Order', { exact: true }).first()).toBeVisible();
@@ -64,7 +64,6 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   await expect(dialog.getByText('Saved as order-api.yaml.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Saved order-api.yaml.')).toBeVisible();
-  await expect(page.getByTestId('spec-name')).toHaveText('order-api.yaml');
   await expect(page.getByTestId('unsaved')).toBeHidden();
 
   const flow = await (await page.request.get(`/api/flows/${flowId}`)).json();
@@ -78,30 +77,14 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   await page.getByRole('radio', { name: 'Json' }).check();
   await expect(page.getByTestId('unsaved')).toBeVisible();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByTestId('spec-name')).toHaveText('order-api.json');
+  await expect(page.getByText('Saved order-api.json.')).toBeVisible();
   const json = await (await page.request.get(`/api/flows/${flowId}/files/order-api.json`)).json();
   expect(json.components.schemas.Order.properties.quantity.type).toBe('integer');
   expect((await page.request.get(`/api/flows/${flowId}/files/order-api.yaml`)).status()).toBe(404);
 
-  // The file name in the breadcrumb is renamed in place: Escape cancels, Enter saves under the new
-  // name (the extension stays the format's), replacing the old file.
-  await page.getByTestId('spec-name').click();
-  const rename = page.getByRole('textbox', { name: 'OpenAPI file name' });
-  await expect(rename).toHaveValue('order-api');
-  await rename.fill('ignored');
-  await rename.press('Escape');
-  await expect(page.getByTestId('spec-name')).toHaveText('order-api.json');
-  await page.getByTestId('spec-name').click();
-  await rename.fill('orders-v2');
-  await rename.press('Enter');
-  await expect(page.getByTestId('spec-name')).toHaveText('orders-v2.json');
-  expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('orders-v2.json');
-  expect((await page.request.get(`/api/flows/${flowId}/files/order-api.json`)).status()).toBe(404);
-
   // The saved spec opens again from the flow folder.
   await page.reload();
   await expect(editor.getByText('Order', { exact: true }).first()).toBeVisible();
-  await expect(page.getByTestId('spec-name')).toHaveText('orders-v2.json');
   await expect(page.getByRole('radio', { name: 'Json' })).toBeChecked();
 });
 
@@ -130,7 +113,6 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   const chooser = page.waitForEvent('filechooser');
   await specMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'Customer_API.v2.yml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
-  await expect(page.getByTestId('spec-name')).toHaveText('Customer_API.v2.yml');
   await expect(editorOf(page).getByText('/customers/{id}')).toBeVisible();
   // Stored exactly as uploaded, comment included.
   expect(await (await page.request.get(`/api/flows/${flowId}/files/Customer_API.v2.yml`)).text()).toBe(yaml);
@@ -155,7 +137,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   await (await chooser2).setFiles({ name: 'orders.json', mimeType: 'application/json', buffer: Buffer.from(second) });
   await expect(page.getByRole('dialog')).toContainText('orders.json replaces Customer_API.v2.yml');
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
-  await expect(page.getByTestId('spec-name')).toHaveText('orders.json');
+  await expect(editorOf(page).getByText('/customers/{id}')).toBeHidden();
   expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('orders.json');
   expect((await page.request.get(`/api/flows/${flowId}/files/Customer_API.v2.yml`)).status()).toBe(404);
 
@@ -174,7 +156,6 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   await expect(page.getByRole('dialog')).toContainText('orders.json stays in the flow');
   await page.screenshot({ path: testInfo.outputPath('discard-dialog.png') });
   await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click();
-  await expect(page.getByTestId('spec-name')).toHaveText('<new>');
   await expect(page.getByTestId('unsaved')).toBeHidden();
   await expect(page.getByRole('radio', { name: 'Yaml' })).toBeChecked();
   await expect(editorOf(page).getByText('Add a data type')).toBeVisible();
@@ -192,7 +173,6 @@ test('a flow saved before specs kept their name opens its openapi.json', async (
   });
   await page.reload();
   await openSpec(page);
-  await expect(page.getByTestId('spec-name')).toHaveText('openapi.json');
   await expect(page.getByRole('radio', { name: 'Json' })).toBeChecked();
   await expect(editorOf(page).getByText('LegacyOrder', { exact: true }).first()).toBeVisible();
 });
@@ -327,7 +307,7 @@ test("Copy From Another Flow starts this flow's spec from a copy of another flow
 
   // The file is copied into this flow, which shows it in Openapi.
   expect(await (await page.request.get(`/api/flows/${flowId}/files/${specName}`)).text()).toBe(ownerSpec);
-  await expect(page.getByTestId('spec-name')).toHaveText(specName);
+  await expect.poll(async () => (await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe(specName);
 
   // When this flow has a spec, the copy replaces it after saying so.
   await page.request.put(`/api/flows/${flowId}/api-spec/fresh-api.yaml`, {
@@ -351,7 +331,7 @@ test('a first-time user starts from the API on the untitled flow; the first Save
   await page.keyboard.press('Escape');
   await openSpec(page);
   await expect(page.locator('.echo-untitled__empty')).toBeHidden();
-  await expect(page.getByText('Untitled flow / Openapi')).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
 
   const yaml = 'openapi: 3.0.3\ninfo:\n  title: Card API\n  version: 1.0.0\npaths: {}\n';
   const chooser = page.waitForEvent('filechooser');
@@ -372,8 +352,7 @@ test('a first-time user starts from the API on the untitled flow; the first Save
 
   // The new draft opens on its spec, stored in the flow under the name given.
   await expect(page).toHaveURL(/\/flows\/\d+\/api(#.*)?$/);
-  await expect(page.getByTestId('spec-flow-name')).toHaveText(name);
-  await expect(page.getByTestId('spec-name')).toHaveText('cards.json');
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
   const flowId = flowIdOf(page);
   expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('cards.json');
   const stored = await (await page.request.get(`/api/flows/${flowId}/files/cards.json`)).json();

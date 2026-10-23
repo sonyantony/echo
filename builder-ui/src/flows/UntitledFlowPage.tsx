@@ -8,15 +8,12 @@ import {
   DropdownList,
   EmptyState,
   EmptyStateBody,
-  Flex,
-  FlexItem,
   MenuToggle,
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
   PageSection,
-  Title,
 } from '@patternfly/react-core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -243,17 +240,6 @@ export function UntitledFlowPage() {
   return (
     <div className="echo-flow-editor">
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
-        <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
-          <FlexItem className="echo-flow-editor__crumbs">
-            <Title headingLevel="h1" size="lg">
-              Untitled flow
-            </Title>
-            {showSpec && ' / Openapi'}
-          </FlexItem>
-          <FlexItem className="echo-flow-editor__autosaved" data-testid="not-saved">
-            Not saved yet
-          </FlexItem>
-        </Flex>
         {message && (
           <Alert
             className="echo-flow-editor__message"
@@ -291,7 +277,13 @@ export function UntitledFlowPage() {
               <ApiSpecMenu current={showSpec} onShow={openSpec} panel={specPanel} onCopy={() => setCopyingSpec(true)} />
             </>
           }
-          tabBarActions={<FlowNameTag name="Untitled flow" />}
+          tabBarActions={
+            <FlowNameTag name="Untitled flow">
+              <span className="echo-flow-editor__autosaved" data-testid="not-saved">
+                Not saved yet
+              </span>
+            </FlowNameTag>
+          }
           designMenuItems={[
             historyMenuItem(),
             <Divider component="li" key="history-divider" />,

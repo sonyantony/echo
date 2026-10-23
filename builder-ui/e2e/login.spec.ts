@@ -15,7 +15,7 @@ test('logs in and lands on a blank canvas', async ({ page }) => {
 
   await page.getByLabel('Password').fill('designer');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
   await expect(page.getByRole('menuitem', { name: /^New Flow/ })).toBeVisible(); // File menu open
   // Our own message replaces Kaoto's "There are no routes defined" on the blank canvas.
   await expect(page.getByRole('heading', { name: 'No flow is open' })).toBeVisible();
@@ -42,7 +42,7 @@ test('logs in and lands on a blank canvas', async ({ page }) => {
 
   // The session survives a reload; logging out returns to the login page.
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
   await page.getByRole('button', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
 });

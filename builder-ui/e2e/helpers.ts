@@ -6,7 +6,7 @@ export async function login(page: Page) {
   await page.getByLabel('Password').fill('designer');
   await page.getByRole('button', { name: 'Log in' }).click();
   // Logging in lands on a blank canvas with the File menu open.
-  await expect(page.getByRole('heading', { name: 'Untitled flow' })).toBeVisible();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
   await expect(page.getByRole('menuitem', { name: /^New Flow/ })).toBeVisible();
 }
 

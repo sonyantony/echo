@@ -8,6 +8,10 @@
   padding: 8px 16px;
   flex: none;
 }
+/* Only messages (save results, validation, the run panel) are shown here; with none it takes no room. */
+.echo-flow-editor__header:empty {
+  display: none;
+}
 .echo-flow-editor__autosaved {
   color: var(--echo-text-subtle);
 }
@@ -72,14 +76,21 @@
 }
 
 /* Flow: <name> at the right end of the tab line; a long name is cut short with an ellipsis. */
-.echo-tab-actions.echo-flow-name-tag {
-  display: block;
+/* The flow's state (Draft or Published, unsaved or autosaved) and "Flow: <name>" at the right end of the tab line. */
+.echo-tab-actions.echo-flow-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-inline: 12px;
+  white-space: nowrap;
+  font-size: var(--pf-t--global--font--size--body--default);
+}
+.echo-flow-name-tag {
   max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-inline: 12px;
   color: var(--echo-text);
-  font-size: var(--pf-t--global--font--size--body--default);
   font-weight: 700;
 }
 
@@ -107,9 +118,3 @@
   --pf-v6-c-menu-toggle--m-plain--expanded--BackgroundColor: transparent;
 }
 
-/* Breadcrumb (Flows / <flow>, <flow> / Openapi / <spec>): one space's width after the slash, not the header's gap. */
-.echo-flow-editor__crumbs {
-  display: flex;
-  align-items: center;
-  gap: 0.35em;
-}

@@ -8,8 +8,6 @@ import {
   Dropdown,
   DropdownItem,
   DropdownList,
-  Flex,
-  FlexItem,
   Modal,
   ModalBody,
   ModalFooter,
@@ -17,11 +15,10 @@ import {
   MenuToggle,
   PageSection,
   Spinner,
-  Title,
 } from '@patternfly/react-core';
 import { CheckCircleIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import {
@@ -36,8 +33,7 @@ import {
 import { ApiSpecMenu } from '../apispec/ApiSpecMenu';
 import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
 import { CopySpecModal } from '../apispec/CopySpecModal';
-import { SpecNameField } from '../apispec/SpecNameField';
-import { formatOf, parseSpec, type SpecFormat } from '../apispec/apiSpec';
+import { parseSpec } from '../apispec/apiSpec';
 import { SpecMappingWarnings } from '../datamapper/SpecMappingWarnings';
 import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
@@ -137,10 +133,6 @@ function FlowEditor() {
   // unsaved edits survive moving between views.
   const [specOpened, setSpecOpened] = useState(showSpec);
   const [specDirty, setSpecDirty] = useState(false);
-  /** The spec's file name once the panel has it; until then the one the flow has (FlowDetail.apiSpec). */
-  const [specName, setSpecName] = useState<string | null>();
-  /** The Yaml/Json radios' format once the panel has it; until then the extension of the flow's spec. */
-  const [specFormat, setSpecFormat] = useState<SpecFormat>();
   const specPanel = useRef<ApiSpecPanelHandle>(null);
   useEffect(() => {
     if (showSpec) setSpecOpened(true);
@@ -506,45 +498,6 @@ function FlowEditor() {
   return (
     <div className="echo-flow-editor">
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
-        <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
-          {showSpec ? (
-            // While Openapi is open the breadcrumb names the flow and its spec: <flow> / Openapi / <file name>,
-            // and the file name is renamed in place (a flow has one spec, so this is its Save As).
-            <FlexItem className="echo-flow-editor__crumbs">
-              <span data-testid="spec-flow-name">{flow.data.name}</span> / Openapi /
-              <SpecNameField
-                name={specName === undefined ? (flow.data.apiSpec ?? null) : specName}
-                flowName={flow.data.name}
-                format={specFormat ?? (flow.data.apiSpec ? formatOf(flow.data.apiSpec) : undefined) ?? 'yaml'}
-                onRename={async (fileName) => (await specPanel.current?.rename(fileName)) ?? false}
-              />
-            </FlexItem>
-          ) : (
-            <>
-              <FlexItem className="echo-flow-editor__crumbs">
-                <Link to={OPEN_FLOW_PATH} state={openFlowState}>
-                  Flows
-                </Link>{' '}
-                /
-                <Title headingLevel="h1" size="lg">
-                  {flow.data.name}
-                </Title>
-              </FlexItem>
-              <FlexItem>
-                <StatusLabel status={flow.data.status} />
-              </FlexItem>
-            </>
-          )}
-          {dirty || specDirty ? (
-            <FlexItem data-testid="unsaved">Unsaved changes</FlexItem>
-          ) : (
-            autosavedAt && (
-              <FlexItem data-testid="autosaved" className="echo-flow-editor__autosaved">
-                Autosaved at {autosavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </FlexItem>
-            )
-          )}
-        </Flex>
         {message && (
           <Alert
             className="echo-flow-editor__message"
@@ -588,7 +541,20 @@ function FlowEditor() {
           }
           tabBarMenus={runMenu}
           canvasToolbarActions={canvasActions}
-          tabBarActions={<FlowNameTag name={flow.data.name} />}
+          tabBarActions={
+            <FlowNameTag name={flow.data.name}>
+              <StatusLabel status={flow.data.status} />
+              {dirty || specDirty ? (
+                <span data-testid="unsaved">Unsaved changes</span>
+              ) : (
+                autosavedAt && (
+                  <span data-testid="autosaved" className="echo-flow-editor__autosaved">
+                    Autosaved at {autosavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )
+              )}
+            </FlowNameTag>
+          }
           designMenuItems={[
             historyMenuItem(() => setShowHistory(true)),
             <Divider component="li" key="history-divider" />,
@@ -608,8 +574,6 @@ function FlowEditor() {
                 flowName={flow.data.name}
                 flowDescription={flow.data.description}
                 onDirtyChange={setSpecDirty}
-                onNameChange={setSpecName}
-                onFormatChange={setSpecFormat}
                 onStored={() => void reviewMappings(true)}
               />
             )
@@ -766,15 +730,22 @@ function RestSettingChecks({
   );
 }
 
-/** The keyboard shortcut shown at the right of a menu item (not part of its name for screen readers). */
-/** "Flow: <name>" at the right end of the editor's tab line, where History used to be. */
-export function FlowNameTag({ name }: { name: string }) {
+/**
+ * "Flow: <name>" at the right end of the editor's tab line, where History used to be, after the
+ * flow's state (Draft or Published, unsaved or autosaved), which had a line of its own above the editor.
+ */
+export function FlowNameTag({ name, children }: { name: string; children?: ReactNode }) {
   return (
-    <div className="echo-tab-actions echo-flow-name-tag" data-testid="flow-name-tag" title={`Flow: ${name}`}>
-      Flow: {name}
+    <div className="echo-tab-actions echo-flow-state">
+      {children}
+      <span className="echo-flow-name-tag" data-testid="flow-name-tag" title={`Flow: ${name}`}>
+        Flow: {name}
+      </span>
     </div>
   );
 }
+
+/** The keyboard shortcut shown at the right of a menu item (not part of its name for screen readers). */
 
 export function Shortcut({ keys }: { keys: string }) {
   return (
