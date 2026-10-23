@@ -19,17 +19,17 @@ interface Props {
   flowId?: number;
   /** The flow's own spec file, if it has one: the copy replaces it. */
   ownSpec?: string | null;
-  /** Openapi Design has unsaved edits, which the copy throws away. */
+  /** Openapi has unsaved edits, which the copy throws away. */
   specDirty: boolean;
   onClose(): void;
-  /** Called once the copy is stored, so Openapi Design shows it. */
+  /** Called once the copy is stored, so Openapi shows it. */
   onCopied?(): Promise<unknown>;
   /** Makes the copy in place of the Builder (the untitled flow). */
   onCopy?(spec: ApiSpecRef): Promise<unknown>;
 }
 
 /**
- * Openapi Design > Copy From Another Flow: starts this flow's spec from another flow's. A flow has
+ * Openapi > Copy From Another Flow: starts this flow's spec from another flow's. A flow has
  * one spec, kept in its own folder, so the file is copied into this flow under the same name and
  * is this flow's own from then on.
  */
@@ -60,7 +60,7 @@ export function CopySpecModal({ flowId, ownSpec, specDirty, onClose, onCopied, o
     }
   };
 
-  const replaces = [ownSpec && `${ownSpec} is replaced`, specDirty && 'unsaved edits in Openapi Design are lost']
+  const replaces = [ownSpec && `${ownSpec} is replaced`, specDirty && 'unsaved edits in Openapi are lost']
     .filter(Boolean)
     .join(', and ');
 

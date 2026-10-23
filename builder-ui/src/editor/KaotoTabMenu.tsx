@@ -35,8 +35,6 @@ export interface KaotoTabMenuProps {
   label: string;
   /** Kaoto's tab this menu stands in for: it shows as current, with the tab underline, while that view is open (tabUnderline.ts). */
   tabTestId: string;
-  /** Opens that view too when the menu is opened (Flow Design); otherwise only an item does (Advanced). */
-  opensTab?: boolean;
   className: string;
   children?: ReactNode;
 }
@@ -45,7 +43,7 @@ export interface KaotoTabMenuProps {
  * A menu on the editor's tab line, in place of one or more of Kaoto's tabs (hidden in
  * KaotoEditorHost.css). Its items press those hidden tabs, so Kaoto's router does the navigating.
  */
-export function KaotoTabMenu({ label, tabTestId, opensTab, className, children }: KaotoTabMenuProps) {
+export function KaotoTabMenu({ label, tabTestId, className, children }: KaotoTabMenuProps) {
   const [open, setOpen] = useState(false);
   useDismissMenu(open, setOpen);
   const current = useKaotoTabSelected(tabTestId);
@@ -65,7 +63,6 @@ export function KaotoTabMenu({ label, tabTestId, opensTab, className, children }
             isExpanded={open}
             data-echo-tab={tabTestId}
             onClick={() => {
-              if (opensTab) openKaotoTab(tabTestId);
               if (children) setOpen((o) => !o);
             }}
           >

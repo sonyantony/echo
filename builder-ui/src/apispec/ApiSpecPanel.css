@@ -73,13 +73,13 @@
   color: var(--pf-t--global--text--color--status--danger--default);
 }
 
-/* Openapi Design > Copy From Another Flow (CopySpecModal). */
+/* Openapi > Copy From Another Flow (CopySpecModal). */
 .echo-copy-spec__toggle,
 .echo-copy-spec__warning {
   margin-top: var(--pf-t--global--spacer--md);
 }
 
-/* Openapi Design > New From Samples (SamplesSpecModal). */
+/* Openapi > New From Samples (SamplesSpecModal). */
 .echo-samples-spec__route {
   display: flex;
   gap: var(--pf-t--global--spacer--md);

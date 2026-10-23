@@ -97,11 +97,11 @@ test('Attach Schema offers the bodies of the Openapi spec, and a spec change lis
     .toEqual(['openapi-orders-post-request.schema.json']);
   await expect(page.getByTestId('spec-mapping-warnings')).toHaveCount(0);
 
-  // The spec loses customer (uploaded over it in Openapi Design): the schema file follows, and the
+  // The spec loses customer (uploaded over it in Openapi): the schema file follows, and the
   // request mapping, which maps customer.name, is listed.
   await page.evaluate(() => (window.location.hash = '#/'));
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Openapi Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Upload/ }).click();
   await (await chooser).setFiles({ name: 'orders-api.yaml', mimeType: 'application/yaml', buffer: Buffer.from(spec(false)) });
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();

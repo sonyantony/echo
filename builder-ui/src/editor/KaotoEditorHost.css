@@ -74,9 +74,9 @@
   min-width: 0;
 }
 
-/* Kaoto's Design and Beans views open from the Flow Design and Advanced menus (KaotoTabMenu.tsx),
+/* Kaoto's Design and Beans views open from the Flow and Advanced menus (KaotoTabMenu.tsx),
    not their own tabs. There is no Rest view: ECHO makes the REST part from the flow's OpenAPI spec,
-   and the Flow Design menu holds its two settings. */
+   and the Flow menu holds its two settings. */
 .echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='design-tab'],
 .echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='beans-tab'],
 .echo-kaoto-host__editor > .shell > div[role='region'] [data-testid='rest-editor-tab'] {

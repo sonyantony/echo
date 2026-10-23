@@ -1,7 +1,7 @@
 import { expect, test, type Frame, type Page, type TestInfo } from '@playwright/test';
 import { createFlow, login, uniqueName } from './helpers';
 
-// Every theme (theme/themes.css) across the main screens, the embedded Kaoto and Openapi Design
+// Every theme (theme/themes.css) across the main screens, the embedded Kaoto and Openapi
 // (Apicurio) editors included. Kaoto and Apicurio are restyled through their class names
 // (theme/kaoto-mapping.css, theme/apicurio-mapping.css), which an upgrade can rename: these checks
 // catch text that becomes unreadable on its background, and attach a screenshot of each screen
@@ -108,7 +108,7 @@ for (const theme of THEMES) {
     await page.getByTestId('custom-node__route.from').click();
     await check(page, testInfo, theme, 'step-form');
 
-    // Openapi Design: Apicurio's overview, a path with its operation, and a full-page dialog.
+    // Openapi: Apicurio's overview, a path with its operation, and a full-page dialog.
     const status = await page.evaluate(
       async ([id, spec]) => {
         const token = decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '');

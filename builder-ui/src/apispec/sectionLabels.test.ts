@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { titleCase, titleCaseSectionLabels } from './sectionLabels';
 
-describe('section headings in Openapi Design', () => {
+describe('section headings in Openapi', () => {
   it('are shown in title case', () => {
     expect(titleCase('TAG DEFINITIONS ')).toBe('Tag Definitions ');
     expect(titleCase('INFO')).toBe('Info');

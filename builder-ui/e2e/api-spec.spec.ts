@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { createFlow, login, uniqueName } from './helpers';
+import { createFlow, designMenu, login, uniqueName } from './helpers';
 
-// V2: a flow's OpenAPI spec is designed in Apicurio's editor (Openapi Design), and a data type's
+// V2: a flow's OpenAPI spec is designed in Apicurio's editor (Openapi), and a data type's
 // schema can be generated from a sample JSON. The spec is one file in the flow folder, under the
 // name it was uploaded or saved with, in YAML or JSON.
 
@@ -10,7 +10,7 @@ const editorOf = (page: Page) => page.frameLocator('iframe[title="OpenAPI editor
 const flowIdOf = (page: Page) => page.url().replace(/.*\/flows\/(\d+).*/, '$1');
 
 async function openSpec(page: Page) {
-  await page.getByRole('button', { name: 'Openapi Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
   // Clicking opens the view and its menu; the menu is closed again for the tests that don't use it.
   await expect(page.getByRole('menuitem', { name: /^Upload/ })).toBeVisible();
   await page.keyboard.press('Escape');
@@ -18,7 +18,7 @@ async function openSpec(page: Page) {
 }
 
 async function specMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'Openapi Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();
 }
 
@@ -49,7 +49,7 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
 
   // The spec is a view of the flow editor: its tab line stays, and moving to another view and back
   // keeps unsaved edits.
-  await page.getByRole('button', { name: 'Flow Design', exact: true }).click();
+  await designMenu(page, /^Design/);
   await expect(page).toHaveURL(new RegExp(`/flows/${flowId}(#.*)?$`));
   await expect(page.getByRole('heading', { name })).toBeVisible();
   await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
@@ -197,15 +197,15 @@ test('a flow saved before specs kept their name opens its openapi.json', async (
   await expect(editorOf(page).getByText('LegacyOrder', { exact: true }).first()).toBeVisible();
 });
 
-test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async ({ page }) => {
+test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('spec-tabs'));
   await openSpec(page);
   const editor = editorOf(page);
-  for (const name of ['File', 'Flow Design', 'Run', 'Advanced', 'History']) {
+  for (const name of ['File', 'Flow', 'Run', 'Advanced']) {
     await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   }
-  await expect(page.getByRole('button', { name: 'Openapi Design', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
+  await expect(page.getByRole('button', { name: 'Openapi', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
 
   // The editor has ECHO's theme and font, not Apicurio's own; its title bar's API name is hidden
   // under ECHO's bar, which "API Overview" stands in for.
@@ -325,7 +325,7 @@ test("Copy From Another Flow starts this flow's spec from a copy of another flow
   await dialog.getByRole('button', { name: 'Copy', exact: true }).click();
   await expect(dialog).toBeHidden();
 
-  // The file is copied into this flow, which shows it in Openapi Design.
+  // The file is copied into this flow, which shows it in Openapi.
   expect(await (await page.request.get(`/api/flows/${flowId}/files/${specName}`)).text()).toBe(ownerSpec);
   await expect(page.getByTestId('spec-name')).toHaveText(specName);
 
@@ -361,7 +361,7 @@ test('a first-time user starts from the API on the untitled flow; the first Save
   await expect(page.getByText('Opened cards.yml: save the flow to keep it.')).toBeVisible();
   await page.getByRole('radio', { name: 'Json' }).check();
 
-  // Save (Openapi Design's, or File > Save) asks for both names in one dialog, prefilled from the spec.
+  // Save (Openapi's, or File > Save) asks for both names in one dialog, prefilled from the spec.
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByLabel(/^Name/)).toHaveValue('card-api');

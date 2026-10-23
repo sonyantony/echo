@@ -6,18 +6,18 @@ import { UNDERLINED_CLASS } from '../editor/tabUnderline';
 import type { ApiSpecPanelHandle } from './ApiSpecPanel';
 
 interface Props {
-  /** Openapi Design's view is open: its item has the tab line's underline. */
+  /** Openapi's view is open: its item has the tab line's underline. */
   current: boolean;
-  /** Opens Openapi Design's view (clicking the item does, as well as opening the menu). */
+  /** Opens Openapi's view (clicking the item does, as well as opening the menu). */
   onShow(): void;
   panel: RefObject<ApiSpecPanelHandle | null>;
   onCopy(): void;
 }
 
 /**
- * Openapi Design, on the tab line right after File: API-first flows start from the spec, then
- * Flow Design. The spec is also the flow's REST service: ECHO makes it from the spec (no Rest tab).
- * Like Flow Design it opens its view (the flow's OpenAPI spec, in place of Kaoto's views) and a menu.
+ * Openapi, on the tab line right after File: API-first flows start from the spec, then
+ * Flow. The spec is also the flow's REST service: ECHO makes it from the spec (no Rest tab).
+ * Like Flow it opens its view (the flow's OpenAPI spec, in place of Kaoto's views) and a menu.
  */
 export function ApiSpecMenu({ current, onShow, panel, onCopy }: Props) {
   const [open, setOpen] = useState(false);
@@ -43,7 +43,7 @@ export function ApiSpecMenu({ current, onShow, panel, onCopy }: Props) {
               setOpen((was) => !was);
             }}
           >
-            Openapi Design
+            Openapi
           </MenuToggle>
         )}
       >

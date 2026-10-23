@@ -36,7 +36,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('Openapi Design panel', () => {
+describe('Openapi panel', () => {
   it('opens a new spec in Apicurio and saves it as YAML under the name asked for', async () => {
     const { calls } = mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },

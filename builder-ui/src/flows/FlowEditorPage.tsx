@@ -19,7 +19,7 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { CheckCircleIcon, EllipsisVIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -47,7 +47,7 @@ import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
-import { HistoryModal } from './HistoryModal';
+import { HistoryModal, historyMenuItem } from './HistoryModal';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { PublishModal } from './PublishModal';
 import { publishSummary } from './publishSummary';
@@ -123,17 +123,15 @@ function FlowEditor() {
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [runMenuOpen, setRunMenuOpen] = useState(false);
   useDismissMenu(fileMenuOpen, setFileMenuOpen);
-  useDismissMenu(moreMenuOpen, setMoreMenuOpen);
   useDismissMenu(runMenuOpen, setRunMenuOpen);
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copyingSpec, setCopyingSpec] = useState(false);
-  /** Client Request Validation and Enable CORS, as the route on screen has them (Flow Design menu). */
+  /** Client Request Validation and Enable CORS, as the route on screen has them (Flow menu). */
   const [restSettings, setRestSettings] = useState<RestSettings>();
   // The API spec is opened on first use and then kept (hidden while a Kaoto view is open), so its
   // unsaved edits survive moving between views.
@@ -184,7 +182,7 @@ function FlowEditor() {
     );
   }, []);
 
-  /** Flow Design > Client Request Validation / Enable CORS: changes the route's restConfiguration in the editor. */
+  /** Flow > Client Request Validation / Enable CORS: changes the route's restConfiguration in the editor. */
   const toggleRestSetting = useCallback(async (key: RestSetting) => {
     if (!editor.current) return;
     try {
@@ -478,7 +476,7 @@ function FlowEditor() {
     </div>
   );
 
-  // Downloads, Validate, the REST settings and Publish on the Flow Design canvas toolbar, where Kaoto's copy to clipboard was.
+  // Downloads, Validate, the REST settings and Publish on the Flow canvas toolbar, where Kaoto's copy to clipboard was.
   const canvasActions = (
     <div className="echo-canvas-actions echo-no-print">
       <DownloadButtons onDownloadZip={download} onDownloadImage={downloadDiagram} zipBusy={saving} imageBusy={drawing} />
@@ -505,45 +503,12 @@ function FlowEditor() {
     </div>
   );
 
-  // Shown at the right end of Kaoto's tab bar, styled like its tabs. On narrow screens History moves
-  // into the More menu (FlowEditorPage.css).
-  const actions = (
-    <div className="echo-tab-actions echo-no-print">
-      <Button variant="plain" className="echo-tab-actions__wide" onClick={() => setShowHistory(true)}>
-        History
-      </Button>
-      <Dropdown
-        isOpen={moreMenuOpen}
-        onOpenChange={setMoreMenuOpen}
-        onSelect={() => setMoreMenuOpen(false)}
-        popperProps={{ position: 'end', appendTo: () => document.body }}
-        toggle={(toggleRef) => (
-          <MenuToggle
-            ref={toggleRef}
-            className="echo-tab-actions__more"
-            variant="plain"
-            isExpanded={moreMenuOpen}
-            onClick={() => setMoreMenuOpen((open) => !open)}
-            aria-label="More actions"
-            icon={<EllipsisVIcon />}
-          />
-        )}
-      >
-        <DropdownList>
-          <DropdownItem key="history" onClick={() => setShowHistory(true)}>
-            History
-          </DropdownItem>
-        </DropdownList>
-      </Dropdown>
-    </div>
-  );
-
   return (
     <div className="echo-flow-editor">
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
           {showSpec ? (
-            // While Openapi Design is open the breadcrumb names the flow and its spec: <flow> / Openapi / <file name>,
+            // While Openapi is open the breadcrumb names the flow and its spec: <flow> / Openapi / <file name>,
             // and the file name is renamed in place (a flow has one spec, so this is its Save As).
             <FlexItem className="echo-flow-editor__crumbs">
               <span data-testid="spec-flow-name">{flow.data.name}</span> / Openapi /
@@ -624,6 +589,8 @@ function FlowEditor() {
           tabBarMenus={runMenu}
           canvasToolbarActions={canvasActions}
           designMenuItems={[
+            historyMenuItem(() => setShowHistory(true)),
+            <Divider component="li" key="history-divider" />,
             ...downloadMenuItems({
               name: flow.data.name,
               onDownloadZip: download,
@@ -632,7 +599,6 @@ function FlowEditor() {
               imageBusy: drawing,
             }),
           ]}
-          tabBarActions={actions}
           cover={
             specOpened && (
               <ApiSpecPanel
@@ -787,7 +753,7 @@ function RestSettingChecks({
         isChecked={on}
         isDisabled={!settings || (!hasSpec && !on)}
         onChange={() => toggle(key)}
-        title={hasSpec || on ? description : 'Needs an OpenAPI spec: design one in Openapi Design'}
+        title={hasSpec || on ? description : 'Needs an OpenAPI spec: design one in Openapi'}
       />
     );
   };

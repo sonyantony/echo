@@ -38,7 +38,7 @@ export function FlowFormModal({ title, submitLabel, initialName = '', initialDes
   const [specName, setSpecName] = useState<string>();
   const follows = !!spec && (!spec.initialName || (!!initialName && spec.initialName === withFormat(initialName, spec.format)));
   const specTyped = (specName ?? (!spec ? '' : !follows ? spec.initialName : name ? withFormat(name, spec.format) : '')).trim();
-  // As on Openapi Design's Save: a typed .json or .yaml picks that format, otherwise the format's extension is added.
+  // As on Openapi's Save: a typed .json or .yaml picks that format, otherwise the format's extension is added.
   const specFileName = !spec || !specTyped || formatOf(specTyped) ? specTyped : withFormat(specTyped, spec.format);
   const specValid = !spec || (SPEC_NAME_PATTERN.test(specFileName) && specFileName.length <= 200);
   const valid = nameValid && specValid;

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 /**
  * Closes an open tab-line menu on any press outside it and on Escape, wherever they happen.
  * PatternFly's own outside-click check listens for clicks on this window, which never sees a click
- * inside the Apicurio frame (Openapi Design) and can miss one the Kaoto canvas swallows. So this
+ * inside the Apicurio frame (Openapi) and can miss one the Kaoto canvas swallows. So this
  * listens for presses in the capture phase, and treats the window losing focus to a frame as a press.
  */
 export function useDismissMenu(open: boolean, setOpen: (open: boolean) => void) {
