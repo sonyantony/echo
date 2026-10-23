@@ -20,6 +20,8 @@ interface Props {
   initialName: string;
   /** The format picked with the YAML/JSON buttons: a name typed without extension gets it. */
   format: SpecFormat;
+  /** Shown while the field is empty. */
+  placeholder?: string;
   /** The extension must stay the format's (an upload keeps its own format). */
   fixedFormat?: boolean;
   /** The spec stored in the flow, which a save under another name replaces. */
@@ -29,7 +31,7 @@ interface Props {
 }
 
 /** The file name for the flow's OpenAPI spec, on its first Save and when an upload's name needs fixing (the breadcrumb renames it). */
-export function SpecNameModal({ title, description, initialName, format, fixedFormat, replaces, onSave, onClose }: Props) {
+export function SpecNameModal({ title, description, initialName, format, placeholder, fixedFormat, replaces, onSave, onClose }: Props) {
   const [name, setName] = useState(initialName);
   // A typed .json or .yaml picks that format; otherwise the format buttons' extension is added.
   const typed = name.trim();
@@ -56,7 +58,7 @@ export function SpecNameModal({ title, description, initialName, format, fixedFo
               value={name}
               isRequired
               autoFocus
-              placeholder={`customer-api.${format}`}
+              placeholder={placeholder}
               onChange={(_e, v) => setName(v)}
               validated={!typed || valid ? 'default' : 'error'}
             />

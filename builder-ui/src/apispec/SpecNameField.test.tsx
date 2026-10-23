@@ -1,11 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SpecNameField } from './SpecNameField';
 
 describe('Spec name in the breadcrumb', () => {
   it('renames on Enter, keeping the extension of the format', async () => {
     const onRename = vi.fn().mockResolvedValue(true);
-    render(<SpecNameField name="orders.yaml" format="yaml" onRename={onRename} />);
+    render(<SpecNameField name="orders.yaml" format="yaml" flowName="orders" onRename={onRename} />);
 
     await userEvent.click(screen.getByTestId('spec-name'));
     const input = screen.getByRole('textbox', { name: 'OpenAPI file name' });
@@ -20,7 +20,7 @@ describe('Spec name in the breadcrumb', () => {
 
   it('saves when the field is left, and Escape cancels', async () => {
     const onRename = vi.fn().mockResolvedValue(true);
-    render(<SpecNameField name="orders.json" format="json" onRename={onRename} />);
+    render(<SpecNameField name="orders.json" format="json" flowName="orders" onRename={onRename} />);
 
     await userEvent.click(screen.getByTestId('spec-name'));
     await userEvent.type(screen.getByRole('textbox'), '-v2{Escape}');
@@ -35,7 +35,7 @@ describe('Spec name in the breadcrumb', () => {
 
   it('names a new spec, and leaves a name a file cannot have or the same name alone', async () => {
     const onRename = vi.fn().mockResolvedValue(true);
-    const { rerender } = render(<SpecNameField name={null} format="yaml" onRename={onRename} />);
+    const { rerender } = render(<SpecNameField name={null} format="yaml" flowName="orders" onRename={onRename} />);
     expect(screen.getByTestId('spec-name')).toHaveTextContent('<new>');
 
     await userEvent.click(screen.getByTestId('spec-name'));
@@ -50,9 +50,25 @@ describe('Spec name in the breadcrumb', () => {
     await userEvent.type(screen.getByRole('textbox'), 'orders{Enter}');
     expect(onRename).toHaveBeenCalledWith('orders.yaml');
 
-    rerender(<SpecNameField name="orders.yaml" format="yaml" onRename={onRename} />);
+    rerender(<SpecNameField name="orders.yaml" format="yaml" flowName="orders" onRename={onRename} />);
     await userEvent.click(screen.getByTestId('spec-name'));
     await userEvent.keyboard('{Enter}');
     expect(onRename).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers <flow name>-api for a new spec, which Enter on an empty field takes', async () => {
+    const onRename = vi.fn().mockResolvedValue(true);
+    render(<SpecNameField name={null} format="yaml" flowName="secondflow" onRename={onRename} />);
+
+    await userEvent.click(screen.getByTestId('spec-name'));
+    const input = screen.getByRole('textbox');
+    expect(input).toHaveAttribute('placeholder', 'secondflow-api');
+    // Leaving the empty field does not save.
+    fireEvent.blur(input);
+    expect(onRename).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByTestId('spec-name'));
+    await userEvent.type(screen.getByRole('textbox'), '{Enter}');
+    expect(onRename).toHaveBeenCalledWith('secondflow-api.yaml');
   });
 });

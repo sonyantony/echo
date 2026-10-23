@@ -41,7 +41,7 @@ describe('Openapi Design panel', () => {
     const { calls } = mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
       'GET /api/flows/1': { status: 200, body: flow(null) },
-      'PUT /api/flows/1/api-spec/order-api.yaml': { status: 200, body: flow('order-api.yaml') },
+      'PUT /api/flows/1/api-spec/orders-api.yaml': { status: 200, body: flow('orders-api.yaml') },
     });
     const onDirtyChange = vi.fn();
     const onNameChange = vi.fn();
@@ -72,14 +72,15 @@ describe('Openapi Design panel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     const dialog = await screen.findByRole('dialog');
-    await userEvent.type(within(dialog).getByLabelText(/File name/), 'order-api');
+    // The name offered is <flow name>-api.
+    expect(within(dialog).getByLabelText(/File name/)).toHaveValue('orders-api.yaml');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Saved order-api.yaml.')).toBeInTheDocument();
+    expect(await screen.findByText('Saved orders-api.yaml.')).toBeInTheDocument();
     const put = calls.find((c) => c.method === 'PUT');
-    expect(put?.url).toBe('/api/flows/1/api-spec/order-api.yaml');
+    expect(put?.url).toBe('/api/flows/1/api-spec/orders-api.yaml');
     expect(put?.body).toContain('Order: {}');
     await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false));
-    expect(onNameChange).toHaveBeenLastCalledWith('order-api.yaml');
+    expect(onNameChange).toHaveBeenLastCalledWith('orders-api.yaml');
   });
 
   it('opens the saved spec under its name; picking JSON saves it as .json', async () => {

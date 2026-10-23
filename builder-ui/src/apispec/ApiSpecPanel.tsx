@@ -17,6 +17,7 @@ import { FLOWS_KEY } from '../flows/FlowListPage';
 import { useAutosave } from '../flows/useAutosave';
 import { ApicurioEditorHost, type ApicurioEditorHandle } from './ApicurioEditorHost';
 import {
+  defaultSpecBase,
   formatOf,
   newApiSpec,
   parseSpec,
@@ -236,7 +237,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   const download = (fileFormat: SpecFormat) => {
     try {
       const text = serialize(currentJson(), fileFormat);
-      const fileName = withFormat(name ?? storedName ?? `${flowName}-openapi.json`, fileFormat);
+      const fileName = withFormat(name ?? storedName ?? `${defaultSpecBase(flowName)}.json`, fileFormat);
       const url = URL.createObjectURL(new Blob([text], { type: fileFormat === 'json' ? 'application/json' : 'application/yaml' }));
       const link = document.createElement('a');
       link.href = url;
@@ -385,7 +386,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
       {dialog?.kind === 'name' && (
         <SpecNameModal
           title="Save"
-          initialName={name ? withFormat(name, format) : ''}
+          initialName={withFormat(name ?? defaultSpecBase(flowName), format)}
           format={format}
           replaces={storedName}
           onClose={() => setDialog(undefined)}
