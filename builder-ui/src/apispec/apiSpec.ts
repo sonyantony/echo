@@ -62,3 +62,28 @@ export function serialize(editorJson: string, format: SpecFormat): string {
   if (format === 'json') return editorJson;
   return YAML.stringify(JSON.parse(editorJson), { lineWidth: 0 });
 }
+
+/** The spec's info.title, if it has one. */
+export function titleOf(editorJson: string): string | undefined {
+  const info = (JSON.parse(editorJson) as { info?: { title?: unknown } }).info;
+  return typeof info?.title === 'string' ? info.title : undefined;
+}
+
+/** The spec's info.description, if it has one. */
+export function descriptionOf(editorJson: string): string | undefined {
+  const info = (JSON.parse(editorJson) as { info?: { description?: unknown } }).info;
+  return typeof info?.description === 'string' ? info.description : undefined;
+}
+
+/**
+ * A flow name made from a spec title: "Card API" is card-api. Lowercase letters, digits and
+ * dashes, starting with a letter (FLOW_NAME_PATTERN); empty when the title has no letter.
+ */
+export function flowNameFromTitle(title: string | undefined): string {
+  return (title ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^[^a-z]+/, '')
+    .slice(0, 63)
+    .replace(/-+$/, '');
+}

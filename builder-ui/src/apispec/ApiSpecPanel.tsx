@@ -45,10 +45,23 @@ export interface ApiSpecPanelHandle {
   rename(fileName: string): Promise<boolean>;
   /** Opens the spec stored in the flow again, e.g. after Copy From Another Flow replaced it; unsaved edits are dropped. */
   reload(): Promise<void>;
+  /** Puts fileName's spec on screen, unsaved (Copy From Another Flow on the untitled flow, which has nowhere to copy to yet). */
+  show(fileName: string, text: string): void;
+  /** The spec on screen when it has unsaved edits, for the untitled flow's first Save; undefined when there is none. */
+  unsavedSpec(): UnsavedSpec | undefined;
+}
+
+export interface UnsavedSpec {
+  /** The editor's JSON. */
+  json: string;
+  format: SpecFormat;
+  /** The file name it came with (an upload or a copy), its extension following the format; null for one made here. */
+  name: string | null;
 }
 
 interface Props {
-  flowId: number;
+  /** Left out for the untitled flow: its spec stays on screen until the flow's first Save (onSaveFlow) stores both. */
+  flowId?: number;
   flowName: string;
   flowDescription?: string | null;
   /** Called when the spec gets, or no longer has, unsaved edits. */
@@ -57,6 +70,8 @@ interface Props {
   onNameChange?(name: string | null): void;
   /** Called with the format the Yaml/Json radios pick. */
   onFormatChange?(format: SpecFormat): void;
+  /** The untitled flow's Save, which names the flow and its spec in one go. */
+  onSaveFlow?(): void;
 }
 
 interface Loaded {
@@ -78,13 +93,14 @@ type Dialog =
  * folder, under the name it was uploaded or saved with, in YAML or JSON (the format buttons).
  */
 export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSpecPanel(
-  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange },
+  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow },
   ref,
 ) {
   const queryClient = useQueryClient();
   const spec = useQuery({
-    queryKey: ['flow', id, 'api-spec'],
+    queryKey: ['flow', id ?? 'untitled', 'api-spec'],
     queryFn: async (): Promise<Loaded> => {
+      if (id === undefined) return { name: null, json: null };
       const name = (await flowsApi.get(id)).apiSpec ?? null;
       const text = name ? await flowsApi.readFile(id, name) : undefined;
       if (!name || text === undefined) return { name: null, json: null };
@@ -163,6 +179,15 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   /** Stores text as the flow's spec under fileName; the editor already shows it as json. */
   const store = useCallback(async (fileName: string, text: string, json: string, auto = false): Promise<boolean> => {
+    if (id === undefined) {
+      // Nowhere to store it yet: it stays on screen, unsaved, under fileName until the flow's first Save.
+      latest.current = json;
+      setName(fileName);
+      setFormat(formatOf(fileName) ?? 'yaml');
+      setContentDirty(json !== saved.current);
+      setStatus({ variant: 'success', text: `Opened ${fileName}: save the flow to keep it.` });
+      return true;
+    }
     setSaving(true);
     if (!auto) setStatus(undefined);
     try {
@@ -195,12 +220,16 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   /** Save: asks for a name the first time. */
   const save = useCallback(async (): Promise<boolean> => {
+    if (id === undefined) {
+      onSaveFlow?.();
+      return false;
+    }
     if (!name) {
       setDialog({ kind: 'name' });
       return false;
     }
     return saveUnder(withFormat(name, format));
-  }, [name, format, saveUnder]);
+  }, [id, name, format, saveUnder, onSaveFlow]);
 
   const pickUpload = () => fileInput.current?.click();
 
@@ -262,6 +291,11 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     newFromSamples: () => setDialog({ kind: 'samples' }),
     download,
     rename: (fileName) => saveUnder(fileName),
+    show: (fileName, text) => {
+      setStatus(undefined);
+      void storeUpload(fileName, text);
+    },
+    unsavedSpec: () => (dirty ? { json: currentJson(), format, name: name && withFormat(name, format) } : undefined),
     reload: async () => {
       const { data } = await spec.refetch();
       if (!data) return;
@@ -273,7 +307,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   useAutosave({
     intervalSeconds: settings.data?.autosaveSeconds,
-    dirty: dirty && !!name,
+    dirty: dirty && !!name && id !== undefined,
     busy: saving || !!dialog,
     save: () => name && saveUnder(withFormat(name, format), true),
   });

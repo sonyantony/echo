@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createQueryClient } from '../App';
 import { mockFetch } from '../test/fetchMock';
-import { ApiSpecPanel } from './ApiSpecPanel';
+import { createRef } from 'react';
+import { ApiSpecPanel, type ApiSpecPanelHandle } from './ApiSpecPanel';
 import { newApiSpec } from './apiSpec';
 
 // The panel is shown by the flow editor (in place of Kaoto's views); here it is rendered on its own.
@@ -141,5 +142,37 @@ describe('Openapi Design panel', () => {
       window.dispatchEvent(new MessageEvent('message', { source: window, data: { type: 'apicurio_onChange', data: { content: {} } } }));
     });
     expect(onDirtyChange).not.toHaveBeenCalledWith(true);
+  });
+
+  it('on the untitled flow keeps the spec on screen and leaves Save to the flow', async () => {
+    const { calls } = mockFetch({ 'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 1 } } });
+    const onSaveFlow = vi.fn();
+    const onDirtyChange = vi.fn();
+    const panel = createRef<ApiSpecPanelHandle>();
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <ApiSpecPanel ref={panel} flowName="untitled" onSaveFlow={onSaveFlow} onDirtyChange={onDirtyChange} />
+      </QueryClientProvider>,
+    );
+    const frame = (await screen.findByTitle('OpenAPI editor')) as HTMLIFrameElement;
+    expect(panel.current!.unsavedSpec()).toBeUndefined();
+
+    edit(frame, { ...edited, info: { title: 'Card API', version: '1.0.0' } });
+    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true));
+    await userEvent.click(screen.getByRole('radio', { name: 'Json' }));
+    expect(panel.current!.unsavedSpec()).toEqual({ json: expect.stringContaining('Card API'), format: 'json', name: null });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSaveFlow).toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    // A copy from another flow goes on screen under its own name, still unsaved.
+    act(() => panel.current!.show('cards.yaml', 'openapi: 3.0.3\ninfo:\n  title: Cards\n  version: 1.0.0\npaths: {}\n'));
+    expect(await screen.findByText('Opened cards.yaml: save the flow to keep it.')).toBeInTheDocument();
+    expect(panel.current!.unsavedSpec()).toEqual({ json: expect.stringContaining('Cards'), format: 'yaml', name: 'cards.yaml' });
+
+    // Nothing is written: there is no flow to write to yet (and autosave stays off).
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(calls.filter((c) => c.url !== '/api/editor/settings')).toEqual([]);
   });
 });

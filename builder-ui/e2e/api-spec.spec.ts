@@ -345,3 +345,43 @@ test("Copy From Another Flow starts this flow's spec from a copy of another flow
   expect(detail.apiSpec).toBe(specName);
   expect(detail.files).not.toContain('fresh-api.yaml');
 });
+
+test('a first-time user starts from the API on the untitled flow; the first Save names the flow and the spec', async ({ page }) => {
+  await login(page);
+  await page.keyboard.press('Escape');
+  await openSpec(page);
+  await expect(page.locator('.echo-untitled__empty')).toBeHidden();
+  await expect(page.getByText('Untitled flow / Openapi')).toBeVisible();
+
+  const yaml = 'openapi: 3.0.3\ninfo:\n  title: Card API\n  version: 1.0.0\npaths: {}\n';
+  const chooser = page.waitForEvent('filechooser');
+  await specMenu(page, /^Upload/);
+  await (await chooser).setFiles({ name: 'cards.yml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
+  // There is no flow to store it in yet: it stays on screen until the flow is saved.
+  await expect(page.getByText('Opened cards.yml: save the flow to keep it.')).toBeVisible();
+  await page.getByRole('radio', { name: 'Json' }).check();
+
+  // Save (Openapi Design's, or File > Save) asks for both names in one dialog, prefilled from the spec.
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel(/^Name/)).toHaveValue('card-api');
+  await expect(dialog.getByLabel(/OpenAPI file name/)).toHaveValue('cards.json');
+  const name = uniqueName('card-api');
+  await dialog.getByLabel(/^Name/).fill(name);
+  await dialog.getByRole('button', { name: 'Save' }).click();
+
+  // The new draft opens on its spec, stored in the flow under the name given.
+  await expect(page).toHaveURL(/\/flows\/\d+\/api(#.*)?$/);
+  await expect(page.getByTestId('spec-flow-name')).toHaveText(name);
+  await expect(page.getByTestId('spec-name')).toHaveText('cards.json');
+  const flowId = flowIdOf(page);
+  expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('cards.json');
+  const stored = await (await page.request.get(`/api/flows/${flowId}/files/cards.json`)).json();
+  expect(stored.info.title).toBe('Card API');
+
+  // Later saves do not ask.
+  await page.getByRole('radio', { name: 'Yaml' }).check();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Saved cards.yaml.')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
