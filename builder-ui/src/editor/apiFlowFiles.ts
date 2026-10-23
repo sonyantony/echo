@@ -21,4 +21,8 @@ export class ApiFlowFiles implements FlowFiles {
       return false;
     }
   }
+
+  async list() {
+    return (await flowsApi.get(this.flowId)).files;
+  }
 }

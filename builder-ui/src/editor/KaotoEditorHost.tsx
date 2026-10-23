@@ -2,6 +2,8 @@ import { KaotoEditorFactory } from '@kaoto/kaoto';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
+import { SpecSchemaPickerModal } from '../datamapper/SpecSchemaPickerModal';
+import { isGeneratedSchemaName, makeJsonSchema, schemaFileName, serializeSchema, type SpecSchemaPart } from '../datamapper/specSchemas';
 import { AdvancedMenu } from './AdvancedMenu';
 import { KaotoTabMenu } from './KaotoTabMenu';
 import type { FlowFiles } from './flowFiles';
@@ -46,7 +48,17 @@ export interface KaotoEditorHostProps {
   coverVisible?: boolean;
   /** Called when one of Kaoto's views is picked on the tab line (a tab, or a menu standing in for one). */
   onKaotoViewPicked?(): void;
+  /**
+   * Reads the flow's Openapi spec (undefined when it has none). Given, the DataMapper's Attach Schema
+   * offers the spec's request and response bodies as well as an upload (SpecSchemaPickerModal).
+   */
+  loadSpec?(): Promise<Record<string, unknown> | undefined>;
 }
+
+type Picked = Record<string, string> | undefined;
+
+/** Kaoto asks for this pattern when only XML schemas may be picked (e.g. a field's type override). */
+const XML_ONLY = '**/*.{xsd,XSD,xml,XML}';
 
 interface KaotoEditor {
   setContent(path: string, content: string): Promise<void>;
@@ -61,7 +73,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked, loadSpec },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,7 +81,11 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const editorRef = useRef<KaotoEditor | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  const pickRef = useRef<((files: Record<string, string> | undefined) => void) | null>(null);
+  const pickRef = useRef<((files: Picked) => void) | null>(null);
+  const loadSpecRef = useRef(loadSpec);
+  loadSpecRef.current = loadSpec;
+  /** Attach Schema is asking for a JSON schema: the spec's bodies are offered first. */
+  const [specPick, setSpecPick] = useState<{ resolve(files: Picked): void }>();
   const [error, setError] = useState<string>();
   const [tabBarSlot, setTabBarSlot] = useState<HTMLElement>();
   const [tabBarStartSlot, setTabBarStartSlot] = useState<HTMLElement>();
@@ -105,8 +121,11 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       pickFiles: (include, canPickMany) => {
         const input = fileInputRef.current;
         if (!input) return Promise.resolve(undefined);
-        input.accept = include.includes('json') ? '.json' : include.includes('xsd') ? '.xsd,.xml' : '';
+        input.accept = include === XML_ONLY ? '.xsd,.xml' : include.includes('json') ? '.json,.xsd,.xml' : '';
         input.multiple = canPickMany;
+        if (include !== XML_ONLY && include.includes('json') && loadSpecRef.current) {
+          return new Promise<Picked>((resolve) => setSpecPick({ resolve }));
+        }
         input.click();
         return new Promise((resolve) => (pickRef.current = resolve));
       },
@@ -231,6 +250,23 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     pickRef.current = null;
   };
 
+  /** Writes the picked body of the spec as a JSON Schema file (ECHO's name for it, see specSchemas.ts). */
+  const attachSpecSchema = async (part: SpecSchemaPart, spec: Record<string, unknown>) => {
+    const schema = makeJsonSchema(spec, part);
+    if (!schema) throw new Error(`${part.label} has no schema`);
+    const existing: Record<string, string | undefined> = {};
+    for (const name of await files.list()) existing[name] = isGeneratedSchemaName(name) ? await files.read(name) : '';
+    const name = schemaFileName(part, existing);
+    specPick?.resolve({ [name]: serializeSchema(schema) });
+    setSpecPick(undefined);
+  };
+
+  const uploadInstead = () => {
+    pickRef.current = specPick?.resolve ?? null;
+    setSpecPick(undefined);
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="echo-kaoto-host" data-testid="kaoto-editor-host">
       {error && <div role="alert">Could not start the flow editor: {error}</div>}
@@ -258,6 +294,17 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
           </>,
           advancedSlot,
         )}
+      {specPick && loadSpec && (
+        <SpecSchemaPickerModal
+          loadSpec={loadSpec}
+          onAttach={attachSpecSchema}
+          onUpload={uploadInstead}
+          onCancel={() => {
+            specPick.resolve(undefined);
+            setSpecPick(undefined);
+          }}
+        />
+      )}
       <input
         ref={fileInputRef}
         type="file"

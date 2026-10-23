@@ -6,6 +6,8 @@ export interface FlowFiles {
   read(path: string): Promise<string | undefined>;
   write(path: string, content: string): Promise<void>;
   remove(path: string): Promise<boolean>;
+  /** The names of the flow's files. */
+  list(): Promise<string[]>;
 }
 
 /** Kaoto stores its metadata (e.g. DataMapper schema attachments) as JSON in this file. */
@@ -29,6 +31,10 @@ export class InMemoryFlowFiles implements FlowFiles {
 
   async remove(path: string) {
     return this.files.delete(normalize(path));
+  }
+
+  async list() {
+    return [...this.files.keys()];
   }
 }
 

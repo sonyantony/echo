@@ -279,6 +279,10 @@ export function UntitledFlowPage() {
           path={UNTITLED_PATH}
           initialContent=""
           files={files}
+          loadSpec={async () => {
+            const unsaved = specPanel.current?.unsavedSpec();
+            return unsaved ? (JSON.parse(unsaved.json) as Record<string, unknown>) : undefined;
+          }}
           onChange={onChange}
           tabBarStart={
             <>

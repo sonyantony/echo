@@ -33,8 +33,10 @@ export async function createFlow(page: Page, name: string, description = '') {
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(/Name/).fill(name);
   if (description) await dialog.getByLabel('Description').fill(description);
+  const before = page.url();
   await dialog.getByRole('button', { name: 'Create' }).click();
-  await expect(page).toHaveURL(/\/flows\/\d+$/);
+  // From another flow's editor the address already looks like a flow's: wait for the new one.
+  await expect(page).toHaveURL((url) => /\/flows\/\d+$/.test(url.pathname) && url.href !== before);
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
 }
 

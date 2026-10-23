@@ -73,6 +73,8 @@ interface Props {
   onFormatChange?(format: SpecFormat): void;
   /** The untitled flow's Save, which names the flow and its spec in one go. */
   onSaveFlow?(): void;
+  /** Called each time the spec is stored in the flow (Save, autosave, rename, upload). */
+  onStored?(): void;
 }
 
 interface Loaded {
@@ -94,7 +96,7 @@ type Dialog =
  * folder, under the name it was uploaded or saved with, in YAML or JSON (the format buttons).
  */
 export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSpecPanel(
-  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow },
+  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored },
   ref,
 ) {
   const queryClient = useQueryClient();
@@ -166,6 +168,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   const onNameChangeRef = useRef(onNameChange);
   onNameChangeRef.current = onNameChange;
   useEffect(() => onNameChangeRef.current?.(name && withFormat(name, format)), [name, format]);
+  const onStoredRef = useRef(onStored);
+  onStoredRef.current = onStored;
   const onFormatChangeRef = useRef(onFormatChange);
   onFormatChangeRef.current = onFormatChange;
   useEffect(() => onFormatChangeRef.current?.(format), [format]);
@@ -200,6 +204,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
       setContentDirty(latest.current !== undefined && latest.current !== json);
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setStatus({ variant: 'success', text: auto ? `Autosaved at ${time}` : `Saved ${fileName}.` });
+      onStoredRef.current?.();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['flow', id], exact: true }),
         queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
