@@ -42,8 +42,6 @@ export interface ApiSpecPanelHandle {
   newFromSamples(): void;
   /** Openapi > Download Openapi File As Yaml / Json: what is on screen, unsaved edits included. */
   download(format: SpecFormat): void;
-  /** Saves what is on screen as fileName, which replaces the spec stored in the flow (the breadcrumb's rename). */
-  rename(fileName: string): Promise<boolean>;
   /** Opens the spec stored in the flow again, e.g. after Copy From Another Flow replaced it; unsaved edits are dropped. */
   reload(): Promise<void>;
   /** Puts fileName's spec on screen, unsaved (Copy From Another Flow on the untitled flow, which has nowhere to copy to yet). */
@@ -85,6 +83,7 @@ interface Loaded {
 
 type Dialog =
   | { kind: 'name' }
+  | { kind: 'rename' }
   | { kind: 'discard' }
   | { kind: 'samples' }
   | { kind: 'replace'; fileName: string; text: string }
@@ -296,7 +295,6 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     upload: pickUpload,
     newFromSamples: () => setDialog({ kind: 'samples' }),
     download,
-    rename: (fileName) => saveUnder(fileName),
     show: (fileName, text) => {
       setStatus(undefined);
       void storeUpload(fileName, text);
@@ -340,6 +338,15 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
         </div>
         <Button variant="primary" size="sm" onClick={() => save()} isLoading={saving} isDisabled={saving || (!dirty && !!name)}>
           Save
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setDialog({ kind: 'rename' })}
+          isAriaDisabled={saving || id === undefined || !name}
+          title={id === undefined ? 'Save the flow first' : !name ? 'Save names the spec the first time' : `Save ${withFormat(name, format)} under another file name`}
+        >
+          Rename
         </Button>
         <Button variant="secondary" size="sm" onClick={() => (dirty ? setDialog({ kind: 'discard' }) : discard())} isDisabled={saving}>
           Discard
@@ -399,6 +406,20 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           onSave={async (fileName) => {
             setDialog(undefined);
             await saveUnder(fileName);
+          }}
+        />
+      )}
+      {dialog?.kind === 'rename' && name && (
+        <SpecNameModal
+          title="Rename"
+          description="Saves the OpenAPI spec in this flow under this file name, in place of the old one."
+          initialName={withFormat(name, format)}
+          format={format}
+          fixedFormat
+          onClose={() => setDialog(undefined)}
+          onSave={async (fileName) => {
+            setDialog(undefined);
+            if (fileName !== withFormat(name, format)) await saveUnder(fileName);
           }}
         />
       )}

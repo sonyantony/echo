@@ -34,6 +34,8 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
   await expect(page.getByTestId('spec-flow-name')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Save As' })).toHaveCount(0);
+  // Rename waits for the first Save, which names the spec.
+  await expect(page.getByRole('button', { name: 'Rename', exact: true })).toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByRole('radio', { name: 'Yaml' })).toBeChecked();
   const editor = editorOf(page);
 
@@ -81,6 +83,21 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   const json = await (await page.request.get(`/api/flows/${flowId}/files/order-api.json`)).json();
   expect(json.components.schemas.Order.properties.quantity.type).toBe('integer');
   expect((await page.request.get(`/api/flows/${flowId}/files/order-api.yaml`)).status()).toBe(404);
+
+  // Rename, after Save, saves it under a new name (the extension stays the format's), replacing the old file.
+  await page.getByRole('button', { name: 'Rename', exact: true }).click();
+  const rename = page.getByRole('dialog');
+  await expect(rename.getByLabel('File name')).toHaveValue('order-api.json');
+  await rename.getByRole('button', { name: 'Cancel' }).click();
+  await expect(rename).toBeHidden();
+  expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('order-api.json');
+  await page.getByRole('button', { name: 'Rename', exact: true }).click();
+  await rename.getByLabel('File name').fill('orders-v2');
+  await expect(rename.getByText('Saved as orders-v2.json.')).toBeVisible();
+  await rename.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Saved orders-v2.json.')).toBeVisible();
+  expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('orders-v2.json');
+  expect((await page.request.get(`/api/flows/${flowId}/files/order-api.json`)).status()).toBe(404);
 
   // The saved spec opens again from the flow folder.
   await page.reload();
