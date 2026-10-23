@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { SPEC_NAME_PATTERN, stripExtension, type SpecFormat } from './apiSpec';
+import { defaultSpecBase, SPEC_NAME_PATTERN, stripExtension, type SpecFormat } from './apiSpec';
 import './SpecNameField.css';
 
 interface Props {
@@ -7,6 +7,8 @@ interface Props {
   name: string | null;
   /** The Yaml/Json radios' format: the extension, which typing does not change. */
   format: SpecFormat;
+  /** The flow's name: a new spec is offered <flow name>-api, which Enter on an empty field takes. */
+  flowName: string;
   /** Saves the spec under fileName (replacing the one stored in the flow). Resolves to false when it was not saved. */
   onRename(fileName: string): Promise<boolean>;
 }
@@ -14,9 +16,10 @@ interface Props {
 /**
  * The spec's file name in the breadcrumb, renamed in place: click it to edit, Enter or leaving the
  * field saves, Escape cancels. Only the part before the extension is typed; the extension follows
- * the format. A new spec shows <new>, and naming it saves it.
+ * the format. A new spec shows <new>, and naming it saves it: the field offers <flow name>-api, and
+ * Enter with nothing typed takes it.
  */
-export function SpecNameField({ name, format, onRename }: Props) {
+export function SpecNameField({ name, format, flowName, onRename }: Props) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,6 +27,7 @@ export function SpecNameField({ name, format, onRename }: Props) {
   /** Set once Enter, Escape or blur has handled this edit, so the blur that follows does nothing more. */
   const done = useRef(false);
 
+  const suggested = defaultSpecBase(flowName);
   const base = value.trim();
   const fileName = `${stripExtension(base)}.${format}`;
   const valid = !!base && SPEC_NAME_PATTERN.test(fileName) && fileName.length <= 200;
@@ -39,17 +43,17 @@ export function SpecNameField({ name, format, onRename }: Props) {
     setEditing(true);
   };
 
-  const commit = async () => {
+  const commit = async (target = fileName) => {
     if (done.current) return;
     done.current = true;
     // Nothing typed, the same name, or a name a file cannot have: the name stays as it was.
-    if (!valid || fileName === name) {
+    if (!SPEC_NAME_PATTERN.test(target) || target.length > 200 || target === name) {
       setEditing(false);
       return;
     }
     setBusy(true);
     try {
-      await onRename(fileName);
+      await onRename(target);
     } finally {
       setBusy(false);
       setEditing(false);
@@ -60,6 +64,8 @@ export function SpecNameField({ name, format, onRename }: Props) {
     if (event.key === 'Enter') {
       event.preventDefault();
       if (valid) void commit();
+      // Enter on an empty field takes the name offered for a new spec.
+      else if (!base && !name) void commit(`${suggested}.${format}`);
     } else if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
@@ -93,8 +99,8 @@ export function SpecNameField({ name, format, onRename }: Props) {
         aria-label="OpenAPI file name"
         aria-invalid={!!base && !valid}
         value={value}
-        placeholder="customer-api"
-        size={Math.max(value.length, 12)}
+        placeholder={name ? stripExtension(name) : suggested}
+        size={Math.max(value.length, suggested.length, 12)}
         disabled={busy}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}

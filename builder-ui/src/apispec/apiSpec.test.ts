@@ -1,4 +1,4 @@
-import { flowNameFromTitle, formatOf, parseSpec, serialize, titleOf, toEditorJson, withFormat } from './apiSpec';
+import { defaultSpecBase, flowNameFromTitle, formatOf, parseSpec, serialize, titleOf, toEditorJson, withFormat } from './apiSpec';
 
 describe('OpenAPI spec files', () => {
   it('takes the format from the extension, and changes the extension with the format', () => {
@@ -32,5 +32,12 @@ describe('OpenAPI spec files', () => {
     expect(flowNameFromTitle(undefined)).toBe('');
     expect(titleOf('{"info":{"title":"Card API"}}')).toBe('Card API');
     expect(titleOf('{"openapi":"3.0.3"}')).toBeUndefined();
+  });
+});
+
+describe('Default spec name', () => {
+  it('is <flow name>-api, with characters a file cannot have replaced', () => {
+    expect(defaultSpecBase('secondflow')).toBe('secondflow-api');
+    expect(defaultSpecBase('My orders')).toBe('My-orders-api');
   });
 });

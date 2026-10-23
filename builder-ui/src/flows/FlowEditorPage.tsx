@@ -522,6 +522,7 @@ function FlowEditor() {
               <span data-testid="spec-flow-name">{flow.data.name}</span> / Openapi /
               <SpecNameField
                 name={specName === undefined ? (flow.data.apiSpec ?? null) : specName}
+                flowName={flow.data.name}
                 format={specFormat ?? (flow.data.apiSpec ? formatOf(flow.data.apiSpec) : undefined) ?? 'yaml'}
                 onRename={async (fileName) => (await specPanel.current?.rename(fileName)) ?? false}
               />

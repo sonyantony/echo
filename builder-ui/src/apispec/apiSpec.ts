@@ -32,6 +32,12 @@ export function stripExtension(name: string): string {
   return name.replace(/\.(json|ya?ml)$/i, '');
 }
 
+/** The name ECHO offers for a flow's new spec, without extension: <flow name>-api (orders -> orders-api). */
+export function defaultSpecBase(flowName: string): string {
+  const base = flowName.trim().replace(/[^A-Za-z0-9_.-]+/g, '-').replace(/^[^A-Za-z0-9_]+/, '');
+  return `${base || 'flow'}-api`;
+}
+
 /** The name with the extension of format: customer.json as YAML is customer.yaml (a .yml file stays .yml). */
 export function withFormat(name: string, format: SpecFormat): string {
   if (formatOf(name) === format) return name;
