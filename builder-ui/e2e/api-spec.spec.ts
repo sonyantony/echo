@@ -30,8 +30,10 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
 
   await openSpec(page);
   await expect(page).toHaveURL(new RegExp(`/flows/${flowId}/api(#.*)?$`));
-  // A spec without a name yet: the breadcrumb says so, and YAML is the format.
+  // A spec without a name yet: the breadcrumb (<flow> / Openapi / <file>) says so, and YAML is the format.
+  await expect(page.getByTestId('spec-flow-name')).toHaveText(name);
   await expect(page.getByTestId('spec-name')).toHaveText('<new>');
+  await expect(page.getByRole('button', { name: 'Save As' })).toHaveCount(0);
   await expect(page.getByRole('radio', { name: 'Yaml' })).toBeChecked();
   const editor = editorOf(page);
 
@@ -81,10 +83,25 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   expect(json.components.schemas.Order.properties.quantity.type).toBe('integer');
   expect((await page.request.get(`/api/flows/${flowId}/files/order-api.yaml`)).status()).toBe(404);
 
+  // The file name in the breadcrumb is renamed in place: Escape cancels, Enter saves under the new
+  // name (the extension stays the format's), replacing the old file.
+  await page.getByTestId('spec-name').click();
+  const rename = page.getByRole('textbox', { name: 'OpenAPI file name' });
+  await expect(rename).toHaveValue('order-api');
+  await rename.fill('ignored');
+  await rename.press('Escape');
+  await expect(page.getByTestId('spec-name')).toHaveText('order-api.json');
+  await page.getByTestId('spec-name').click();
+  await rename.fill('orders-v2');
+  await rename.press('Enter');
+  await expect(page.getByTestId('spec-name')).toHaveText('orders-v2.json');
+  expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('orders-v2.json');
+  expect((await page.request.get(`/api/flows/${flowId}/files/order-api.json`)).status()).toBe(404);
+
   // The saved spec opens again from the flow folder.
   await page.reload();
   await expect(editor.getByText('Order', { exact: true }).first()).toBeVisible();
-  await expect(page.getByTestId('spec-name')).toHaveText('order-api.json');
+  await expect(page.getByTestId('spec-name')).toHaveText('orders-v2.json');
   await expect(page.getByRole('radio', { name: 'Json' })).toBeChecked();
 });
 

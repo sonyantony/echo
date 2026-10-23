@@ -28,7 +28,7 @@ interface Props {
   onClose(): void;
 }
 
-/** The file name for the flow's OpenAPI spec, on its first Save and on Save As. */
+/** The file name for the flow's OpenAPI spec, on its first Save and when an upload's name needs fixing (the breadcrumb renames it). */
 export function SpecNameModal({ title, description, initialName, format, fixedFormat, replaces, onSave, onClose }: Props) {
   const [name, setName] = useState(initialName);
   // A typed .json or .yaml picks that format; otherwise the format buttons' extension is added.
