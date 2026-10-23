@@ -246,12 +246,12 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   await openSpec(page);
   await editor.getByText('Customer', { exact: true }).first().click();
   await expect(editor.locator('definition-form')).toBeVisible();
-  await expect(editor.getByText('VENDOR EXTENSIONS', { exact: true })).toBeHidden();
+  await expect(editor.getByText('Vendor Extensions', { exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'API Overview' }).click();
-  await expect(editor.getByText('TAG DEFINITIONS', { exact: true })).toBeVisible();
+  await expect(editor.getByText('Tag Definitions', { exact: true })).toBeVisible();
   // Only Info, Tag Definitions and Servers (as Base Path) are shown there (Vendor Extensions is hidden on every
-  // page); tags get a short explanation.
-  for (const hidden of ['CONTACT', 'LICENSE', 'SECURITY SCHEMES', 'SECURITY REQUIREMENTS', 'VENDOR EXTENSIONS']) {
+  // page); headings are in title case, and tags and Base Path get a short explanation.
+  for (const hidden of ['Contact', 'License', 'Security Schemes', 'Security Requirements', 'Vendor Extensions']) {
     await expect(editor.getByText(hidden, { exact: true })).toBeHidden();
   }
   const tagNote = await editor
@@ -264,10 +264,17 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
     .evaluate((el) => getComputedStyle(el, '::after').maskImage);
   expect(tagIcon).toMatch(/^url\("data:image\/svg\+xml,/);
 
-  // Servers shows as Base Path: one path, typed and saved (no Apply, description or variables).
+  // Servers shows as Base Path: "/" with a pencil until one is set; one path, typed and saved (no Apply,
+  // description or variables).
   const basePath = editor.locator('main-form .servers-section');
-  expect(await basePath.locator('.section-label').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"BASE PATH"');
-  await basePath.locator('signpost a').click({ force: true }); // its words are CSS, so not "visible" to Playwright
+  const label = basePath.locator('.section-label');
+  expect(await label.evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"Base Path"');
+  expect(await label.evaluate((el) => getComputedStyle(el, '::after').content)).toBe(
+    '"\u00a0Base Path will be prepended to all Urls of the flow"',
+  );
+  expect(await basePath.locator('signpost span').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"/"');
+  expect(await basePath.locator('signpost a').evaluate((el) => getComputedStyle(el, '::after').content)).toBe('"✏"');
+  await basePath.locator('signpost a').click({ force: true }); // the pencil is CSS, so not "visible" to Playwright
   const dialog = editor.locator('.server-entity-editor');
   expect(await dialog.locator('h1.title').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"Base Path"');
   await expect(dialog.locator('#description')).toBeHidden();
@@ -275,11 +282,24 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   await dialog.locator('#serverUrl').pressSequentially('/customers/v1');
   await dialog.getByRole('button', { name: 'Save' }).first().click();
   await expect(basePath.locator('server-row')).toHaveText(/\/customers\/v1/);
+  // A set path is one line with the pencil, which opens the dialog on that path; Save replaces it.
+  await expect(basePath.locator('server-row .actions')).toBeHidden();
+  await basePath.locator('server-row .url').click();
+  await expect(dialog.locator('#serverUrl')).toHaveValue('/customers/v1');
+  await dialog.getByRole('button', { name: 'Cancel' }).first().click();
+  await expect(dialog).toBeHidden();
+  await basePath.locator('server-row .url').click();
+  await expect(dialog.locator('#serverUrl')).toHaveValue('/customers/v1');
+  await dialog.locator('#serverUrl').fill('');
+  await dialog.locator('#serverUrl').pressSequentially('/customers/v2');
+  await dialog.getByRole('button', { name: 'Save' }).first().click();
+  await expect(basePath.locator('server-row')).toHaveCount(1);
+  await expect(basePath.locator('server-row')).toHaveText(/\/customers\/v2/);
   await expect(basePath.locator("icon-button[type='add']")).toBeHidden(); // one is enough
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const saved = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/customers.json`)).json();
-  expect(saved.servers.map((s: { url: string }) => s.url)).toEqual(['/customers/v1']);
+  expect(saved.servers.map((s: { url: string }) => s.url)).toEqual(['/customers/v2']);
 });
 
 test("Copy From Another Flow starts this flow's spec from a copy of another flow's", async ({ page }) => {
