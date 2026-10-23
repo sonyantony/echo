@@ -15,14 +15,17 @@ import { useState } from 'react';
 import { flowsApi, type ApiSpecRef } from '../api/flows';
 
 interface Props {
-  flowId: number;
+  /** Left out for the untitled flow, which has no folder to copy into yet: onCopy shows the copy instead. */
+  flowId?: number;
   /** The flow's own spec file, if it has one: the copy replaces it. */
   ownSpec?: string | null;
   /** Openapi Design has unsaved edits, which the copy throws away. */
   specDirty: boolean;
   onClose(): void;
   /** Called once the copy is stored, so Openapi Design shows it. */
-  onCopied(): Promise<unknown>;
+  onCopied?(): Promise<unknown>;
+  /** Makes the copy in place of the Builder (the untitled flow). */
+  onCopy?(spec: ApiSpecRef): Promise<unknown>;
 }
 
 /**
@@ -30,7 +33,7 @@ interface Props {
  * one spec, kept in its own folder, so the file is copied into this flow under the same name and
  * is this flow's own from then on.
  */
-export function CopySpecModal({ flowId, ownSpec, specDirty, onClose, onCopied }: Props) {
+export function CopySpecModal({ flowId, ownSpec, specDirty, onClose, onCopied, onCopy }: Props) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<ApiSpecRef>();
   const [busy, setBusy] = useState(false);
@@ -43,8 +46,12 @@ export function CopySpecModal({ flowId, ownSpec, specDirty, onClose, onCopied }:
     setBusy(true);
     setError(undefined);
     try {
-      await flowsApi.copyApiSpec(flowId, picked.flowId);
-      await onCopied();
+      if (onCopy) {
+        await onCopy(picked);
+      } else {
+        await flowsApi.copyApiSpec(flowId!, picked.flowId);
+        await onCopied?.();
+      }
       onClose();
     } catch (e) {
       setError((e as Error).message);

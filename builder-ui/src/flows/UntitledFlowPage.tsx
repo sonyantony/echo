@@ -22,12 +22,16 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBlocker, useNavigate } from 'react-router-dom';
 import { flowsApi } from '../api/flows';
+import { ApiSpecMenu } from '../apispec/ApiSpecMenu';
+import { ApiSpecPanel, type ApiSpecPanelHandle, type UnsavedSpec } from '../apispec/ApiSpecPanel';
+import { CopySpecModal } from '../apispec/CopySpecModal';
+import { descriptionOf, flowNameFromTitle, formatOf, serialize, titleOf } from '../apispec/apiSpec';
 import { InMemoryFlowFiles } from '../editor/flowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useKaotoTabSelected } from '../editor/KaotoTabMenu';
 import { useDismissMenu } from '../editor/menuDismiss';
 import { DownloadButtons, downloadMenuItems } from './downloads';
-import { Shortcut } from './FlowEditorPage';
+import { apiSpecPath, Shortcut } from './FlowEditorPage';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
 import { OpenTemplateModal } from './OpenTemplateModal';
@@ -36,6 +40,8 @@ import './FlowEditorPage.css';
 import './UntitledFlowPage.css';
 
 const UNTITLED_PATH = 'untitled.camel.yaml';
+/** The untitled flow's name in Openapi Design (its starter spec's title): not offered as the flow's name on Save. */
+const UNTITLED_NAME = 'untitled';
 
 /** Kaoto reports an empty canvas as one of these. */
 const isEmpty = (yaml: string | undefined) => !yaml || ['', '[]'].includes(yaml.trim());
@@ -43,7 +49,8 @@ const isEmpty = (yaml: string | undefined) => !yaml || ['', '[]'].includes(yaml.
 /**
  * Where you land after logging in: a blank canvas with the File menu open. Nothing is stored until
  * you save, which asks for a name and creates the draft then (so logging in leaves no stray drafts,
- * and there is nothing to autosave).
+ * and there is nothing to autosave). Openapi Design works here too, so a flow can start from its
+ * API: the spec stays on screen until that Save, which also asks for its file name.
  */
 export function UntitledFlowPage() {
   const navigate = useNavigate();
@@ -55,7 +62,14 @@ export function UntitledFlowPage() {
   const designOpen = useKaotoTabSelected('design-tab', true);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   useDismissMenu(fileMenuOpen, setFileMenuOpen);
-  const [saving, setSaving] = useState(false);
+  /** The Save dialog is open; spec is the OpenAPI spec it saves with the flow, if there is one. */
+  const [saving, setSaving] = useState<{ spec?: UnsavedSpec }>();
+  const specPanel = useRef<ApiSpecPanelHandle>(null);
+  const [showSpec, setShowSpec] = useState(false);
+  // Opened on first use and then kept (hidden while a Kaoto view is open), as in the flow editor.
+  const [specOpened, setSpecOpened] = useState(false);
+  const [specDirty, setSpecDirty] = useState(false);
+  const [copyingSpec, setCopyingSpec] = useState(false);
   const [creating, setCreating] = useState(false);
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -66,20 +80,34 @@ export function UntitledFlowPage() {
   const onChange = useCallback((yaml: string) => setDirty(!isEmpty(yaml)), []);
   const openFlowState: OpenFlowState = { from: '/' };
 
-  const openDraft = async (id: number) => {
+  const openDraft = async (id: number, spec = false) => {
     leaving.current = true;
     await queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
-    navigate(`/flows/${id}`);
+    navigate(spec ? apiSpecPath(id) : `/flows/${id}`);
   };
 
-  /** Creates the draft with what is on the canvas (an empty canvas keeps the usual starter route). */
-  const saveAsFlow = async (name: string, description: string) => {
+  /** File > Save and Ctrl+S: asks for the flow's name, and its spec's file name when Openapi Design has one. */
+  const startSave = useCallback(() => setSaving({ spec: specPanel.current?.unsavedSpec() }), []);
+
+  /** Set once the draft is created, so trying again after a failed write does not create it twice. */
+  const created = useRef<{ id: number; routeFile: string }>(undefined);
+
+  /**
+   * Creates the draft with what is on the canvas (an empty canvas keeps the usual starter route) and
+   * the spec in Openapi Design, stored under specFileName in the format its extension says.
+   */
+  const saveAsFlow = async (name: string, description: string, specFileName?: string) => {
     const yaml = await editor.current!.getContent();
-    const flow = await flowsApi.create(name, description);
+    created.current ??= await flowsApi.create(name, description);
+    const flow = created.current;
     if (!isEmpty(yaml)) await flowsApi.writeFile(flow.id, flow.routeFile, yaml);
     for (const [path, content] of files.files) await flowsApi.writeFile(flow.id, path, content);
-    setSaving(false);
-    await openDraft(flow.id);
+    const spec = saving?.spec;
+    if (spec && specFileName) {
+      await flowsApi.saveApiSpec(flow.id, specFileName, serialize(spec.json, formatOf(specFileName) ?? spec.format));
+    }
+    setSaving(undefined);
+    await openDraft(flow.id, showSpec);
   };
 
   // Ctrl+S saves and Ctrl+O opens a template (Cmd on a Mac), as in the flow editor.
@@ -92,23 +120,47 @@ export function UntitledFlowPage() {
       e.stopPropagation();
       if (document.querySelector('.pf-v6-c-modal-box')) return;
       setFileMenuOpen(false);
-      if (key === 's') setSaving(true);
+      if (key === 's') startSave();
       else setOpeningTemplate(true);
     };
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
-  }, []);
+  }, [startSave]);
 
+  const unsaved = dirty || specDirty;
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      dirty && !leaving.current && currentLocation.pathname !== nextLocation.pathname,
+      unsaved && !leaving.current && currentLocation.pathname !== nextLocation.pathname,
   );
   useEffect(() => {
-    if (!dirty) return;
+    if (!unsaved) return;
     const handler = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  }, [unsaved]);
+
+  const openSpec = () => {
+    setSpecOpened(true);
+    setShowSpec(true);
+  };
+
+  /** Copy From Another Flow: there is no folder to copy into yet, so the copy goes on screen. */
+  const copySpec = async ({ flowId, fileName }: { flowId: number; fileName: string }) => {
+    const text = await flowsApi.readFile(flowId, fileName);
+    if (text === undefined) throw new Error(`${fileName} is not in that flow any more.`);
+    specPanel.current?.show(fileName, text);
+  };
+
+  /** What the Save dialog offers: the flow and its spec named after the spec's title, e.g. Card API is card-api and card-api.yaml. */
+  const saveDialogNames = (spec: UnsavedSpec) => {
+    const title = titleOf(spec.json);
+    const flowName = title === UNTITLED_NAME ? '' : flowNameFromTitle(title);
+    return {
+      initialName: flowName,
+      initialDescription: descriptionOf(spec.json),
+      spec: { initialName: spec.name ?? (flowName ? `${flowName}.${spec.format}` : ''), format: spec.format },
+    };
+  };
 
   const downloadDiagram = async () => {
     try {
@@ -168,8 +220,8 @@ export function UntitledFlowPage() {
           <Divider component="li" key="open-divider" />
           <DropdownItem
             key="save"
-            onClick={() => setSaving(true)}
-            description="Give this canvas a name and save it as a draft"
+            onClick={startSave}
+            description="Give this flow a name and save it as a draft"
             aria-keyshortcuts="Control+S"
           >
             Save
@@ -191,10 +243,11 @@ export function UntitledFlowPage() {
     <div className="echo-flow-editor">
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
-          <FlexItem>
+          <FlexItem className="echo-flow-editor__crumbs">
             <Title headingLevel="h1" size="lg">
               Untitled flow
             </Title>
+            {showSpec && ' / Openapi'}
           </FlexItem>
           <FlexItem className="echo-flow-editor__autosaved" data-testid="not-saved">
             Not saved yet
@@ -212,10 +265,12 @@ export function UntitledFlowPage() {
       </PageSection>
       <div className="echo-flow-editor__canvas echo-untitled">
         {/* Replaces Kaoto's "There are no routes defined" card (hidden in UntitledFlowPage.css). */}
-        {!dirty && designOpen && (
+        {!dirty && designOpen && !showSpec && (
           <div className="echo-untitled__empty">
             <EmptyState titleText="No flow is open" headingLevel="h2" variant="sm">
-              <EmptyStateBody>Start a new flow, or open an existing one, from the File menu.</EmptyStateBody>
+              <EmptyStateBody>
+                Start a new flow, or open an existing one, from the File menu. To start from the flow's API, pick Openapi Design.
+              </EmptyStateBody>
             </EmptyState>
           </div>
         )}
@@ -225,8 +280,25 @@ export function UntitledFlowPage() {
           initialContent=""
           files={files}
           onChange={onChange}
-          tabBarStart={fileMenu}
+          tabBarStart={
+            <>
+              {fileMenu}
+              <ApiSpecMenu current={showSpec} onShow={openSpec} panel={specPanel} onCopy={() => setCopyingSpec(true)} />
+            </>
+          }
           designMenuItems={downloadMenuItems({ name: 'Untitled flow', onDownloadImage: dirty ? downloadDiagram : undefined })}
+          cover={
+            specOpened && (
+              <ApiSpecPanel
+                ref={specPanel}
+                flowName={UNTITLED_NAME}
+                onDirtyChange={setSpecDirty}
+                onSaveFlow={startSave}
+              />
+            )
+          }
+          coverVisible={showSpec}
+          onKaotoViewPicked={() => setShowSpec(false)}
           canvasToolbarActions={
             <div className="echo-canvas-actions echo-no-print">
               {/* Greyed out like Download Flow while the canvas is empty: there is no picture to save. */}
@@ -237,7 +309,16 @@ export function UntitledFlowPage() {
       </div>
 
       {saving && (
-        <FlowFormModal title="Save flow" submitLabel="Save" onClose={() => setSaving(false)} onSubmit={saveAsFlow} />
+        <FlowFormModal
+          title="Save flow"
+          submitLabel="Save"
+          {...(saving.spec && saveDialogNames(saving.spec))}
+          onClose={() => setSaving(undefined)}
+          onSubmit={saveAsFlow}
+        />
+      )}
+      {copyingSpec && (
+        <CopySpecModal specDirty={specDirty} onClose={() => setCopyingSpec(false)} onCopy={copySpec} />
       )}
       {creating && (
         <FlowFormModal
@@ -257,7 +338,9 @@ export function UntitledFlowPage() {
       {blocker.state === 'blocked' && (
         <Modal isOpen variant="small" onClose={() => blocker.reset()} aria-labelledby="unsaved-title">
           <ModalHeader title="Leave without saving?" titleIconVariant="warning" labelId="unsaved-title" />
-          <ModalBody>What you drew on this canvas has not been saved.</ModalBody>
+          <ModalBody>
+            {dirty ? 'What you drew on this canvas has not been saved.' : 'The OpenAPI spec you made has not been saved.'}
+          </ModalBody>
           <ModalFooter>
             <Button variant="danger" onClick={() => blocker.proceed()}>
               Leave
