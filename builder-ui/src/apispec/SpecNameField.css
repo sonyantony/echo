@@ -1,0 +1,44 @@
+/* The spec's file name in the breadcrumb: looks like the flow's name (PF Title size lg) until hovered,
+   then shows it can be clicked and renamed, like a document title. */
+.echo-spec-name {
+  display: inline-flex;
+  align-items: baseline;
+  margin: 0;
+  font-family: var(--pf-t--global--font--family--heading);
+  font-size: var(--pf-t--global--font--size--heading--sm);
+  font-weight: var(--pf-t--global--font--weight--heading--default);
+  line-height: var(--pf-t--global--font--line-height--heading);
+  color: var(--echo-text);
+}
+.echo-spec-name__button,
+.echo-spec-name__input {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 1px 4px;
+  margin-inline: -5px; /* lines the text up with the breadcrumb; the outline sits outside it */
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+}
+.echo-spec-name__button {
+  cursor: text;
+}
+.echo-spec-name__button:hover,
+.echo-spec-name__button:focus-visible {
+  border-color: var(--echo-border);
+  outline: none;
+}
+.echo-spec-name__input {
+  border-color: var(--echo-ink);
+  background: var(--echo-surface);
+  outline: none;
+  margin-inline-end: 0;
+}
+.echo-spec-name__input--invalid {
+  border-color: var(--pf-t--global--border--color--status--danger--default);
+}
+.echo-spec-name__extension {
+  margin-inline-start: 2px;
+  color: var(--echo-text-subtle);
+}

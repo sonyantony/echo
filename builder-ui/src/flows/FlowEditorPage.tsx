@@ -36,6 +36,8 @@ import {
 } from '../api/flows';
 import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
 import { CopySpecModal } from '../apispec/CopySpecModal';
+import { SpecNameField } from '../apispec/SpecNameField';
+import { formatOf, type SpecFormat } from '../apispec/apiSpec';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
@@ -127,6 +129,8 @@ function FlowEditor() {
   const [specDirty, setSpecDirty] = useState(false);
   /** The spec's file name once the panel has it; until then the one the flow has (FlowDetail.apiSpec). */
   const [specName, setSpecName] = useState<string | null>();
+  /** The Yaml/Json radios' format once the panel has it; until then the extension of the flow's spec. */
+  const [specFormat, setSpecFormat] = useState<SpecFormat>();
   const specPanel = useRef<ApiSpecPanelHandle>(null);
   useEffect(() => {
     if (showSpec) setSpecOpened(true);
@@ -588,12 +592,15 @@ function FlowEditor() {
       <PageSection className="echo-flow-editor__header" padding={{ default: 'noPadding' }}>
         <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapMd' }}>
           {showSpec ? (
-            // While Openapi Design is open the breadcrumb names the spec: Openapi / <file name>.
+            // While Openapi Design is open the breadcrumb names the flow and its spec: <flow> / Openapi / <file name>,
+            // and the file name is renamed in place (a flow has one spec, so this is its Save As).
             <FlexItem className="echo-flow-editor__crumbs">
-              Openapi /
-              <Title headingLevel="h1" size="lg" data-testid="spec-name">
-                {(specName === undefined ? flow.data.apiSpec : specName) ?? <strong>&lt;new&gt;</strong>}
-              </Title>
+              <span data-testid="spec-flow-name">{flow.data.name}</span> / Openapi /
+              <SpecNameField
+                name={specName === undefined ? (flow.data.apiSpec ?? null) : specName}
+                format={specFormat ?? (flow.data.apiSpec ? formatOf(flow.data.apiSpec) : undefined) ?? 'yaml'}
+                onRename={async (fileName) => (await specPanel.current?.rename(fileName)) ?? false}
+              />
             </FlexItem>
           ) : (
             <>
@@ -677,6 +684,7 @@ function FlowEditor() {
                 flowDescription={flow.data.description}
                 onDirtyChange={setSpecDirty}
                 onNameChange={setSpecName}
+                onFormatChange={setSpecFormat}
               />
             )
           }

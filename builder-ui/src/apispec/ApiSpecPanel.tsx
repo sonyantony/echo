@@ -41,6 +41,8 @@ export interface ApiSpecPanelHandle {
   newFromSamples(): void;
   /** Openapi Design > Download Openapi File As Yaml / Json: what is on screen, unsaved edits included. */
   download(format: SpecFormat): void;
+  /** Saves what is on screen as fileName, which replaces the spec stored in the flow (the breadcrumb's rename). */
+  rename(fileName: string): Promise<boolean>;
   /** Opens the spec stored in the flow again, e.g. after Copy From Another Flow replaced it; unsaved edits are dropped. */
   reload(): Promise<void>;
 }
@@ -51,8 +53,10 @@ interface Props {
   flowDescription?: string | null;
   /** Called when the spec gets, or no longer has, unsaved edits. */
   onDirtyChange?(dirty: boolean): void;
-  /** Called with the spec's file name, or null while it has none (new, or after Discard). */
+  /** Called with the spec's file name, its extension following the Yaml/Json radios, or null while it has none (new, or after Discard). */
   onNameChange?(name: string | null): void;
+  /** Called with the format the Yaml/Json radios pick. */
+  onFormatChange?(format: SpecFormat): void;
 }
 
 interface Loaded {
@@ -62,7 +66,7 @@ interface Loaded {
 }
 
 type Dialog =
-  | { kind: 'name'; saveAs: boolean }
+  | { kind: 'name' }
   | { kind: 'discard' }
   | { kind: 'samples' }
   | { kind: 'replace'; fileName: string; text: string }
@@ -74,7 +78,7 @@ type Dialog =
  * folder, under the name it was uploaded or saved with, in YAML or JSON (the format buttons).
  */
 export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSpecPanel(
-  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange },
+  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange },
   ref,
 ) {
   const queryClient = useQueryClient();
@@ -144,7 +148,10 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   useEffect(() => onDirtyChangeRef.current?.(dirty), [dirty]);
   const onNameChangeRef = useRef(onNameChange);
   onNameChangeRef.current = onNameChange;
-  useEffect(() => onNameChangeRef.current?.(name), [name]);
+  useEffect(() => onNameChangeRef.current?.(name && withFormat(name, format)), [name, format]);
+  const onFormatChangeRef = useRef(onFormatChange);
+  onFormatChangeRef.current = onFormatChange;
+  useEffect(() => onFormatChangeRef.current?.(format), [format]);
 
   const onChange = useCallback((content: string) => {
     latest.current = content;
@@ -181,7 +188,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   }, [id, queryClient]);
 
   /** Saves what is on screen as fileName, in the format its extension says. */
-  const saveAs = useCallback((fileName: string, auto = false) => {
+  const saveUnder = useCallback((fileName: string, auto = false) => {
     const json = latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowName, flowDescription);
     return store(fileName, serialize(json, formatOf(fileName) ?? 'yaml'), json, auto);
   }, [store, initialJson, flowName, flowDescription]);
@@ -189,11 +196,11 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   /** Save: asks for a name the first time. */
   const save = useCallback(async (): Promise<boolean> => {
     if (!name) {
-      setDialog({ kind: 'name', saveAs: false });
+      setDialog({ kind: 'name' });
       return false;
     }
-    return saveAs(withFormat(name, format));
-  }, [name, format, saveAs]);
+    return saveUnder(withFormat(name, format));
+  }, [name, format, saveUnder]);
 
   const pickUpload = () => fileInput.current?.click();
 
@@ -254,6 +261,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     upload: pickUpload,
     newFromSamples: () => setDialog({ kind: 'samples' }),
     download,
+    rename: (fileName) => saveUnder(fileName),
     reload: async () => {
       const { data } = await spec.refetch();
       if (!data) return;
@@ -267,7 +275,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     intervalSeconds: settings.data?.autosaveSeconds,
     dirty: dirty && !!name,
     busy: saving || !!dialog,
-    save: () => name && saveAs(withFormat(name, format), true),
+    save: () => name && saveUnder(withFormat(name, format), true),
   });
 
   if (spec.isError) {
@@ -292,9 +300,6 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
         </div>
         <Button variant="primary" size="sm" onClick={() => save()} isLoading={saving} isDisabled={saving || (!dirty && !!name)}>
           Save
-        </Button>
-        <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'name', saveAs: true })} isDisabled={saving}>
-          Save As
         </Button>
         <Button variant="secondary" size="sm" onClick={() => (dirty ? setDialog({ kind: 'discard' }) : discard())} isDisabled={saving}>
           Discard
@@ -345,14 +350,14 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
       {dialog?.kind === 'name' && (
         <SpecNameModal
-          title={dialog.saveAs ? 'Save As' : 'Save'}
+          title="Save"
           initialName={name ? withFormat(name, format) : ''}
           format={format}
           replaces={storedName}
           onClose={() => setDialog(undefined)}
           onSave={async (fileName) => {
             setDialog(undefined);
-            await saveAs(fileName);
+            await saveUnder(fileName);
           }}
         />
       )}
