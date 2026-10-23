@@ -588,6 +588,7 @@ function FlowEditor() {
           }
           tabBarMenus={runMenu}
           canvasToolbarActions={canvasActions}
+          tabBarActions={<FlowNameTag name={flow.data.name} />}
           designMenuItems={[
             historyMenuItem(() => setShowHistory(true)),
             <Divider component="li" key="history-divider" />,
@@ -766,6 +767,15 @@ function RestSettingChecks({
 }
 
 /** The keyboard shortcut shown at the right of a menu item (not part of its name for screen readers). */
+/** "Flow: <name>" at the right end of the editor's tab line, where History used to be. */
+export function FlowNameTag({ name }: { name: string }) {
+  return (
+    <div className="echo-tab-actions echo-flow-name-tag" data-testid="flow-name-tag" title={`Flow: ${name}`}>
+      Flow: {name}
+    </div>
+  );
+}
+
 export function Shortcut({ keys }: { keys: string }) {
   return (
     <span className="echo-menu-shortcut" aria-hidden>

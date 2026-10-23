@@ -31,7 +31,7 @@ import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHo
 import { useKaotoTabSelected } from '../editor/KaotoTabMenu';
 import { useDismissMenu } from '../editor/menuDismiss';
 import { DownloadButtons, downloadMenuItems } from './downloads';
-import { apiSpecPath, Shortcut } from './FlowEditorPage';
+import { apiSpecPath, FlowNameTag, Shortcut } from './FlowEditorPage';
 import { FlowFormModal } from './FlowFormModal';
 import { historyMenuItem } from './HistoryModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
@@ -291,6 +291,7 @@ export function UntitledFlowPage() {
               <ApiSpecMenu current={showSpec} onShow={openSpec} panel={specPanel} onCopy={() => setCopyingSpec(true)} />
             </>
           }
+          tabBarActions={<FlowNameTag name="Untitled flow" />}
           designMenuItems={[
             historyMenuItem(),
             <Divider component="li" key="history-divider" />,

@@ -71,6 +71,18 @@
   color: var(--echo-text-subtle);
 }
 
+/* Flow: <name> at the right end of the tab line; a long name is cut short with an ellipsis. */
+.echo-tab-actions.echo-flow-name-tag {
+  display: block;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-inline: 12px;
+  color: var(--echo-text);
+  font-size: var(--pf-t--global--font--size--body--default);
+  font-weight: 700;
+}
+
 /* Keyboard shortcuts in the File menu, at the right of the item's name. */
 .echo-menu-shortcut {
   float: right;

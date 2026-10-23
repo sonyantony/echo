@@ -31,6 +31,7 @@ test('logs in and lands on a blank canvas', async ({ page }) => {
   await page.getByRole('button', { name: 'Flow', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: /^Download Untitled flow(?! As)/ })).toBeDisabled();
   await expect(page.getByRole('menuitem', { name: /^Download Untitled flow As Image/ })).toBeDisabled();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
   // History needs a named, saved flow.
   await expect(page.getByRole('menuitem', { name: /^History/ })).toBeDisabled();
   await page.keyboard.press('Escape');

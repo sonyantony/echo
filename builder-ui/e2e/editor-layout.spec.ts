@@ -27,7 +27,8 @@ test('editor fits the page and prints the whole open tab', async ({ page }) => {
 
 test("the editor's controls share the line with Kaoto's tabs", async ({ page }) => {
   await login(page);
-  await createFlow(page, uniqueName('tabline'));
+  const flowName = uniqueName('tabline');
+  await createFlow(page, flowName);
   const tabBar = page.locator('.echo-kaoto-host__editor > .shell > div[role="region"]');
   const top = async (name: string) => (await page.getByRole('button', { name, exact: true }).boundingBox())!.y;
   const tabBox = (await tabBar.boundingBox())!;
@@ -49,13 +50,20 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   }
   await page.keyboard.press('Escape');
 
-  // History is in the Flow menu, not on the right of the line, so there is no More menu either.
+  // The right end of the line names the flow. History is in the Flow menu, so there is no More menu either.
+  const nameTag = page.getByTestId('flow-name-tag');
+  await expect(nameTag).toHaveText(`Flow: ${flowName}`);
+  const tagBox = (await nameTag.boundingBox())!;
+  expect(tagBox.y).toBeGreaterThanOrEqual(tabBox.y);
+  expect(tagBox.y + tagBox.height).toBeLessThanOrEqual(tabBox.y + tabBox.height);
   await expect(page.getByRole('button', { name: 'History', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'More actions' })).toHaveCount(0);
 
   await page.setViewportSize({ width: 1100, height: 900 });
   // The tab line still fits on one line: no taller than at full width, every item on it.
   const narrowBox = (await tabBar.boundingBox())!;
+  const narrowTag = (await nameTag.boundingBox())!;
+  expect(narrowTag.x + narrowTag.width).toBeLessThanOrEqual(1100);
   expect(narrowBox.height).toBeLessThanOrEqual(tabBox.height + 1);
   for (const name of ['File', 'Openapi', 'Flow', 'Run', 'Advanced']) {
     const y = await top(name);

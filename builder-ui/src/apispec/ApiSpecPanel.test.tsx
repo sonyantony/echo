@@ -54,7 +54,9 @@ describe('Openapi panel', () => {
 
     // Once the frame has loaded, the spec (a starter one named after the flow) is sent to it.
     const posted = vi.spyOn(frame.contentWindow!, 'postMessage');
-    vi.useFakeTimers();
+    // Only setInterval (the resend loop) is faked: React's own scheduling must keep running, or the
+    // editor opened when the spec arrives may never start listening for its changes.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     fireEvent.load(frame);
     act(() => vi.advanceTimersByTime(250));
     vi.useRealTimers();
