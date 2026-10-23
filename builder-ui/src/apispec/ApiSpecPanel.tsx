@@ -385,6 +385,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           initialContent={initialJson}
           onChange={onChange}
           onDialogChange={setDialogOpen}
+          onUpload={pickUpload}
         />
       </div>
 

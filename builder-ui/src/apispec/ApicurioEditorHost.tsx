@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { followApicurioTheme } from './apicurioTheme';
 import { simplifyBasePathDialog } from './basePath';
 import { titleCaseSectionLabels } from './sectionLabels';
+import { addSourceUpload } from './sourceToolbar';
 
 /**
  * Apicurio's OpenAPI editor, the prebuilt build from Apicurio Registry served from
@@ -19,6 +20,8 @@ interface Props {
   onChange(content: string): void;
   /** Called when one of Apicurio's full-page dialogs (e.g. Define a New Data Type) opens or closes. */
   onDialogChange?(open: boolean): void;
+  /** Called by the Upload button on the Source tab's toolbar. */
+  onUpload?(): void;
 }
 
 /** Apicurio's full-page dialogs (new data type, path, response...), which cover its editor. */
@@ -33,7 +36,7 @@ export interface ApicurioEditorHandle {
 }
 
 export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(function ApicurioEditorHost(
-  { initialContent, onChange, onDialogChange },
+  { initialContent, onChange, onDialogChange, onUpload },
   ref,
 ) {
   const onDialogChangeRef = useRef(onDialogChange);
@@ -43,12 +46,15 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
   useImperativeHandle(ref, () => ({
     showApiInfo: () => frame.current?.contentDocument?.querySelector<HTMLElement>('.editor-title-bar > h1')?.click(),
   }), []);
+  const onUploadRef = useRef(onUpload);
+  onUploadRef.current = onUpload;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const timer = useRef<number>(undefined);
   const stopTheme = useRef<() => void>(undefined);
   const stopBasePath = useRef<() => void>(undefined);
   const stopLabels = useRef<() => void>(undefined);
+  const stopUpload = useRef<() => void>(undefined);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -65,6 +71,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
       stopDialogs.current?.();
       stopBasePath.current?.();
       stopLabels.current?.();
+      stopUpload.current?.();
     };
   }, []);
 
@@ -83,6 +90,8 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     stopBasePath.current = frameDoc ? simplifyBasePathDialog(frameDoc) : undefined;
     stopLabels.current?.();
     stopLabels.current = frameDoc ? titleCaseSectionLabels(frameDoc) : undefined;
+    stopUpload.current?.();
+    stopUpload.current = frameDoc ? addSourceUpload(frameDoc, () => onUploadRef.current?.()) : undefined;
     sendContent();
   };
 
