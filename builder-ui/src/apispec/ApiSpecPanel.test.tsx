@@ -68,9 +68,13 @@ describe('Openapi panel', () => {
       window.location.origin,
     );
 
-    edit(frame, edited);
-    // Unsaved edits are reported to the flow editor, which shows "Unsaved changes".
-    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true));
+    // Unsaved edits are reported to the flow editor, which shows "Unsaved changes". The editor can
+    // open again while the settings load, with a new frame: the edit is sent from the frame on
+    // screen until the panel takes it.
+    await waitFor(() => {
+      edit(screen.getByTitle('OpenAPI editor') as HTMLIFrameElement, edited);
+      expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+    });
 
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     const dialog = await screen.findByRole('dialog');
@@ -121,9 +125,13 @@ describe('Openapi panel', () => {
     });
     const onDirtyChange = vi.fn();
     renderPanel({ onDirtyChange });
-    const frame = (await screen.findByTitle('OpenAPI editor')) as HTMLIFrameElement;
-    edit(frame, edited);
-    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true));
+    await screen.findByTitle('OpenAPI editor');
+    // Sent from the frame on screen until the panel takes it (the editor can open again with a new frame).
+    await waitFor(() => {
+      edit(screen.getByTitle('OpenAPI editor') as HTMLIFrameElement, edited);
+      expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+    });
+    const frame = screen.getByTitle('OpenAPI editor');
 
     await userEvent.click(screen.getByRole('button', { name: 'Discard' }));
     const dialog = await screen.findByRole('dialog');
