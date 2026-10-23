@@ -11,7 +11,7 @@ import org.springframework.validation.annotation.Validated;
  * <p>{@code logo} and {@code favicon} are URLs the browser loads. Files under {@code /branding/}
  * are served from {@code asset-dir} first (e.g. a mounted {@code /config/branding}) and then from
  * the defaults built into the jar. Unset colours keep the PatternFly defaults. {@code theme} picks
- * the look of the whole Builder, the embedded Kaoto editor included (default {@link Theme#STUDIO}).
+ * the look of the whole Builder, the embedded Kaoto editor included (default {@link Theme#NAVY}).
  */
 @Validated
 @ConfigurationProperties("echo.branding")
@@ -21,18 +21,24 @@ public record BrandingProperties(
     public BrandingProperties {
         favicon = favicon == null || favicon.isBlank() ? logo : favicon;
         logoAlt = logoAlt == null ? "" : logoAlt;
-        theme = theme == null ? Theme.STUDIO : theme;
+        theme = theme == null ? Theme.NAVY : theme;
         colors = colors == null ? new Colors(null, null, null, null, null, null) : colors;
     }
 
-    /** The Builder's look; the CSS for each is in {@code builder-ui/src/branding/themes.css}. */
+    /** The Builder's look; the CSS for each is in {@code builder-ui/src/theme/themes.css}. */
     public enum Theme {
         /** Light, with a dot-grid canvas. */
         STUDIO,
         /** Dark throughout. */
         GRAPHITE,
         /** Light, with a dark grid canvas. */
-        BLUEPRINT;
+        BLUEPRINT,
+        /** Muted corporate navy: navy masthead and accents, light line-grid canvas. */
+        NAVY,
+        /** Neutral greys, flat outlined cards. */
+        SLATE,
+        /** High contrast: black on white, heavy outlines. */
+        CONTRAST;
 
         /** The name used in application.yaml and by the UI. */
         public String id() {

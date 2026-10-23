@@ -210,7 +210,7 @@ test("Openapi Design keeps the editor's tab line, styled in ECHO's theme", async
   // The editor has ECHO's theme and font, not Apicurio's own; its title bar's API name is hidden
   // under ECHO's bar, which "API Overview" stands in for.
   const html = editor.locator('html');
-  await expect(html).toHaveAttribute('data-echo-theme', 'studio');
+  await expect(html).toHaveAttribute('data-echo-theme', 'navy');
   expect(await editor.locator('body').evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Inter');
   await expect(editor.locator('.editor-title-bar > h1')).toBeHidden();
   await expect(editor.getByRole('button', { name: /Issues/ })).toBeVisible();
