@@ -18,13 +18,12 @@
 
 :root:root[data-echo-theme] {
   /* Brand colours. The install's echo.branding.colors replace these (set inline on <html>), so
-     they are only what a theme falls back on when the install leaves one out: EY's. */
+     they are only what a theme falls back on when the install leaves one out: EY's. The masthead
+     colours, which the install can replace too, are each theme's own (below). */
   --echo-brand: #ffe600;
   --echo-brand-hover: #e6cf00;
   --echo-on-brand: #2e2e38; /* text on brand-coloured buttons */
   --echo-accent-text: #2e2e38; /* text drawn in the brand colour on light backgrounds */
-  --echo-masthead-background: #2e2e38;
-  --echo-masthead-text: #ffffff;
 
   /* "EY" in the product name is always EY yellow, whatever the install's colours. */
   --echo-ey-yellow: #ffe600;
@@ -46,6 +45,8 @@
  *   --echo-text-subtle       secondary text, hints, icons
  *   --echo-border            dividers and outlines
  *   --echo-shadow            colour of drop shadows (each use sets its own strength)
+ *   --echo-masthead-background / -text   the top bar and login header, unless the install sets them
+ *   --echo-outline           outlines of secondary buttons
  *   --echo-ink / -on-ink     links, and text on ink
  *   --echo-brand-text        text drawn in the brand colour (open tab, toggles)
  *   --echo-selected / -on-selected   a selected toggle, and its text
@@ -63,6 +64,8 @@
 /* ---------- studio: light, dot-grid canvas, cards with a brand-colour top edge ---------- */
 
 :root:root[data-echo-theme='studio'] {
+  --echo-masthead-background: #2e2e38;
+  --echo-masthead-text: #ffffff;
   --echo-background: #eef0f3;
   --echo-surface: #ffffff;
   --echo-floating: #ffffff;
@@ -70,6 +73,7 @@
   --echo-text-subtle: #4d4d4d;
   --echo-border: #e0e0e0;
   --echo-shadow: #141824;
+  --echo-outline: var(--echo-brand);
   --echo-ink: var(--echo-masthead-background);
   --echo-on-ink: var(--echo-masthead-text);
   --echo-brand-text: var(--echo-accent-text);
@@ -102,6 +106,8 @@
 /* ---------- graphite: dark throughout, deeper canvas, brand-coloured accents ---------- */
 
 :root:root[data-echo-theme='graphite'] {
+  --echo-masthead-background: #2e2e38;
+  --echo-masthead-text: #ffffff;
   --echo-background: #16171d;
   --echo-surface: #1e2028;
   --echo-floating: #262832;
@@ -109,6 +115,7 @@
   --echo-text-subtle: #c7c7c7;
   --echo-border: #4d4d4d;
   --echo-shadow: #000000;
+  --echo-outline: var(--echo-brand);
   --echo-ink: #e6e7eb;
   --echo-on-ink: #16171d;
   --echo-brand-text: var(--echo-brand);
@@ -142,6 +149,8 @@
 /* ---------- blueprint: light app, dark grid canvas, brand connectors and card edges ---------- */
 
 :root:root[data-echo-theme='blueprint'] {
+  --echo-masthead-background: #2e2e38;
+  --echo-masthead-text: #ffffff;
   --echo-background: #f2f2f2;
   --echo-surface: #ffffff;
   --echo-floating: #ffffff;
@@ -149,6 +158,7 @@
   --echo-text-subtle: #4d4d4d;
   --echo-border: #e0e0e0;
   --echo-shadow: #141824;
+  --echo-outline: var(--echo-brand);
   --echo-ink: var(--echo-masthead-background);
   --echo-on-ink: var(--echo-masthead-text);
   --echo-brand-text: var(--echo-accent-text);
@@ -178,4 +188,132 @@
   --echo-node-accent-left: 5px solid var(--echo-brand);
   --echo-node-shadow: 0 4px 12px rgb(0 0 0 / 35%);
   --echo-group-border-style: dashed;
+}
+
+/* ---------- navy: muted corporate navy, quiet line-grid canvas, cards with a navy left edge ---------- */
+
+:root:root[data-echo-theme='navy'] {
+  --echo-masthead-background: #172a4a;
+  --echo-masthead-text: #ffffff;
+  --echo-background: #eef1f6;
+  --echo-surface: #ffffff;
+  --echo-floating: #ffffff;
+  --echo-text: #17213a;
+  --echo-text-subtle: #4a5672;
+  --echo-border: #d3d9e4;
+  --echo-shadow: #0f1a33;
+  --echo-outline: var(--echo-ink);
+  --echo-ink: #1f3a63;
+  --echo-on-ink: #ffffff;
+  --echo-brand-text: #1f3a63;
+  --echo-selected: #1f3a63;
+  --echo-on-selected: #ffffff;
+
+  --echo-canvas: #f6f8fb;
+  --echo-canvas-grid: #e3e8f0;
+  --echo-node: #ffffff;
+  --echo-node-border: #cdd5e2;
+  --echo-node-border-hover: #8d9bb5;
+  --echo-node-label: #17213a;
+  --echo-edge: #5a6b8a;
+  --echo-group: rgb(255 255 255 / 75%);
+  --echo-group-border: #c3cddd;
+
+  --echo-code-key: #1f3a63;
+  --echo-code-string: #2c6a4f;
+  --echo-code-number: #8a4b08;
+
+  --echo-canvas-pattern:
+    linear-gradient(var(--echo-canvas-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--echo-canvas-grid) 1px, transparent 1px);
+  --echo-canvas-pattern-size: 32px 32px;
+  --echo-node-radius: 8px;
+  --echo-node-accent-top: 1px solid var(--echo-node-border);
+  --echo-node-accent-left: 4px solid var(--echo-ink);
+  --echo-node-shadow: 0 1px 3px rgb(15 26 51 / 12%);
+  --echo-group-border-style: solid;
+}
+
+/* ---------- slate: neutral greys, plain canvas, flat outlined cards ---------- */
+
+:root:root[data-echo-theme='slate'] {
+  --echo-masthead-background: #343a43;
+  --echo-masthead-text: #ffffff;
+  --echo-background: #f1f2f4;
+  --echo-surface: #ffffff;
+  --echo-floating: #ffffff;
+  --echo-text: #1c1f24;
+  --echo-text-subtle: #535a65;
+  --echo-border: #dcdfe4;
+  --echo-shadow: #1c1f24;
+  --echo-outline: var(--echo-ink);
+  --echo-ink: #3d4450;
+  --echo-on-ink: #ffffff;
+  --echo-brand-text: #3d4450;
+  --echo-selected: #3d4450;
+  --echo-on-selected: #ffffff;
+
+  --echo-canvas: #fafafb;
+  --echo-canvas-grid: #dfe2e7;
+  --echo-node: #ffffff;
+  --echo-node-border: #c9cdd4;
+  --echo-node-border-hover: #8b929e;
+  --echo-node-label: #1c1f24;
+  --echo-edge: #7a818c;
+  --echo-group: rgb(255 255 255 / 60%);
+  --echo-group-border: #d0d4da;
+
+  --echo-code-key: #384c6b;
+  --echo-code-string: #3d6340;
+  --echo-code-number: #7d4a1c;
+
+  --echo-canvas-pattern: radial-gradient(var(--echo-canvas-grid) 1px, transparent 1px);
+  --echo-canvas-pattern-size: 24px 24px;
+  --echo-node-radius: 6px;
+  --echo-node-accent-top: 1px solid var(--echo-node-border);
+  --echo-node-accent-left: 1px solid var(--echo-node-border);
+  --echo-node-shadow: none;
+  --echo-group-border-style: solid;
+}
+
+/* ---------- contrast: high contrast, black on white, heavy outlines (WCAG AAA text) ---------- */
+
+:root:root[data-echo-theme='contrast'] {
+  --echo-masthead-background: #000000;
+  --echo-masthead-text: #ffffff;
+  --echo-background: #ffffff;
+  --echo-surface: #ffffff;
+  --echo-floating: #ffffff;
+  --echo-text: #000000;
+  --echo-text-subtle: #262626;
+  --echo-border: #595959;
+  --echo-shadow: #000000;
+  --echo-outline: #000000;
+  --echo-ink: #000000;
+  --echo-on-ink: #ffffff;
+  --echo-brand-text: #000000;
+  --echo-selected: #000000;
+  --echo-on-selected: #ffffff;
+
+  --echo-canvas: #ffffff;
+  --echo-canvas-grid: #c4c4c4;
+  --echo-node: #ffffff;
+  --echo-node-border: #000000;
+  --echo-node-border-hover: #000000;
+  --echo-node-label: #000000;
+  --echo-edge: #000000;
+  --echo-group: #ffffff;
+  --echo-group-border: #000000;
+
+  --echo-code-key: #002f6c;
+  --echo-code-string: #00450f;
+  --echo-code-number: #6b2600;
+
+  --echo-canvas-pattern: radial-gradient(var(--echo-canvas-grid) 1px, transparent 1px);
+  --echo-canvas-pattern-size: 20px 20px;
+  --echo-node-radius: 4px;
+  --echo-node-accent-top: 2px solid var(--echo-node-border);
+  --echo-node-accent-left: 2px solid var(--echo-node-border);
+  --echo-node-shadow: none;
+  --echo-group-border-style: solid;
 }

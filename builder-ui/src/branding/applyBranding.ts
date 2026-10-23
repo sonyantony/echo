@@ -11,7 +11,7 @@ export interface BrandingColors {
 export const PRODUCT_NAME = 'EY ECHO Builder';
 
 /** The looks the Builder ships with; each is a block of `theme/themes.css`. */
-export const THEMES = ['studio', 'graphite', 'blueprint'] as const;
+export const THEMES = ['studio', 'graphite', 'blueprint', 'navy', 'slate', 'contrast'] as const;
 export type Theme = (typeof THEMES)[number];
 export const DEFAULT_THEME: Theme = 'studio';
 /** Themes built on PatternFly's dark palette. */
