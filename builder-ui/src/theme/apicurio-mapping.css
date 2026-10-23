@@ -537,6 +537,19 @@
   border-color: var(--echo-border) !important;
 }
 
+/* The Source tab's toolbar, in ECHO's order: Upload (ECHO's, whole spec only), Save,
+   As YAML/JSON, Format, Revert. Apicurio draws Format, Revert, Save, As JSON. */
+:root[data-echo-theme] .detail-actionbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+:root[data-echo-theme] .detail-actionbar > button:has(.fa-upload) { order: 1; }
+:root[data-echo-theme] .detail-actionbar > button:has(.pficon-save) { order: 2; }
+:root[data-echo-theme] .detail-actionbar > button:has(.fa-code) { order: 3; }
+:root[data-echo-theme] .detail-actionbar > button:has(.fa-indent) { order: 4; }
+:root[data-echo-theme] .detail-actionbar > button:has(.fa-undo) { order: 5; }
+
 /* A primary button that cannot be pressed yet (Save before anything changed). */
 :root[data-echo-theme] .btn-primary:is([disabled], .disabled),
 :root[data-echo-theme] .btn-primary:is([disabled], .disabled):hover {
