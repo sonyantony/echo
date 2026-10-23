@@ -22,7 +22,8 @@ REST part by hand, so the editor has no Rest tab.
 - **An operation without a route answers 404.** With `missingOperation: ignore` the flow starts
   without routes for every operation, but Camel then answers those with an empty 204. ECHO adds a
   small route per missing operation (`echo-missing-<operationId>`) that answers 404 with a JSON
-  message; it disappears as soon as the flow has its own `direct:<operationId>` route.
+  message; it disappears as soon as the flow has its own `direct:<operationId>` route (one that is
+  not switched off with `autoStartup: false`, decision 0011).
 - **The two REST settings are checkboxes next to Publish.** Client Request Validation and Enable CORS
   are written to the route's `restConfiguration` (where Camel reads them and older flows have
   them) by loading the changed YAML into Kaoto, so they are saved like any other edit. Camel's

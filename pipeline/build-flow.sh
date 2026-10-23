@@ -3,7 +3,8 @@
 #
 #   pipeline/build-flow.sh <folder>... [options]
 #
-# Each <folder> is a flow folder (flows/orders) or a folder of flows (flows/). templates/ is never built.
+# Each <folder> is a flow folder (flows/orders) or a folder of flows (flows/). templates/ is never built,
+# nor is a flow switched off in the Builder ("disabled": true in its echo-flow.json).
 #
 # Options (or environment variables):
 #   --mode <m>         bundle: all the flows in one image (default); per-flow: one image per flow (BUILD_MODE)
@@ -25,7 +26,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="${ECHO_RUNTIME_TEMPLATE:-$HERE/../runtime-template}"
 
-usage() { sed -n '2,23p' "$0"; exit "${1:-0}"; }
+usage() { sed -n '2,24p' "$0"; exit "${1:-0}"; }
 
 FOLDERS=()
 BUILD_MODE="${BUILD_MODE:-bundle}"
@@ -64,6 +65,10 @@ add_flow() {
     echo "Skipping $dir: templates are not built into images." >&2; return
   fi
   [[ -f "$dir/$(basename "$dir").camel.yaml" ]] || { echo "Missing $(basename "$dir").camel.yaml in $dir" >&2; exit 1; }
+  # Disabled on the Builder's Open Flow page: kept in Git, left out of images until it is enabled again.
+  if [[ -f "$dir/echo-flow.json" ]] && grep -qE '"disabled"[[:space:]]*:[[:space:]]*true' "$dir/echo-flow.json"; then
+    echo "Skipping $dir: the flow is disabled." >&2; return
+  fi
   FLOWS+=("$dir")
 }
 for folder in "${FOLDERS[@]}"; do

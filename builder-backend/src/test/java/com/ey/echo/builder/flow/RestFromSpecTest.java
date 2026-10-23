@@ -73,6 +73,16 @@ class RestFromSpecTest {
     }
 
     @Test
+    void aRouteSwitchedOffWithAutoStartupFalseAnswers404LikeAMissingOne() {
+        String route = ROUTE.replace("    id: get-customer\n", "    id: get-customer\n    autoStartup: false\n");
+        String yaml = RestFromSpec.applyTo(route, "customers", "customer-api.yaml", SPEC);
+        assertThat(yaml).contains("id: 'echo-missing-getCustomer'")
+                .contains("The route for the operation getCustomer is disabled in this flow.")
+                .contains("id: 'echo-missing-listOrders'")
+                .contains("This flow does not implement the operation listOrders yet.");
+    }
+
+    @Test
     void isTheSameWhenAppliedAgainAndStripsBackToTheDraft() {
         String once = RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", SPEC);
         assertThat(RestFromSpec.applyTo(once, "customers", "customer-api.yaml", SPEC)).isEqualTo(once);

@@ -107,6 +107,8 @@ export function FlowListPage() {
   const [openingTemplate, setOpeningTemplate] = useState(false);
   const [renaming, setRenaming] = useState<FlowSummary>();
   const [deleting, setDeleting] = useState<Row>();
+  /** A published flow about to be disabled: confirm first, as the next pipeline build drops it. */
+  const [disabling, setDisabling] = useState<PublishedFlowSummary>();
   /** A published flow whose draft in the Builder has other changes: ask which one to open. */
   const [choosing, setChoosing] = useState<PublishedFlowSummary>();
   const [search, setSearch] = useState('');
@@ -119,6 +121,14 @@ export function FlowListPage() {
       row.kind === 'draft' ? flowsApi.remove(row.flow.id) : publishedFlowsApi.remove(row.published.name),
     onSuccess: () => {
       setDeleting(undefined);
+      refresh();
+    },
+  });
+  const toggleDisabled = useMutation({
+    mutationFn: ({ name, disabled }: { name: string; disabled: boolean }) =>
+      publishedFlowsApi.setDisabled(name, disabled),
+    onSuccess: () => {
+      setDisabling(undefined);
       refresh();
     },
   });
@@ -196,6 +206,9 @@ export function FlowListPage() {
           <Alert variant="warning" isInline title="Could not read the published flows">
             {(published.error as Error).message} Only the drafts in the Builder are shown.
           </Alert>
+        )}
+        {toggleDisabled.isError && !disabling && (
+          <Alert variant="danger" isInline title={(toggleDisabled.error as Error).message} />
         )}
         {openPublished.isError && !choosing && (
           <Alert variant="danger" isInline title={(openPublished.error as Error).message} />
@@ -313,6 +326,12 @@ export function FlowListPage() {
                           <Label color="green">
                             Published{row.published.version != null && ` v${row.published.version}`}
                           </Label>
+                          {row.published.disabled && (
+                            <>
+                              {' '}
+                              <Label color="grey">Disabled</Label>
+                            </>
+                          )}
                         </Td>
                         <Td dataLabel="Where">{row.published.target ?? 'Git'}</Td>
                         <Td dataLabel="Last changed">
@@ -327,6 +346,19 @@ export function FlowListPage() {
                             items: [
                               { title: 'Open', onClick: () => open(row.published) },
                               { title: 'Download', onClick: () => downloadPublishedFlow(row.published.name) },
+                              row.published.disabled
+                                ? {
+                                    title: 'Enable',
+                                    onClick: () =>
+                                      toggleDisabled.mutate({ name: row.published.name, disabled: false }),
+                                  }
+                                : {
+                                    title: 'Disable',
+                                    onClick: () => {
+                                      toggleDisabled.reset();
+                                      setDisabling(row.published);
+                                    },
+                                  },
                             ],
                           }}
                         />
@@ -414,6 +446,31 @@ export function FlowListPage() {
               Open my draft
             </Button>
             <Button variant="link" onClick={() => setChoosing(undefined)}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
+      {disabling && (
+        <Modal isOpen variant="small" onClose={() => setDisabling(undefined)} aria-labelledby="disable-title">
+          <ModalHeader title={`Disable ${disabling.name}?`} titleIconVariant="warning" labelId="disable-title" />
+          <ModalBody>
+            The flow stays in {disabling.target ?? 'Git'}, but the pipeline leaves it out of the images it builds from
+            now on, so it stops running once the next build is deployed. Publishing a new version keeps it disabled; use
+            Enable to build it again.
+            {toggleDisabled.isError && (
+              <Alert variant="danger" isInline isPlain title={(toggleDisabled.error as Error).message} />
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="danger"
+              isLoading={toggleDisabled.isPending}
+              onClick={() => toggleDisabled.mutate({ name: disabling.name, disabled: true })}
+            >
+              Disable
+            </Button>
+            <Button variant="link" onClick={() => setDisabling(undefined)}>
               Cancel
             </Button>
           </ModalFooter>

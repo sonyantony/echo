@@ -257,6 +257,41 @@ describe('Flow list', () => {
     expect(calls.some((c) => c.method === 'DELETE' && c.url === '/api/published-flows/orders')).toBe(true);
   });
 
+  it('disables a published flow after confirmation and enables it again', async () => {
+    let disabled = false;
+    const { calls } = mockFetch({
+      ...loggedIn,
+      'GET /api/flows': { status: 200, body: [] },
+      'GET /api/published-flows': () => ({
+        status: 200,
+        body: [{ ...published('orders', 1), flowId: null, draftChanged: false, disabled }],
+      }),
+      'POST /api/published-flows/orders/disable': () => {
+        disabled = true;
+        return { status: 204 };
+      },
+      'POST /api/published-flows/orders/enable': () => {
+        disabled = false;
+        return { status: 204 };
+      },
+    });
+    render(<App queryClient={createQueryClient()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Kebab toggle' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Disable' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/leaves it out of the images/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Disable' }));
+
+    expect(await screen.findByText('Disabled')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Kebab toggle' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Enable' }));
+    await vi.waitFor(() => expect(screen.queryByText('Disabled')).not.toBeInTheDocument());
+    expect(calls.filter((c) => c.method === 'POST').map((c) => c.url)).toEqual([
+      '/api/published-flows/orders/disable',
+      '/api/published-flows/orders/enable',
+    ]);
+  });
+
   it('still shows the drafts when Git cannot be read', async () => {
     mockFetch({
       ...loggedIn,

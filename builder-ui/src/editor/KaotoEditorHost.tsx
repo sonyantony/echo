@@ -10,6 +10,7 @@ import { KaotoTabMenu, openKaotoTab } from './KaotoTabMenu';
 import type { FlowFiles } from './flowFiles';
 import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
+import { disabledRouteCss, disabledRouteIds } from './disabledRoutes';
 import { trackTabUnderline } from './tabUnderline';
 import './KaotoEditorHost.css';
 
@@ -82,6 +83,9 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const editorRef = useRef<KaotoEditor | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  /** "Disabled" badges in Kaoto's Routes list for the routes switched off (autoStartup: false). */
+  const [disabledCss, setDisabledCss] = useState(() => disabledRouteCss(disabledRouteIds(initialContent)));
+  const setLatest = (content: string) => setDisabledCss(disabledRouteCss(disabledRouteIds(content)));
   const pickRef = useRef<((files: Picked) => void) | null>(null);
   const loadSpecRef = useRef(loadSpec);
   loadSpecRef.current = loadSpec;
@@ -106,6 +110,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     setContent: async (content) => {
       if (!editorRef.current) throw new Error('The flow editor is not ready');
       await editorRef.current.setContent(path, content);
+      setLatest(content);
       onChangeRef.current?.(content);
     },
   }));
@@ -118,7 +123,10 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
 
     const envelope = createEnvelopeContext(new URL(catalogUrl, window.location.href).toString(), files, {
       onReady: () => resolveReady(),
-      onNewEdit: (content) => onChangeRef.current?.(content),
+      onNewEdit: (content) => {
+        setLatest(content);
+        onChangeRef.current?.(content);
+      },
       pickFiles: (include, canPickMany) => {
         const input = fileInputRef.current;
         if (!input) return Promise.resolve(undefined);
@@ -271,6 +279,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   return (
     <div className="echo-kaoto-host" data-testid="kaoto-editor-host">
       {error && <div role="alert">Could not start the flow editor: {error}</div>}
+      {disabledCss && <style data-testid="disabled-route-badges">{disabledCss}</style>}
       <div ref={containerRef} className="echo-kaoto-host__editor" />
       {cover && (
         <div className="echo-kaoto-host__cover" hidden={!coverVisible} style={{ top: tabBarHeight }}>
