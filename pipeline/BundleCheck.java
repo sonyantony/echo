@@ -15,7 +15,8 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
  * Checks that flows can share one bundle image (build-flow.sh --mode bundle). They run in one Camel
  * app on one port, so they must not serve the same Base Path or path, use the same direct:
  * endpoint or route/step id, ship different files under one name, set one property to different
- * values, or set the REST configuration (one per app) differently. Prints every conflict and exits 1.
+ * values, or set the REST configuration (one per app) differently. /api-docs is kept for the
+ * bundle's combined Swagger UI page (ApiDocsPage.java). Prints every conflict and exits 1.
  *
  *   java -cp snakeyaml.jar pipeline/BundleCheck.java <flow-folder>...
  */
@@ -145,7 +146,12 @@ public class BundleCheck {
 
     private void claim(String kind, String key, String flow) {
         if (key != null && !key.isBlank()) {
-            claims.computeIfAbsent(kind, k -> new TreeMap<>()).computeIfAbsent(key, k -> new ArrayList<>()).add(flow);
+            // Once per flow: a route switched off (autoStartup: false) and the 404 route ECHO adds for its
+            // operation both read the same direct: endpoint, which is fine inside one flow.
+            var flows = claims.computeIfAbsent(kind, k -> new TreeMap<>()).computeIfAbsent(key, k -> new ArrayList<>());
+            if (!flows.contains(flow)) {
+                flows.add(flow);
+            }
         }
     }
 
@@ -163,6 +169,13 @@ public class BundleCheck {
         propertyValues.forEach((key, values) -> {
             if (values.values().stream().distinct().count() > 1) {
                 problems.add("property %s has different values in flows: %s".formatted(key, String.join(", ", values.keySet())));
+            }
+        });
+        // The bundle's combined API docs page (ApiDocsPage.java) is at /api-docs.
+        claims.getOrDefault("Base Path or path", Map.of()).forEach((path, flows) -> {
+            if (path.equals("/api-docs") || path.startsWith("/api-docs/")) {
+                problems.add("Base Path or path %s is used by %s, but /api-docs is the bundle's combined API docs page"
+                        .formatted(path, String.join(", ", flows)));
             }
         });
         if (restConfigurations.values().stream().distinct().count() > 1) {

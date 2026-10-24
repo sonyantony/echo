@@ -83,6 +83,25 @@ class RestFromSpecTest {
     }
 
     @Test
+    void swaggerUiShowsAnOperationWhoseRouteIsSwitchedOffAsDeprecated() {
+        String route = ROUTE.replace("    id: get-customer\n", "    id: get-customer\n    autoStartup: false\n");
+        String spec = SPEC.replace("info: {title: Customers, version: 1.0.0}",
+                "info: {title: 'Customers {{x}}', version: 1.0.0, description: Since 2024-01-01, x-flag: on}");
+        String yaml = RestFromSpec.applyTo(route, "customers", "customer-api.yaml", spec);
+        // The spec Swagger UI reads is a JSON copy with the flag; the file itself is not touched.
+        assertThat(yaml).doesNotContain("'resource:classpath:customer-api.yaml'")
+                .contains("constant: 'application/json'")
+                .contains("\"/customers/{id}\":{\"get\":{\"operationId\":\"getCustomer\",\"responses\":{\"200\":{\"description\":\"ok\"}},\"deprecated\":true}}")
+                .contains("\"/orders\":{\"get\":{\"operationId\":\"listOrders\",\"responses\":{\"200\":{\"description\":\"ok\"}}}}")
+                // Read as Swagger UI reads YAML: dates and on/off stay text; {{ is no Camel placeholder.
+                .contains("\"description\":\"Since 2024-01-01\"", "\"x-flag\":\"on\"", "\"title\":\"Customers {\\u007bx}}\"");
+        // Without a switched-off route the spec file is served as it is.
+        assertThat(RestFromSpec.deprecated(SPEC, java.util.Set.of())).isNull();
+        assertThat(RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", SPEC))
+                .contains("'resource:classpath:customer-api.yaml'").doesNotContain("deprecated");
+    }
+
+    @Test
     void isTheSameWhenAppliedAgainAndStripsBackToTheDraft() {
         String once = RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", SPEC);
         assertThat(RestFromSpec.applyTo(once, "customers", "customer-api.yaml", SPEC)).isEqualTo(once);

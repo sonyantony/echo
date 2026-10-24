@@ -33,6 +33,8 @@ stops:
   operationIds must differ between flows too;
 - the same route or step id, a file name with different content, a property with different values,
   or different REST configurations (Client Request Validation, Enable CORS: Camel has one per app).
+- a Base Path or path of `/api-docs` or under it: a bundle serves one Swagger UI page for all its flows
+  there, with a drop-down that picks the flow (A to Z, ignoring case; `ApiDocsPage.java` writes it).
 
 Fix the flows, or use `per-flow`.
 

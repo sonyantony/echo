@@ -16,6 +16,8 @@ app and built into an image by the buyer's pipeline).
 - A flow's OpenAPI spec (Openapi Design; one file per flow under its own name, YAML or JSON, edited in the vendored Apicurio editor): `docs/api-spec.md`.
   Request body validation (`camel-openapi-validator`, on with Client Request Validation) and Swagger UI at
   `<Base Path>/docs` (webjar, routes added by `RestFromSpec`): `docs/decisions/0010-validation-and-swagger-ui.md`.
+  A bundle image also serves one Swagger UI page for all its flows at `/api-docs` (drop-down per flow,
+  made by `pipeline/ApiDocsPage.java`): `docs/decisions/0012-combined-api-docs.md`.
 - Downstream APIs flows may call (approved specs per install, `echo.apis`, REST OpenApi steps): `docs/apis.md`.
 - Version 1 is a demo prototype: prefer simple over production-hardened, but keep the seams
   (auth, Git provider, CI, secrets, database) swappable. No cloud SDKs, no provider-specific

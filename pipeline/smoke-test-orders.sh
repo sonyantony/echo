@@ -2,7 +2,7 @@
 # Smoke test for the golden "orders" flow image: starts the mock fulfilment service, runs the
 # image, checks its health endpoint and that POST /orders returns the mapped response. With
 # --bundle the image is a bundle of samples/flows, and the greetings flow is checked too (its
-# operations, body validation and Swagger UI).
+# operations, body validation and Swagger UI, and the bundle's combined page at /api-docs).
 #
 #   pipeline/smoke-test-orders.sh [image] [--bundle]
 #     image default: echo-flow-orders:1.0.0 (per-flow), or echo-flows:1.0.0 with --bundle
@@ -76,5 +76,9 @@ if [[ -n "$BUNDLE" ]]; then
   curl -fsS localhost:8080/greetings/docs | grep -q 'SwaggerUIBundle' || { echo "No Swagger UI page" >&2; exit 1; }
   curl -fsS -o /dev/null localhost:8080/greetings/docs/swagger-ui-bundle.js || { echo "No Swagger UI script" >&2; exit 1; }
   curl -fsS localhost:8080/greetings/docs/openapi | grep -q 'operationId: getGreeting' || { echo "No spec" >&2; exit 1; }
+  echo "==> Combined Swagger UI at /api-docs"
+  curl -fsS localhost:8080/api-docs | grep -q "urls: \[{url: 'greetings/docs/openapi', name: 'greetings'}\]" \
+    || { echo "No combined API docs page listing greetings" >&2; exit 1; }
+  curl -fsS -o /dev/null localhost:8080/api-docs/swagger-ui-standalone-preset.js || { echo "No Swagger UI preset" >&2; exit 1; }
 fi
 echo "Smoke test passed"
