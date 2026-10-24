@@ -3,6 +3,7 @@ import { fillMissingOperationIds, specOperations } from './operationIds';
 /** The Operation ID field of the operation on screen (hidden by theme/apicurio-mapping.css). */
 const OPERATION_ID_FIELD = 'pf-inline-text-editor[nodepath="operationId"]';
 const SAVE = '.form-control-pf-save';
+const OPERATION_TAB = '.operation-tab.selected';
 
 /**
  * Gives a new operation its operationId as soon as it is added in Apicurio, before any Save, so
@@ -45,5 +46,11 @@ export function fillNewOperationId(doc: Document, editorJson: string): string | 
   input.value = id;
   input.dispatchEvent(new (doc.defaultView?.Event ?? Event)('input', { bubbles: true }));
   save.click();
+  // Editing a field leaves Apicurio's selection on the field, which Add Path cannot work with
+  // ("i.parent is not a function"); a user would have clicked elsewhere since. Select the
+  // operation again, as clicking its tab does.
+  let around: HTMLElement | null = field;
+  while (around && !around.querySelector(OPERATION_TAB)) around = around.parentElement;
+  around?.querySelector<HTMLElement>(OPERATION_TAB)?.click();
   return id;
 }
