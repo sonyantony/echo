@@ -23,6 +23,7 @@ import { ApiSpecMenu } from '../apispec/ApiSpecMenu';
 import { ApiSpecPanel, type ApiSpecPanelHandle, type UnsavedSpec } from '../apispec/ApiSpecPanel';
 import { CopySpecModal } from '../apispec/CopySpecModal';
 import { descriptionOf, flowNameFromTitle, formatOf, serialize, titleOf } from '../apispec/apiSpec';
+import { naturalOperationIds, renameDirectRoutes } from '../apispec/operationIds';
 import { InMemoryFlowFiles } from '../editor/flowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useKaotoTabSelected } from '../editor/KaotoTabMenu';
@@ -30,6 +31,7 @@ import { useDismissMenu } from '../editor/menuDismiss';
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { apiSpecPath, FlowNameTag, Shortcut } from './FlowEditorPage';
 import { FlowFormModal } from './FlowFormModal';
+import { addOperationRouteMenuItem } from './AddOperationRouteModal';
 import { historyMenuItem } from './HistoryModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
 import { OpenTemplateModal } from './OpenTemplateModal';
@@ -95,14 +97,18 @@ export function UntitledFlowPage() {
    * the spec in Openapi, stored under specFileName in the format its extension says.
    */
   const saveAsFlow = async (name: string, description: string, specFileName?: string) => {
-    const yaml = await editor.current!.getContent();
+    // The spec's operations get their natural operationIds, and routes already on the canvas for
+    // operations that had other ids (an uploaded spec) follow them (operationIds.ts).
+    const spec = saving?.spec;
+    const naming = spec && specFileName ? naturalOperationIds(spec.json) : undefined;
+    const canvas = await editor.current!.getContent();
+    const yaml = naming ? renameDirectRoutes(canvas, naming.renames) : canvas;
     created.current ??= await flowsApi.create(name, description);
     const flow = created.current;
     if (!isEmpty(yaml)) await flowsApi.writeFile(flow.id, flow.routeFile, yaml);
     for (const [path, content] of files.files) await flowsApi.writeFile(flow.id, path, content);
-    const spec = saving?.spec;
-    if (spec && specFileName) {
-      await flowsApi.saveApiSpec(flow.id, specFileName, serialize(spec.json, formatOf(specFileName) ?? spec.format));
+    if (spec && specFileName && naming) {
+      await flowsApi.saveApiSpec(flow.id, specFileName, serialize(naming.json, formatOf(specFileName) ?? spec.format));
     }
     setSaving(undefined);
     await openDraft(flow.id, showSpec);
@@ -285,6 +291,7 @@ export function UntitledFlowPage() {
             </FlowNameTag>
           }
           designMenuItems={[
+            addOperationRouteMenuItem(),
             historyMenuItem(),
             <Divider component="li" key="history-divider" />,
             ...downloadMenuItems({ name: 'Untitled flow', onDownloadImage: dirty ? downloadDiagram : undefined }),

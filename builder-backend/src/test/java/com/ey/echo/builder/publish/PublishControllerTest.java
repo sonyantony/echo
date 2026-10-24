@@ -154,6 +154,49 @@ class PublishControllerTest {
     }
 
     @Test
+    void operationsWithoutARouteAreListedUntilTheUserSaysPublishAnyway() throws Exception {
+        long id = create("cards");
+        mvc.perform(as(put("/api/flows/{id}/api-spec/cards-api.yaml", id)).contentType(MediaType.TEXT_PLAIN)
+                .content("""
+                        openapi: 3.0.3
+                        info: {title: Cards, version: 1.0.0}
+                        servers: [{url: /cards-api}]
+                        paths:
+                          /cards:
+                            get:
+                              operationId: getCards
+                              responses: {"200": {description: ok}}
+                          /cards/{id}:
+                            delete:
+                              responses: {"204": {description: gone}}
+                        """))
+                .andExpect(status().isOk());
+        mvc.perform(as(put("/api/flows/{id}/files/cards.camel.yaml", id)).contentType(MediaType.TEXT_PLAIN)
+                .content("- route:\n    from:\n      uri: direct\n      parameters:\n        name: getCards\n"
+                        + "      steps:\n        - log:\n            message: hi\n"))
+                .andExpect(status().isNoContent());
+        var before = REMOTE.head("main");
+
+        mvc.perform(as(post("/api/flows/{id}/publish", id)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"allowMissingRoutes\":false}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.missingRoutes", hasSize(1)))
+                .andExpect(jsonPath("$.missingRoutes[0].method").value("DELETE"))
+                .andExpect(jsonPath("$.missingRoutes[0].path").value("/cards/{id}"))
+                .andExpect(jsonPath("$.missingRoutes[0].operationId").value("deleteCardsId"))
+                .andExpect(jsonPath("$.missingRoutes[0].disabled").value(false));
+        var after = REMOTE.head("main");
+        assertThat(after == null ? null : after.getName()).isEqualTo(before == null ? null : before.getName());
+
+        mvc.perform(as(post("/api/flows/{id}/publish", id)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"allowMissingRoutes\":true}"))
+                .andExpect(status().isOk());
+        assertThat(REMOTE.read("main", "flows/cards/cards-api.yaml")).contains("operationId: deleteCardsId");
+        assertThat(REMOTE.read("main", "flows/cards/cards.camel.yaml")).contains("echo-missing-deleteCardsId")
+                .doesNotContain("echo-missing-getCards");
+    }
+
+    @Test
     void deletingAPublishedFlowRemovesItFromTheBuilderAndFromGit() throws Exception {
         long id = create("payments");
         mvc.perform(as(post("/api/flows/{id}/publish", id))).andExpect(status().isOk());

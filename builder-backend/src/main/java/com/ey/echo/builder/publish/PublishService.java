@@ -4,6 +4,7 @@ import com.ey.echo.builder.apis.ApiCatalog;
 import com.ey.echo.builder.flow.FlowNames;
 import com.ey.echo.builder.flow.FlowService;
 import com.ey.echo.builder.flow.FlowStatus;
+import com.ey.echo.builder.flow.RestFromSpec;
 import com.ey.echo.builder.validation.FlowValidator;
 import com.ey.echo.builder.validation.ValidationResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,6 +61,9 @@ public class PublishService {
 
         /** The flow would serve endpoints (or use operationIds) a published flow already does. */
         record Clashes(List<String> clashes) implements Outcome {}
+
+        /** Operations of the flow's spec that no route handles; published only once the user says so. */
+        record MissingRoutes(List<RestFromSpec.Unrouted> operations) implements Outcome {}
     }
 
     /**
@@ -68,6 +72,15 @@ public class PublishService {
      */
     @Transactional
     public Outcome publish(long flowId, String user, String message) {
+        return publish(flowId, user, message, true);
+    }
+
+    /**
+     * @param allowMissingRoutes false to stop (with {@link Outcome.MissingRoutes}) when operations
+     *        of the flow's spec have no route, so the user can confirm first
+     */
+    @Transactional
+    public Outcome publish(long flowId, String user, String message, boolean allowMissingRoutes) {
         var enabled = targets.require();
         var flow = flows.get(flowId);
         String routeFile = FlowNames.routeFile(flow.getName());
@@ -83,6 +96,13 @@ public class PublishService {
         var clashing = clashes.check(flow.getName(), previousName, files);
         if (!clashing.isEmpty()) {
             return new Outcome.Clashes(clashing);
+        }
+        if (!allowMissingRoutes) {
+            String spec = flows.detail(flowId).apiSpec();
+            var unrouted = spec == null ? List.<RestFromSpec.Unrouted>of() : RestFromSpec.unrouted(files.get(routeFile), files.get(spec));
+            if (!unrouted.isEmpty()) {
+                return new Outcome.MissingRoutes(unrouted);
+            }
         }
         long version = events.countByFlowId(flowId) + 1;
         var now = clock.instant();

@@ -120,7 +120,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
     'paths:',
     '  /customers/{id}:',
     '    get:',
-    '      operationId: getCustomer',
+    '      operationId: getCustomersId',
     '      parameters:',
     '        - { name: id, in: path, required: true, schema: { type: string } }',
     '      responses:',
@@ -140,12 +140,12 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   let download = await downloading;
   expect(download.suggestedFilename()).toBe('Customer_API.v2.json');
   const json = JSON.parse(await readFile(await download.path(), 'utf8'));
-  expect(json.paths['/customers/{id}'].get.operationId).toBe('getCustomer');
+  expect(json.paths['/customers/{id}'].get.operationId).toBe('getCustomersId');
   downloading = page.waitForEvent('download');
   await specMenu(page, 'Download Openapi File As Yaml');
   download = await downloading;
   expect(download.suggestedFilename()).toBe('Customer_API.v2.yml');
-  expect(await readFile(await download.path(), 'utf8')).toContain('operationId: getCustomer');
+  expect(await readFile(await download.path(), 'utf8')).toContain('operationId: getCustomersId');
 
   // Uploading another spec replaces this one, after asking.
   const second = '{"openapi":"3.0.3","info":{"title":"Orders","version":"1.0.0"},"paths":{}}';

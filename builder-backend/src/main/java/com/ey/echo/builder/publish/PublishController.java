@@ -27,7 +27,11 @@ public class PublishController {
         this.targets = targets;
     }
 
-    public record PublishRequest(@Size(max = 1000) String message) {}
+    /**
+     * @param allowMissingRoutes false to get a 409 listing the spec's operations no route handles
+     *        instead of publishing (the dialog asks, then sends true); left out, they do not stop a publish
+     */
+    public record PublishRequest(@Size(max = 1000) String message, Boolean allowMissingRoutes) {}
 
     /**
      * One target's part of a publish.
@@ -51,13 +55,23 @@ public class PublishController {
     @PostMapping("/publish")
     public ResponseEntity<?> publish(@PathVariable long id, @RequestBody(required = false) PublishRequest request,
             Principal user) {
-        var outcome = service.publish(id, user.getName(), request == null ? null : request.message());
+        var outcome = service.publish(id, user.getName(), request == null ? null : request.message(),
+                request == null || !Boolean.FALSE.equals(request.allowMissingRoutes()));
         return switch (outcome) {
             case PublishService.Outcome.Published p ->
                     ResponseEntity.ok(view(p.event(), p.targets(), p.changed()));
             case PublishService.Outcome.Invalid i -> ResponseEntity.unprocessableEntity().body(i.validation());
             case PublishService.Outcome.Clashes c -> ResponseEntity.status(HttpStatus.CONFLICT).body(clashes(c.clashes()));
+            case PublishService.Outcome.MissingRoutes m -> ResponseEntity.status(HttpStatus.CONFLICT).body(missingRoutes(m));
         };
+    }
+
+    private static ProblemDetail missingRoutes(PublishService.Outcome.MissingRoutes missing) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "Not published yet: some operations of the flow's OpenAPI spec have no route and answer 404.");
+        problem.setTitle("Operations without a route");
+        problem.setProperty("missingRoutes", missing.operations());
+        return problem;
     }
 
     private static ProblemDetail clashes(List<String> clashes) {
