@@ -116,6 +116,30 @@ export function naturalOperationIds(editorJson: string): { json: string; renames
   return { json: changed ? JSON.stringify(spec, null, 2) : editorJson, renames };
 }
 
+/**
+ * The spec with an operationId on each operation that has none: its natural name, or that name with
+ * 2, 3... when another operation has it already. Ids already there stay (renaming them is for the
+ * save, which moves the routes along). The same as the backend's OperationIds.fill.
+ *
+ * @returns the editor's JSON (the same string when nothing was missing)
+ */
+export function fillMissingOperationIds(editorJson: string): string {
+  const spec = JSON.parse(editorJson) as Record<string, unknown>;
+  const ops = operationsIn(spec);
+  const taken = new Set(ops.map(({ op }) => idOf(op)).filter((id): id is string => !!id));
+  let changed = false;
+  for (const { method, path, op } of ops) {
+    if (idOf(op)) continue;
+    const base = operationIdFor(method, path);
+    let id = base;
+    for (let n = 2; taken.has(id); n++) id = `${base}${n}`;
+    taken.add(id);
+    op.operationId = id;
+    changed = true;
+  }
+  return changed ? JSON.stringify(spec, null, 2) : editorJson;
+}
+
 const DIRECT_URI = /^direct:(\/\/)?([^?]+)(\?.*)?$/;
 const LABEL = /^(GET|PUT|POST|DELETE|OPTIONS|HEAD|PATCH|TRACE) \/\S*$/;
 

@@ -28,7 +28,7 @@ import {
   withFormat,
   type SpecFormat,
 } from './apiSpec';
-import { naturalOperationIds, type OperationRename } from './operationIds';
+import { fillMissingOperationIds, naturalOperationIds, type OperationRename } from './operationIds';
 import { SamplesSpecModal } from './SamplesSpecModal';
 import { SpecNameModal } from './SpecNameModal';
 import { specFromSamples } from './specFromSamples';
@@ -150,7 +150,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     latest.current = undefined;
     setName(loaded.name);
     setFormat((loaded.name && formatOf(loaded.name)) || 'yaml');
-    setInitialJson(loaded.json ?? newApiSpec(flowName, flowDescription));
+    // Operations without an id (a spec from elsewhere) show one at once; it is stored on the next save.
+    setInitialJson(loaded.json ? fillMissingOperationIds(loaded.json) : newApiSpec(flowName, flowDescription));
     setEditorKey((k) => k + 1);
     setContentDirty(false);
     setDialogOpen(false);

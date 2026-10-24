@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { followApicurioTheme } from './apicurioTheme';
+import { fillNewOperationId } from './operationIdFiller';
 import { simplifyBasePathDialog } from './basePath';
 import { titleCaseSectionLabels } from './sectionLabels';
 import { addSourceUpload } from './sourceToolbar';
@@ -51,6 +52,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const timer = useRef<number>(undefined);
+  const fillTimer = useRef<number>(undefined);
   const stopTheme = useRef<() => void>(undefined);
   const stopBasePath = useRef<() => void>(undefined);
   const stopLabels = useRef<() => void>(undefined);
@@ -60,13 +62,16 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     const listener = (event: MessageEvent) => {
       if (event.source !== frame.current?.contentWindow) return;
       if (event.data?.type === 'apicurio_onChange') {
-        onChangeRef.current(JSON.stringify(event.data.data.content, null, 2));
+        const content = JSON.stringify(event.data.data.content, null, 2);
+        onChangeRef.current(content);
+        nameNewOperation(content);
       }
     };
     window.addEventListener('message', listener);
     return () => {
       window.removeEventListener('message', listener);
       window.clearInterval(timer.current);
+      window.clearInterval(fillTimer.current);
       stopTheme.current?.();
       stopDialogs.current?.();
       stopBasePath.current?.();
@@ -93,6 +98,19 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     stopUpload.current?.();
     stopUpload.current = frameDoc ? addSourceUpload(frameDoc, () => onUploadRef.current?.()) : undefined;
     sendContent();
+  };
+
+  /**
+   * A new operation gets its operationId at once (operationIdFiller.ts). Its form may show up a
+   * moment after the change is reported, so this looks a few times.
+   */
+  const nameNewOperation = (content: string) => {
+    window.clearInterval(fillTimer.current);
+    let tries = 0;
+    fillTimer.current = window.setInterval(() => {
+      const doc = frame.current?.contentDocument;
+      if (++tries >= 10 || !doc || fillNewOperationId(doc, content)) window.clearInterval(fillTimer.current);
+    }, 100);
   };
 
   /** Tells onDialogChange when a full-page dialog opens or closes (API Overview cannot work under one). */
