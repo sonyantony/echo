@@ -106,6 +106,11 @@ test('operations get routes without anyone typing an operationId, renames follow
 });
 
 test('an operation added in Openapi gets its operationId at once, before any Save', async ({ page }) => {
+  // Apicurio reports its own errors on the console ("ERROR TypeError: ..."); filling a field must cause none.
+  const editorErrors: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error' && m.text().startsWith('ERROR')) editorErrors.push(m.text());
+  });
   await login(page);
   await createFlow(page, uniqueName('opnow'));
   await page.getByRole('button', { name: 'Openapi', exact: true }).click();
@@ -132,4 +137,15 @@ test('an operation added in Openapi gets its operationId at once, before any Sav
   await expect(editor.locator('pf-inline-text-editor[nodepath="operationId"]')).toContainText('getSomethingHahaHihi');
   await editor.getByText('Source', { exact: true }).first().click();
   await expect(editor.locator('.ace_editor').first()).toContainText('operationId: getSomethingHahaHihi');
+  // And an operation on a second path (added with the + next to Paths) gets one too.
+  await editor.getByText('Design', { exact: true }).first().click();
+  await editor.locator('button:has(.pficon-add-circle-o)').first().click();
+  await addPath.getByRole('textbox').fill('/hhjhjhjhkk/ttttt');
+  await addPath.getByRole('button', { name: 'Add' }).click();
+  await editor.getByText('Get', { exact: true }).first().click();
+  await editor.getByRole('button', { name: 'Add Operation' }).click();
+  await expect(editor.locator('pf-inline-text-editor[nodepath="operationId"]')).toContainText('getHhjhjhjhkkTtttt');
+  await editor.getByText('Source', { exact: true }).first().click();
+  await expect(editor.locator('.ace_editor').first()).toContainText('operationId: getHhjhjhjhkkTtttt');
+  expect(editorErrors).toEqual([]);
 });
