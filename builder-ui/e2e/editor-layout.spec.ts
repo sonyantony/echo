@@ -149,9 +149,10 @@ test('Advanced > Java Beans opens the Beans view, before About; Flow takes the D
   await expect(page.locator('.shell__tab-content--scrollable')).toBeVisible();
   await expect(advanced).toHaveClass(/echo-tab-menu--current/);
   await expect(page.getByRole('button', { name: 'Flow', exact: true })).not.toHaveClass(/echo-tab-menu--current/);
-  // Flow only opens its menu: Design, History and the downloads. Design opens the canvas.
+  // Flow only opens its menu: Design, Add Route For Operation, History and the downloads. Design opens the canvas.
   await page.getByRole('button', { name: 'Flow', exact: true }).click();
-  await expect(page.getByRole('menuitem')).toHaveCount(4);
+  await expect(page.getByRole('menuitem')).toHaveCount(5);
+  await expect(page.getByRole('menuitem', { name: /^Add Route For Operation/ })).toBeEnabled();
   await expect(page.getByRole('menuitem', { name: /^History/ })).toBeEnabled();
   await expect(page).toHaveURL(/#\/beans$/);
   await page.getByRole('menuitem', { name: /^Design/ }).click();

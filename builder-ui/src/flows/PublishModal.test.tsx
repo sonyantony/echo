@@ -37,7 +37,7 @@ describe('PublishModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     expect(props.beforePublish).toHaveBeenCalled();
-    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ message: 'Add mapping' });
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ message: 'Add mapping', allowMissingRoutes: false });
     expect(props.onPublished).toHaveBeenCalledWith(published);
   });
 
@@ -68,6 +68,40 @@ describe('PublishModal', () => {
     expect(props.onPublished).not.toHaveBeenCalled();
     expect(props.onInvalid).not.toHaveBeenCalled();
     expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it('lists operations without a route and publishes only when told Publish Anyway', async () => {
+    const published = { publishedBy: 'designer', publishedAt: '', message: 'm', changed: true, targets: [] };
+    let first = true;
+    const { calls } = mockFetch({
+      'POST /api/flows/7/publish': () => {
+        if (!first) return { status: 200, body: published };
+        first = false;
+        return {
+          status: 409,
+          body: {
+            detail: 'Not published yet',
+            missingRoutes: [
+              { method: 'GET', path: '/cards/{id}', operationId: 'getCardsId', disabled: false },
+              { method: 'DELETE', path: '/cards/{id}', operationId: 'deleteCardsId', disabled: true },
+            ],
+          },
+        };
+      },
+    });
+    const props = renderModal();
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(await screen.findByText('These operations have no route')).toBeInTheDocument();
+    expect(screen.getByText('GET /cards/{id}')).toBeInTheDocument();
+    expect(screen.getByText('DELETE /cards/{id} (its route is disabled)')).toBeInTheDocument();
+    expect(props.onPublished).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Publish Anyway' }));
+    expect(calls.filter((c) => c.method === 'POST').map((c) => c.body)).toEqual([
+      { message: '', allowMissingRoutes: false },
+      { message: '', allowMissingRoutes: true },
+    ]);
+    expect(props.onPublished).toHaveBeenCalledWith(published);
   });
 
   it('shows Git errors in the dialog', async () => {

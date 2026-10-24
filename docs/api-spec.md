@@ -68,10 +68,17 @@ There is no Rest tab: the spec **is** the flow's REST service. Whenever the flow
 Camel sends each operation to the route `direct:<operationId>` under the Base Path. The draft
 itself keeps only what is designed, so the service always follows the spec's current name.
 
+- **operationIds are ECHO's business** (docs/decisions/0013). Every operation is named after its
+  method and path in camelCase (`GET /cards/{cardId}` is `getCardsCardId`) when the spec is saved,
+  and Openapi hides the Operation ID field. Renaming a path or changing a method renames the
+  operation, and the flow's routes for it follow (`direct:` endpoints, and the route's ECHO-made
+  id and label). **Flow > Add Route For Operation** lists the operations by method and path and
+  adds a route for each one picked, so nobody types an id.
 - **An operation without a route** answers **404** with a JSON message naming the operation. The
   service has `missingOperation: ignore` (so the flow starts), and ECHO adds a small
-  `echo-missing-<operationId>` route for each such operation; add a route from
-  `direct:<operationId>` and it takes over. A path that is not in the spec is a 404 too.
+  `echo-missing-<operationId>` route for each such operation; add a route for it and it takes
+  over. A path that is not in the spec is a 404 too. **Publish** lists such operations (and ones
+  whose route is switched off) and publishes only after **Publish Anyway**.
 - The **Client Request Validation** and **Enable CORS** checkboxes, stacked just before Publish on
   the Flow Design toolbar, turn the REST configuration's
   settings on and off (`restConfiguration` in the route file). They need a spec. See

@@ -102,6 +102,51 @@ class RestFromSpecTest {
     }
 
     @Test
+    void aDirectRouteAsKaotoWritesItWithTheNameAsAParameterCounts() {
+        String route = ROUTE.replace("      uri: direct:getCustomer\n",
+                "      uri: direct\n      parameters:\n        name: getCustomer\n");
+        String yaml = RestFromSpec.applyTo(route, "customers", "customer-api.yaml", SPEC);
+        assertThat(yaml).doesNotContain("echo-missing-getCustomer").contains("echo-missing-listOrders");
+    }
+
+    @Test
+    void listsTheOperationsWithoutARouteIncludingOnesWhoseRouteIsSwitchedOff() {
+        String route = ROUTE + """
+                - route:
+                    id: orders
+                    autoStartup: false
+                    from:
+                      uri: direct
+                      parameters:
+                        name: listOrders
+                      steps:
+                        - log: {message: orders}
+                """;
+        String spec = SPEC + """
+                  /refunds:
+                    post:
+                      responses: {"200": {description: ok}}
+                """;
+        assertThat(RestFromSpec.unrouted(route, spec)).containsExactly(
+                new RestFromSpec.Unrouted("GET", "/orders", "listOrders", true),
+                new RestFromSpec.Unrouted("POST", "/refunds", null, false));
+        // What apply adds (the 404 routes) does not count as a route.
+        String applied = RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", SPEC);
+        assertThat(RestFromSpec.unrouted(applied, SPEC)).containsExactly(
+                new RestFromSpec.Unrouted("GET", "/orders", "listOrders", false));
+        assertThat(RestFromSpec.unrouted(ROUTE.replace("direct:getCustomer", "direct:other"), SPEC)).hasSize(2);
+    }
+
+    @Test
+    void anOperationWithoutAnOperationIdGetsItsNaturalNameWhenTheFlowLeavesTheEditor() {
+        String spec = SPEC.replace("      operationId: listOrders\n", "");
+        var files = RestFromSpec.apply("customers.camel.yaml", Optional.of("customer-api.yaml"),
+                Map.of("customers.camel.yaml", ROUTE, "customer-api.yaml", spec));
+        assertThat(OperationIdsTest.ids(files.get("customer-api.yaml"))).containsExactly("getCustomer", "getOrders");
+        assertThat(files.get("customers.camel.yaml")).contains("echo-missing-getOrders");
+    }
+
+    @Test
     void isTheSameWhenAppliedAgainAndStripsBackToTheDraft() {
         String once = RestFromSpec.applyTo(ROUTE, "customers", "customer-api.yaml", SPEC);
         assertThat(RestFromSpec.applyTo(once, "customers", "customer-api.yaml", SPEC)).isEqualTo(once);

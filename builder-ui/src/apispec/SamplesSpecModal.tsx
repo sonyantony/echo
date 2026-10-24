@@ -18,14 +18,13 @@ import {
 import { useState, type FormEvent } from 'react';
 import {
   bodyOptional,
-  OPERATION_ID_PATTERN,
-  operationIdFor,
   parseSample,
   PATH_PATTERN,
   SAMPLE_METHODS,
   splitPath,
   type SampleMethod,
 } from './specFromSamples';
+import { operationIdFor } from './operationIds';
 
 export interface SamplesSpec {
   method: SampleMethod;
@@ -45,25 +44,24 @@ interface Props {
 }
 
 /**
- * Openapi > New From Samples: method, path, operationId and a sample request and response,
- * from which the flow's spec is made (specFromSamples). The operationId follows the method and
- * path until the user types their own.
+ * Openapi > New From Samples: method, path and a sample request and response, from which the
+ * flow's spec is made (specFromSamples). The operationId is the method and path, as ECHO names
+ * every operation.
  */
 export function SamplesSpecModal({ replaces, onGenerate, onClose }: Props) {
   const [method, setMethod] = useState<SampleMethod>('POST');
   const [path, setPath] = useState('');
-  const [typedOperationId, setTypedOperationId] = useState<string>();
   const [request, setRequest] = useState('');
   const [response, setResponse] = useState('');
 
   const { path: fullPath, query } = splitPath(path);
-  const operationId = typedOperationId ?? (fullPath ? operationIdFor(method, fullPath) : '');
+  // The operation is named after its method and path, like every operation (operationIds.ts).
+  const operationId = operationIdFor(method, fullPath);
   const pathValid = PATH_PATTERN.test(fullPath);
-  const operationIdValid = OPERATION_ID_PATTERN.test(operationId);
   const optional = bodyOptional(method);
   const requestSample = sample(request, !optional);
   const responseSample = sample(response, true);
-  const valid = pathValid && operationIdValid && !requestSample.error && !responseSample.error;
+  const valid = pathValid && !requestSample.error && !responseSample.error;
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
@@ -106,25 +104,6 @@ export function SamplesSpecModal({ replaces, onGenerate, onClose }: Props) {
               </FormHelperText>
             </FormGroup>
           </div>
-          <FormGroup label="operationId" isRequired fieldId="spec-samples-operation-id">
-            <TextInput
-              id="spec-samples-operation-id"
-              value={operationId}
-              onChange={(_e, v) => setTypedOperationId(v)}
-              validated={operationId && !operationIdValid ? 'error' : 'default'}
-            />
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem variant={operationId && !operationIdValid ? 'error' : 'default'}>
-                  {operationId && !operationIdValid
-                    ? "A letter, then letters, digits and '_'."
-                    : typedOperationId === undefined
-                      ? 'Filled in from the method and path until you edit it. It names the route the flow implements.'
-                      : 'It names the route the flow implements.'}
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
           <FormGroup label="Sample request (JSON)" isRequired={!optional} fieldId="spec-samples-request">
             <TextArea
               id="spec-samples-request"

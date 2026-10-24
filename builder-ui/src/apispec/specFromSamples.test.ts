@@ -1,10 +1,7 @@
-import { operationIdFor, pathParameters, queryParameters, specFromSamples, splitPath } from './specFromSamples';
+import { pathParameters, queryParameters, specFromSamples, splitPath } from './specFromSamples';
 
 describe('New From Samples', () => {
-  it('prefills the operationId from the method and path in camelCase', () => {
-    expect(operationIdFor('POST', '/cards/{cardId}/activate')).toBe('postCardsCardIdActivate');
-    expect(operationIdFor('GET', '/customer-accounts/{account_id}')).toBe('getCustomerAccountsAccountId');
-    expect(operationIdFor('DELETE', '/')).toBe('delete');
+  it('finds the path parameters', () => {
     expect(pathParameters('/cards/{cardId}/items/{itemId}')).toEqual(['cardId', 'itemId']);
   });
 

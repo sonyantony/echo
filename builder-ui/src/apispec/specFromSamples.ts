@@ -9,9 +9,6 @@ export type SampleMethod = (typeof SAMPLE_METHODS)[number];
 /** A request body is optional for GET and DELETE, and needed for the others. */
 export const bodyOptional = (method: SampleMethod) => method === 'GET' || method === 'DELETE';
 
-/** An operationId ECHO can use as a route name: a letter, then letters, digits and '_'. */
-export const OPERATION_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
-
 /** A path like /cards/{cardId}/activate: segments of letters, digits, '-', '_', '.', or a {name}. */
 export const PATH_PATTERN = /^(\/([A-Za-z0-9._~-]+|\{[A-Za-z_][A-Za-z0-9_]*\}))+\/?$|^\/$/;
 
@@ -71,14 +68,6 @@ function queryValue(value: string, type: string): unknown {
 export function pathParameters(path: string): string[] {
   return [...path.matchAll(/\{([^}/]+)\}/g)].map((m) => m[1]);
 }
-
-/** Method and path in camelCase: POST /cards/{cardId}/activate is postCardsCardIdActivate. */
-export function operationIdFor(method: string, path: string): string {
-  const words = path.split(/[^A-Za-z0-9]+/).filter(Boolean);
-  return method.toLowerCase() + words.map(capitalize).join('');
-}
-
-const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
 /** Parses a sample; blank is no sample. Throws with a readable message when it is not JSON. */
 export function parseSample(text: string): unknown {
@@ -219,3 +208,5 @@ function keptFrom(current: string | undefined): { info?: unknown; servers?: unkn
     return {};
   }
 }
+
+const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);

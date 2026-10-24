@@ -22,7 +22,7 @@ function byOperation(parts: SpecSchemaPart[]): Operation[] {
   const operations = new Map<string, Operation>();
   for (const part of parts) {
     const key = `${part.method} ${part.path}`;
-    const title = `${part.method.toUpperCase()} ${part.path}${part.operationId ? ` (${part.operationId})` : ''}`;
+    const title = `${part.method.toUpperCase()} ${part.path}`;
     if (!operations.has(key)) operations.set(key, { key, title, parts: [] });
     operations.get(key)!.parts.push(part);
   }

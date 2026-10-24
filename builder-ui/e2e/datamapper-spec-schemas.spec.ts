@@ -77,8 +77,8 @@ test('Attach Schema offers the bodies of the Openapi spec, and a spec change lis
   await page.getByTestId('attach-schema-modal-option-json').click();
   await page.getByTestId('attach-schema-modal-btn-file').click();
   const picker = page.getByRole('dialog', { name: 'Attach a schema' });
-  await expect(picker).toContainText('POST /orders (createOrder)');
-  await expect(picker).toContainText('PUT /orders/{id} (updateOrder)');
+  await expect(picker).toContainText('POST /orders');
+  await expect(picker).toContainText('PUT /orders/{id}');
   await picker.getByRole('radio', { name: 'Request body' }).first().check();
   if (shots) await page.screenshot({ path: `${shots}/1-attach-from-spec.png` });
   await picker.getByRole('button', { name: 'Attach', exact: true }).click();

@@ -28,6 +28,7 @@ import {
   withFormat,
   type SpecFormat,
 } from './apiSpec';
+import { naturalOperationIds, type OperationRename } from './operationIds';
 import { SamplesSpecModal } from './SamplesSpecModal';
 import { SpecNameModal } from './SpecNameModal';
 import { specFromSamples } from './specFromSamples';
@@ -73,6 +74,13 @@ interface Props {
   onSaveFlow?(): void;
   /** Called each time the spec is stored in the flow (Save, autosave, rename, upload). */
   onStored?(): void;
+  /**
+   * Called when a save renamed operations (their path or method changed): the flow's routes for
+   * them must start from the new direct:<operationId> (operationIds.ts).
+   */
+  onOperationIdsRenamed?(renames: OperationRename[]): void;
+  /** False while a Kaoto view covers the panel; left out, it counts as shown. */
+  visible?: boolean;
 }
 
 interface Loaded {
@@ -95,7 +103,7 @@ type Dialog =
  * folder, under the name it was uploaded or saved with, in YAML or JSON (the format buttons).
  */
 export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSpecPanel(
-  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored },
+  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored, onOperationIdsRenamed, visible = true },
   ref,
 ) {
   const queryClient = useQueryClient();
@@ -137,6 +145,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const open = useCallback((loaded: Loaded) => {
+    named.current = undefined;
     saved.current = loaded.json;
     latest.current = undefined;
     setName(loaded.name);
@@ -169,6 +178,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   useEffect(() => onNameChangeRef.current?.(name && withFormat(name, format)), [name, format]);
   const onStoredRef = useRef(onStored);
   onStoredRef.current = onStored;
+  const onRenamedRef = useRef(onOperationIdsRenamed);
+  onRenamedRef.current = onOperationIdsRenamed;
   const onFormatChangeRef = useRef(onFormatChange);
   onFormatChangeRef.current = onFormatChange;
   useEffect(() => onFormatChangeRef.current?.(format), [format]);
@@ -181,8 +192,36 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   /** What is on screen, as the editor's JSON. */
   const currentJson = () => latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowName, flowDescription);
 
-  /** Stores text as the flow's spec under fileName; the editor already shows it as json. */
-  const store = useCallback(async (fileName: string, text: string, json: string, auto = false): Promise<boolean> => {
+  /**
+   * The stored spec as it is after a save named its operations (operationIds.ts), while the editor
+   * still shows them as they were. The editor opens it again once it is out of sight (opening
+   * again would throw the user out of what they are looking at), so it never holds out-of-date ids.
+   */
+  const named = useRef<string | undefined>(undefined);
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const openNamed = useCallback(() => {
+    const json = named.current;
+    // Edits made since are saved (and named) first.
+    if (json === undefined || (latest.current !== undefined && latest.current !== saved.current)) return;
+    named.current = undefined;
+    saved.current = json;
+    latest.current = undefined;
+    setInitialJson(json);
+    setEditorKey((k) => k + 1);
+    setContentDirty(false);
+    setDialogOpen(false);
+  }, []);
+  useEffect(() => {
+    if (!visible) openNamed();
+  }, [visible, openNamed]);
+
+  /**
+   * Stores text as the flow's spec under fileName; the editor already shows it as json. Every
+   * operation is stored with its natural operationId; renamed ones take the flow's routes along.
+   * Resolves to the spec as stored (the editor's JSON), or undefined when it was not stored.
+   */
+  const store = useCallback(async (fileName: string, text: string, json: string, auto = false): Promise<string | undefined> => {
     if (id === undefined) {
       // Nowhere to store it yet: it stays on screen, unsaved, under fileName until the flow's first Save.
       latest.current = json;
@@ -190,12 +229,13 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
       setFormat(formatOf(fileName) ?? 'yaml');
       setContentDirty(json !== saved.current);
       setStatus({ variant: 'success', text: `Opened ${fileName}: save the flow to keep it.` });
-      return true;
+      return json; // The untitled flow's first Save names the operations.
     }
     setSaving(true);
     if (!auto) setStatus(undefined);
     try {
-      await flowsApi.saveApiSpec(id, fileName, text);
+      const naming = naturalOperationIds(json);
+      await flowsApi.saveApiSpec(id, fileName, naming.json === json ? text : serialize(naming.json, formatOf(fileName) ?? 'yaml'));
       saved.current = json;
       setName(fileName);
       setStoredName(fileName);
@@ -203,24 +243,27 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
       setContentDirty(latest.current !== undefined && latest.current !== json);
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setStatus({ variant: 'success', text: auto ? `Autosaved at ${time}` : `Saved ${fileName}.` });
+      if (naming.renames.length) onRenamedRef.current?.(naming.renames);
+      named.current = naming.json === json ? undefined : naming.json;
+      if (!visibleRef.current) openNamed();
       onStoredRef.current?.();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['flow', id], exact: true }),
         queryClient.invalidateQueries({ queryKey: FLOWS_KEY }),
       ]);
-      return true;
+      return naming.json;
     } catch (e) {
       setStatus({ variant: 'danger', text: `Could not save: ${(e as Error).message}` });
-      return false;
+      return undefined;
     } finally {
       setSaving(false);
     }
-  }, [id, queryClient]);
+  }, [id, queryClient, openNamed]);
 
   /** Saves what is on screen as fileName, in the format its extension says. */
-  const saveUnder = useCallback((fileName: string, auto = false) => {
+  const saveUnder = useCallback(async (fileName: string, auto = false) => {
     const json = latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowName, flowDescription);
-    return store(fileName, serialize(json, formatOf(fileName) ?? 'yaml'), json, auto);
+    return (await store(fileName, serialize(json, formatOf(fileName) ?? 'yaml'), json, auto)) !== undefined;
   }, [store, initialJson, flowName, flowDescription]);
 
   /** Save: asks for a name the first time. */
@@ -240,7 +283,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   const download = (fileFormat: SpecFormat) => {
     try {
-      const text = serialize(currentJson(), fileFormat);
+      const text = serialize(naturalOperationIds(currentJson()).json, fileFormat);
       const fileName = withFormat(name ?? storedName ?? `${defaultSpecBase(flowName)}.json`, fileFormat);
       const url = URL.createObjectURL(new Blob([text], { type: fileFormat === 'json' ? 'application/json' : 'application/yaml' }));
       const link = document.createElement('a');
@@ -258,9 +301,13 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     setDialog(undefined);
     const json = toEditorJson(text);
     latest.current = undefined;
-    if (await store(fileName, text, json)) {
-      setInitialJson(json);
+    const stored = await store(fileName, text, json);
+    if (stored !== undefined) {
+      if (id !== undefined) saved.current = stored;
+      named.current = undefined;
+      setInitialJson(stored);
       setEditorKey((k) => k + 1);
+      setContentDirty(id === undefined && stored !== saved.current);
       setDialogOpen(false);
     }
   };

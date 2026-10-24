@@ -68,9 +68,12 @@ public final class RestFromSpec {
             return files;
         }
         var result = new TreeMap<>(files);
+        // Every operation needs an operationId for a route to handle it (and for the 404 stubs).
+        spec.filter(result::containsKey).ifPresent(name -> result.put(name,
+                OperationIds.fill(result.get(name), name.toLowerCase(java.util.Locale.ROOT).endsWith(".json"))));
         String flowName = routeFile.endsWith(".camel.yaml") ? routeFile.substring(0, routeFile.length() - ".camel.yaml".length())
                 : routeFile;
-        result.put(routeFile, applyTo(route, flowName, spec.orElse(null), spec.map(files::get).orElse(null)));
+        result.put(routeFile, applyTo(route, flowName, spec.orElse(null), spec.map(result::get).orElse(null)));
         return result;
     }
 
@@ -254,8 +257,7 @@ public final class RestFromSpec {
         }
         Object doc;
         try {
-            doc = new Yaml(new SafeConstructor(new LoaderOptions()), new Representer(new DumperOptions()),
-                    new DumperOptions(), new LoaderOptions(), new SpecResolver()).load(specContent);
+            doc = loadSpec(specContent);
         } catch (RuntimeException e) {
             return null;
         }
@@ -285,6 +287,12 @@ public final class RestFromSpec {
 
     private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
 
+    /** The spec as maps and lists, read the way Swagger UI reads it ({@link SpecResolver}). */
+    static Object loadSpec(String specContent) {
+        return new Yaml(new SafeConstructor(new LoaderOptions()), new Representer(new DumperOptions()),
+                new DumperOptions(), new LoaderOptions(), new SpecResolver()).load(specContent);
+    }
+
     /**
      * Reads the spec the way Swagger UI does (YAML 1.2): dates and yes/no/on/off stay strings, so an
      * example such as {@code 2024-01-01} is served as written.
@@ -312,19 +320,71 @@ public final class RestFromSpec {
                 continue;
             }
             for (NodeTuple t : map.getValue()) {
-                Optional<String> uri = switch (key(t)) {
+                Node from = switch (key(t)) {
                     case "route" -> t.getValueNode() instanceof MappingNode route && switchedOff(route) != started
-                            ? scalar(route, "from", "uri") : Optional.empty();
-                    case "from" -> started && t.getValueNode() instanceof MappingNode from ? scalar(from, "uri")
-                            : Optional.empty();
-                    default -> Optional.empty();
+                            ? child(route, "from") : null;
+                    case "from" -> started ? t.getValueNode() : null;
+                    default -> null;
                 };
-                uri.map(String::strip).filter(u -> u.startsWith("direct:"))
-                        .map(u -> u.substring("direct:".length()).replaceFirst("^//", "").replaceFirst("\\?.*$", ""))
-                        .ifPresent(names::add);
+                if (from instanceof MappingNode f) {
+                    directName(f).ifPresent(names::add);
+                }
             }
         }
         return names;
+    }
+
+    /**
+     * The name of a {@code direct} endpoint: {@code uri: direct:getCards}, or {@code uri: direct}
+     * with {@code parameters: {name: getCards}} as Kaoto writes it.
+     */
+    static Optional<String> directName(MappingNode from) {
+        String uri = scalar(from, "uri").map(String::strip).orElse("");
+        if (uri.equals("direct") || uri.equals("direct:")) {
+            return scalar(from, "parameters", "name").map(String::strip).filter(n -> !n.isEmpty());
+        }
+        if (!uri.startsWith("direct:")) {
+            return Optional.empty();
+        }
+        String name = uri.substring("direct:".length()).replaceFirst("^//", "").replaceFirst("\\?.*$", "");
+        return name.isEmpty() ? Optional.empty() : Optional.of(name);
+    }
+
+    private static Node child(MappingNode map, String key) {
+        return map.getValue().stream().filter(t -> key(t).equals(key)).map(NodeTuple::getValueNode).findFirst().orElse(null);
+    }
+
+    /**
+     * The spec's operations no route of the flow handles: no route starts from their
+     * {@code direct:<operationId>}, or the one that does is switched off. They answer 404 (the
+     * Publish dialog asks before publishing such a flow). The route YAML may already have what
+     * {@link #apply} adds: its 404 routes do not count.
+     */
+    public static List<Unrouted> unrouted(String routeYaml, String specContent) {
+        var root = routeYaml == null ? null : compose(routeYaml);
+        if (root == null || specContent == null) {
+            return List.of();
+        }
+        removeGenerated(root);
+        var implemented = directRoutes(root, true);
+        var switchedOff = directRoutes(root, false);
+        var result = new ArrayList<Unrouted>();
+        for (var op : Spec.read(specContent).operations()) {
+            if (op.operationId() == null || !implemented.contains(op.operationId())) {
+                result.add(new Unrouted(op.method(), op.path(), op.operationId(),
+                        op.operationId() != null && switchedOff.contains(op.operationId())));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * An operation no route handles.
+     *
+     * @param path as the spec has it, without the Base Path
+     * @param disabled its route is there but switched off ({@code autoStartup: false})
+     */
+    public record Unrouted(String method, String path, String operationId, boolean disabled) {
     }
 
     /** True for a route with {@code autoStartup: false}: Camel loads it but does not start it. */

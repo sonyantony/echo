@@ -34,12 +34,14 @@ import { ApiSpecMenu } from '../apispec/ApiSpecMenu';
 import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
 import { CopySpecModal } from '../apispec/CopySpecModal';
 import { parseSpec } from '../apispec/apiSpec';
+import { appendRoute, directRoutes, operationLabel, renameDirectRoutes, routeForOperation, type OperationRename } from '../apispec/operationIds';
 import { SpecMappingWarnings } from '../datamapper/SpecMappingWarnings';
 import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
+import { AddOperationRouteModal, addOperationRouteMenuItem, routableOperations, type RoutableOperation } from './AddOperationRouteModal';
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
@@ -127,6 +129,9 @@ function FlowEditor() {
   const [uploading, setUploading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [copyingSpec, setCopyingSpec] = useState(false);
+  const [addingRoutes, setAddingRoutes] = useState<{ operations: RoutableOperation[]; routes: Map<string, boolean> }>();
+  /** Renaming routes after a spec save renamed operations; Add Route For Operation waits for it. */
+  const renaming = useRef<Promise<void>>(undefined);
   /** Client Request Validation and Enable CORS, as the route on screen has them (Flow menu). */
   const [restSettings, setRestSettings] = useState<RestSettings>();
   // The API spec is opened on first use and then kept (hidden while a Kaoto view is open), so its
@@ -214,6 +219,52 @@ function FlowEditor() {
       setSaving(false);
     }
   }, [id, routeFile, queryClient]);
+
+  /**
+   * A spec save renamed operations (their path or method changed): the routes for them now start
+   * from the new direct:<operationId>, in the editor and in the saved draft (operationIds.ts).
+   */
+  const renameRoutes = useCallback((renames: OperationRename[]) => {
+    renaming.current = (async () => {
+      try {
+        if (!editor.current) {
+          if (!routeFile) return;
+          const yaml = await flowsApi.readFile(id, routeFile);
+          const renamed = yaml === undefined ? yaml : renameDirectRoutes(yaml, renames);
+          if (renamed !== undefined && renamed !== yaml) await flowsApi.writeFile(id, routeFile, renamed);
+          return;
+        }
+        const yaml = await editor.current.getContent();
+        const renamed = renameDirectRoutes(yaml, renames);
+        if (renamed === yaml) return;
+        await editor.current.setContent(renamed);
+        await save(true);
+      } catch (e) {
+        setMessage({ variant: 'danger', text: `Could not rename the routes of renamed operations: ${(e as Error).message}` });
+      }
+    })();
+  }, [id, routeFile, save]);
+
+  /** Flow > Add Route For Operation: lists the spec's operations (unsaved spec edits are saved first). */
+  const openAddRoutes = useCallback(async () => {
+    if (!editor.current) return;
+    try {
+      if (specPanel.current && !(await specPanel.current.saveIfChanged())) {
+        setMessage({ variant: 'warning', text: 'Save the Openapi spec first.' });
+        return;
+      }
+      await renaming.current;
+      const spec = await readSavedSpec();
+      if (!spec) {
+        setMessage({ variant: 'warning', text: 'The flow has no Openapi spec yet: design its operations in Openapi first.' });
+        return;
+      }
+      const yaml = await editor.current.getContent();
+      setAddingRoutes({ operations: routableOperations(JSON.stringify(spec)), routes: directRoutes(yaml) });
+    } catch (e) {
+      setMessage({ variant: 'danger', text: `Could not list the operations: ${(e as Error).message}` });
+    }
+  }, [readSavedSpec]);
 
   /** Validates what is on screen: unsaved edits are saved first. */
   const validate = useCallback(async () => {
@@ -556,6 +607,7 @@ function FlowEditor() {
             </FlowNameTag>
           }
           designMenuItems={[
+            addOperationRouteMenuItem(() => void openAddRoutes()),
             historyMenuItem(() => setShowHistory(true)),
             <Divider component="li" key="history-divider" />,
             ...downloadMenuItems({
@@ -575,6 +627,8 @@ function FlowEditor() {
                 flowDescription={flow.data.description}
                 onDirtyChange={setSpecDirty}
                 onStored={() => void reviewMappings(true)}
+                onOperationIdsRenamed={renameRoutes}
+                visible={showSpec}
               />
             )
           }
@@ -674,6 +728,27 @@ function FlowEditor() {
         />
       )}
       {showHistory && <HistoryModal flowId={id} onClose={() => setShowHistory(false)} />}
+      {addingRoutes && (
+        <AddOperationRouteModal
+          operations={addingRoutes.operations}
+          routes={addingRoutes.routes}
+          onClose={() => setAddingRoutes(undefined)}
+          onAdd={async (operations) => {
+            setAddingRoutes(undefined);
+            try {
+              const yaml = await editor.current!.getContent();
+              await editor.current!.setContent(operations.reduce((y, op) => appendRoute(y, routeForOperation(op)), yaml));
+              setMessage({
+                variant: 'success',
+                text: `Added a route for ${operations.map(operationLabel).join(', ')}. Design it on the canvas.`,
+              });
+              showView(false);
+            } catch (e) {
+              setMessage({ variant: 'danger', text: `Could not add the route: ${(e as Error).message}` });
+            }
+          }}
+        />
+      )}
 
       {blocker.state === 'blocked' && (
         <Modal isOpen variant="small" onClose={() => blocker.reset()} aria-labelledby="unsaved-title">

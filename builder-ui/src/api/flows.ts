@@ -206,8 +206,22 @@ export interface PublishTarget {
 
 export const publishTargets = () => api<PublishTarget[]>('/api/publish-targets');
 
-export const publishFlow = (id: number, message: string) =>
-  api<PublishedFlow>(`/api/flows/${id}/publish`, { method: 'POST', json: { message } });
+/** An operation of the flow's spec that no route handles (it answers 404). */
+export interface MissingRoute {
+  method: string;
+  /** As the spec has it, without the Base Path. */
+  path: string;
+  operationId: string | null;
+  /** Its route is there but switched off (autoStartup: false). */
+  disabled: boolean;
+}
+
+/**
+ * Publishes the flow. Unless allowMissingRoutes, operations of its spec without a route stop it with
+ * a 409 whose details list them (missingRoutes), so the user can confirm first.
+ */
+export const publishFlow = (id: number, message: string, allowMissingRoutes = false) =>
+  api<PublishedFlow>(`/api/flows/${id}/publish`, { method: 'POST', json: { message, allowMissingRoutes } });
 
 export const flowHistory = (id: number) => api<PublishedFlow[]>(`/api/flows/${id}/history`);
 

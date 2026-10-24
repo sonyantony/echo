@@ -228,6 +228,14 @@
   display: none !important;
 }
 
+/* Operation ID is hidden: ECHO names every operation after its method and path when the spec is
+   saved and keeps the flow's routes in step (docs/decisions/0013). Its label is the div before
+   the field's; Deprecated next to it stays. */
+:root[data-echo-theme] div:has(> pf-inline-text-editor :is(.api-item-operation-id, .api-operationId-editor)),
+:root[data-echo-theme] div:has(+ div > pf-inline-text-editor :is(.api-item-operation-id, .api-operationId-editor)) {
+  display: none !important;
+}
+
 /* Vendor Extensions (x-… fields) are hidden on every page: overview, paths, operations, data types. */
 :root[data-echo-theme] extensions-section {
   display: none !important;
