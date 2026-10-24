@@ -17,8 +17,13 @@ route.
   used). Two paths that come out the same (`/cards-x`, `/cards_x`) get `2`, `3`... added. The Base
   Path is not part of it: within a flow it is the same for every operation, and two flows that end
   up with the same id are stopped by Publish's clash check (it would also clash in a bundle).
-- **Named when the spec is saved** (Save, autosave, Upload, Rename, the untitled flow's first
-  Save; `builder-ui/src/apispec/operationIds.ts`). An operation without an id gets its name.
+- **Named as soon as it is added.** A new operation gets its name the moment it is added in
+  Openapi, before any Save, so Source shows it at once. Apicurio cannot be handed a changed spec
+  without opening it again, so ECHO fills in the operation's own (hidden) Operation ID field the
+  way a user would: it types the name and presses the field's Save
+  (`builder-ui/src/apispec/operationIdFiller.ts`). That is an ordinary edit, which Undo takes back.
+  A spec opened without ids is shown with them filled in. Saving (Save, autosave, Upload, Rename,
+  the untitled flow's first Save; `operationIds.ts`) names anything still missing.
 - **Renamed together with its routes.** When a path is renamed (or a method changed) in Openapi,
   the operation keeps its old id until the save, so ECHO knows exactly which operation it was:
   the id is renamed to the new natural name, and every `direct:` endpoint in the flow with the old
@@ -40,7 +45,7 @@ route.
   fills in any missing id with the same naming (`OperationIds.fill`, in `RestFromSpec.apply`), so
   Camel never makes up names of its own.
 - **Openapi hides the Operation ID field** (`theme/apicurio-mapping.css`); it is still in Source.
-  The editor shows the ids it was opened with until it is out of sight (another view is picked),
+  After a rename, the editor shows the old id until it is out of sight (another view is picked),
   then opens the stored spec again, so moving the user out of what they are editing never happens
   on an autosave and the editor never works with out-of-date ids.
 - **Flow > Add Route For Operation** lists the spec's operations by method and path (summary

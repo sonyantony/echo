@@ -2,6 +2,7 @@ import YAML from 'yaml';
 import {
   appendRoute,
   directRoutes,
+  fillMissingOperationIds,
   naturalOperationIds,
   operationIdFor,
   renameDirectRoutes,
@@ -31,6 +32,16 @@ describe('operationIds', () => {
     expect(renames).toEqual([]);
     // Already natural: the same string back.
     expect(naturalOperationIds(named).json).toBe(named);
+  });
+
+  it('gives only operations without an id one, keeping every id there already (a renamed path keeps its old one)', () => {
+    const json = spec({
+      '/payment-cards': { get: { operationId: 'getCards' } },
+      '/cards': { get: {}, put: {} },
+    });
+    expect(ids(fillMissingOperationIds(json))).toEqual(['getCards', 'getCards2', 'putCards']);
+    const full = spec({ '/cards': { get: { operationId: 'mine' } } });
+    expect(fillMissingOperationIds(full)).toBe(full);
   });
 
   it('renames an operation whose path or method changed, and two that swapped', () => {

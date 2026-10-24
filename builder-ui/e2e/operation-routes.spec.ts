@@ -104,3 +104,32 @@ test('operations get routes without anyone typing an operationId, renames follow
   await publish.getByRole('button', { name: 'Publish Anyway' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
 });
+
+test('an operation added in Openapi gets its operationId at once, before any Save', async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('opnow'));
+  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
+  await page.keyboard.press('Escape');
+  const editor = editorOf(page);
+  await editor.getByText('Add a path').click();
+  const addPath = editor.getByRole('dialog', { name: 'Add Path' });
+  await addPath.getByRole('textbox').fill('/something/haha/Hihi');
+  await addPath.getByRole('button', { name: 'Add' }).click();
+  await editor.getByText('Put', { exact: true }).first().click();
+  await editor.getByRole('button', { name: 'Add Operation' }).click();
+
+  // Source shows the id straight away; nothing is saved yet.
+  await expect(page.getByTestId('unsaved')).toBeVisible();
+  await expect(editor.locator('pf-inline-text-editor[nodepath="operationId"]')).toContainText('putSomethingHahaHihi');
+  await expect(editor.getByText('Operation ID', { exact: true })).toBeHidden();
+  await editor.getByText('Source', { exact: true }).first().click();
+  await expect(editor.locator('.ace_editor').first()).toContainText('operationId: putSomethingHahaHihi');
+  // A second operation on the same path gets its own.
+  await editor.getByText('Design', { exact: true }).first().click();
+  await editor.getByText('Get', { exact: true }).first().click();
+  await editor.getByRole('button', { name: 'Add Operation' }).click();
+  // (Source shows the spec as it was when opened, so wait for the hidden field first.)
+  await expect(editor.locator('pf-inline-text-editor[nodepath="operationId"]')).toContainText('getSomethingHahaHihi');
+  await editor.getByText('Source', { exact: true }).first().click();
+  await expect(editor.locator('.ace_editor').first()).toContainText('operationId: getSomethingHahaHihi');
+});

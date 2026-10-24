@@ -69,8 +69,8 @@ Camel sends each operation to the route `direct:<operationId>` under the Base Pa
 itself keeps only what is designed, so the service always follows the spec's current name.
 
 - **operationIds are ECHO's business** (docs/decisions/0013). Every operation is named after its
-  method and path in camelCase (`GET /cards/{cardId}` is `getCardsCardId`) when the spec is saved,
-  and Openapi hides the Operation ID field. Renaming a path or changing a method renames the
+  method and path in camelCase (`GET /cards/{cardId}` is `getCardsCardId`) as soon as it is added
+  (before any Save), and Openapi hides the Operation ID field. Renaming a path or changing a method renames the
   operation, and the flow's routes for it follow (`direct:` endpoints, and the route's ECHO-made
   id and label). **Flow > Add Route For Operation** lists the operations by method and path and
   adds a route for each one picked, so nobody types an id.
