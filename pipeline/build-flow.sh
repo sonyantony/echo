@@ -19,8 +19,9 @@
 #
 # Images: bundle -> <name>:<v> (echo-flows); per-flow -> echo-flow-<flow>:<v>. Bundled flows share one
 # port, so their Base Paths (and other app-wide names) must differ: BundleCheck.java fails the build
-# and lists the clashes. Steps: camel export --runtime=spring-boot -> mvn package -> Jib image. Jib
-# needs no Docker daemon to push to a registry. Nothing here is tied to a CI product; Jenkinsfile calls it.
+# and lists the clashes; a bundle also serves Swagger UI for all its flows at /api-docs. Steps: camel
+# export --runtime=spring-boot -> mvn package -> Jib image (no Docker daemon needed to push). Nothing
+# here is tied to a CI product; Jenkinsfile calls it.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -202,4 +203,6 @@ java -cp "$out/check/$yaml_jar" "$HERE/BundleCheck.java" "${FLOWS[@]}"
 { cat "$TEMPLATE/application.properties"
   for dir in "${FLOWS[@]}"; do flow_props "$dir"; done; } > "$out/src-flow/application.properties"
 for dir in "${FLOWS[@]}"; do copy_flow "$dir" "$out/src-flow" "$(basename "$dir")"; done
+# One Swagger UI page at /api-docs for all the flows: a drop-down picks the flow (A to Z, ignoring case).
+java -cp "$out/check/$yaml_jar" "$HERE/ApiDocsPage.java" "$out/src-flow/echo-api-docs.camel.yaml" "${FLOWS[@]}"
 build_app "$BUNDLE_NAME" "${VERSION:-1.0.0}" "$out" "$BUNDLE_NAME"

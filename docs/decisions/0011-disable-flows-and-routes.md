@@ -35,3 +35,5 @@ route of a flow.
   the route is disabled. Without this, callers got Camel's 500 "no consumers" error.
 - **Kaoto's Routes list marks the route "Disabled"** (a badge after its name, CSS that
   `KaotoEditorHost` writes from the route YAML; Kaoto stays unmodified).
+- **Swagger UI shows that operation as deprecated** (greyed out, path struck through), from a copy
+  of the spec; the spec file is unchanged (decision 0012).

@@ -18,6 +18,7 @@ import org.yaml.snakeyaml.nodes.Node;
 import org.yaml.snakeyaml.nodes.NodeTuple;
 import org.yaml.snakeyaml.nodes.ScalarNode;
 import org.yaml.snakeyaml.nodes.SequenceNode;
+import org.yaml.snakeyaml.representer.Representer;
 
 /**
  * The REST part of a flow, made by ECHO from the flow's OpenAPI spec (the editor has no Rest tab).
@@ -92,9 +93,13 @@ public final class RestFromSpec {
                     """.formatted(quoted(specName))).getValue().getFirst());
             var implemented = directRoutes(root, true);
             var switchedOff = directRoutes(root, false);
+            var disabled = new LinkedHashSet<String>();
             for (String operation : spec.operationIds()) {
                 if (!implemented.contains(operation)) {
                     entries.add(compose(missingRoute(operation, switchedOff.contains(operation))).getValue().getFirst());
+                    if (switchedOff.contains(operation)) {
+                        disabled.add(operation);
+                    }
                 }
             }
             // The spec's Base Path decides where the operations are; an older Context Path would replace it.
@@ -103,7 +108,8 @@ public final class RestFromSpec {
             }
             String base = spec.hasBasePath() ? spec.basePath()
                     : restConfiguration(root).flatMap(conf -> scalar(conf, "contextPath")).orElse("");
-            for (String route : docsRoutes(flowName, docsPath(base), specName, spec.title())) {
+            for (String route : docsRoutes(flowName, docsPath(base), specName, spec.title(),
+                    deprecated(specContent, disabled))) {
                 entries.add(compose(route).getValue().getFirst());
             }
             changed = true;
@@ -170,8 +176,11 @@ public final class RestFromSpec {
      * Swagger UI for the spec: the page at {@code docs}, Swagger UI's script and style next to it
      * (relative links, so it also works behind a proxy), and the spec. Try it out calls the server
      * the page came from, whatever host the spec's server URL names, so it tests this flow.
+     *
+     * @param marked the spec as JSON with the switched-off operations marked deprecated
+     *        ({@link #deprecated}), served instead of the spec file; null to serve the file
      */
-    private static List<String> docsRoutes(String flowName, String docs, String specName, String title) {
+    private static List<String> docsRoutes(String flowName, String docs, String specName, String title, String marked) {
         String id = DOCS_ROUTE_PREFIX + flowName;
         String page = """
                 <!doctype html>
@@ -206,8 +215,9 @@ public final class RestFromSpec {
         return List.of(
                 // One line: YAML would fold the line breaks of a quoted string anyway.
                 docsRoute(id, docs, "text/html; charset=utf-8", String.join("", page.lines().map(String::strip).toList())),
-                docsRoute(id + "-spec", docs + "/openapi", json ? "application/json" : "application/yaml",
-                        "resource:classpath:" + specName),
+                marked != null ? docsRoute(id + "-spec", docs + "/openapi", "application/json", marked)
+                        : docsRoute(id + "-spec", docs + "/openapi", json ? "application/json" : "application/yaml",
+                                "resource:classpath:" + specName),
                 docsRoute(id + "-script", docs + "/swagger-ui-bundle.js", "text/javascript",
                         "resource:classpath:" + SWAGGER_UI + "swagger-ui-bundle.js"),
                 docsRoute(id + "-style", docs + "/swagger-ui.css", "text/css",
@@ -230,6 +240,65 @@ public final class RestFromSpec {
                         - setBody:
                             constant: %s
                 """.formatted(quoted(id), quoted("platform-http:" + path), quoted(contentType), quoted(body));
+    }
+
+    /**
+     * The spec as one line of JSON with {@code deprecated: true} on these operations, so Swagger UI
+     * shows them greyed out and struck through; they answer 404 while their route is switched off.
+     * The spec file itself does not change. Null if there are none, or the spec cannot be read
+     * (Camel reports that when the flow starts).
+     */
+    static String deprecated(String specContent, Set<String> operationIds) {
+        if (operationIds.isEmpty()) {
+            return null;
+        }
+        Object doc;
+        try {
+            doc = new Yaml(new SafeConstructor(new LoaderOptions()), new Representer(new DumperOptions()),
+                    new DumperOptions(), new LoaderOptions(), new SpecResolver()).load(specContent);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        if (!(doc instanceof Map<?, ?> spec) || !(spec.get("paths") instanceof Map<?, ?> paths)) {
+            return null;
+        }
+        for (Object item : paths.values()) {
+            if (item instanceof Map<?, ?> verbs) {
+                for (var verb : verbs.entrySet()) {
+                    if (VERBS.contains(String.valueOf(verb.getKey()).toLowerCase(java.util.Locale.ROOT))
+                            && verb.getValue() instanceof Map<?, ?> op && op.get("operationId") instanceof String id
+                            && operationIds.contains(id.strip())) {
+                        @SuppressWarnings("unchecked")
+                        var operation = (Map<Object, Object>) op;
+                        operation.put("deprecated", true);
+                    }
+                }
+            }
+        }
+        try {
+            // {{ only ever appears inside a JSON string, where \u007b is the same character but no Camel placeholder.
+            return JSON.writeValueAsString(spec).replace("{{", "{\\u007b");
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return null;
+        }
+    }
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /**
+     * Reads the spec the way Swagger UI does (YAML 1.2): dates and yes/no/on/off stay strings, so an
+     * example such as {@code 2024-01-01} is served as written.
+     */
+    private static final class SpecResolver extends org.yaml.snakeyaml.resolver.Resolver {
+        private static final java.util.regex.Pattern TRUE_FALSE = java.util.regex.Pattern.compile("^(?:true|True|TRUE|false|False|FALSE)$");
+
+        @Override
+        public void addImplicitResolver(org.yaml.snakeyaml.nodes.Tag tag, java.util.regex.Pattern regexp, String first, int limit) {
+            if (tag.equals(org.yaml.snakeyaml.nodes.Tag.TIMESTAMP)) {
+                return;
+            }
+            super.addImplicitResolver(tag, tag.equals(org.yaml.snakeyaml.nodes.Tag.BOOL) ? TRUE_FALSE : regexp, first, limit);
+        }
     }
 
     /**

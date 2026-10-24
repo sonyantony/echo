@@ -91,6 +91,25 @@ jobs:
           fi
           cat "$clash/err.txt"
           grep -q 'Base Path or path /greetings is used by more than one flow: greetings, hello' "$clash/err.txt"
+      - name: The combined API docs page lists flows A to Z ignoring case, and keeps /api-docs
+        if: matrix.mode == 'bundle'
+        run: |
+          docs="$(mktemp -d)"
+          for n in Zebra apple Mango; do
+            mkdir "$docs/$n"
+            printf -- "- route:\n    id: 'echo-docs-%s-spec'\n    from:\n      uri: 'platform-http:/%s/docs/openapi'\n" "$n" "$n" > "$docs/$n/$n.camel.yaml"
+          done
+          jar="$(ls build/echo-flows/check/BOOT-INF/lib/snakeyaml-*.jar)"
+          java -cp "$jar" pipeline/ApiDocsPage.java "$docs/page.camel.yaml" "$docs/Zebra" "$docs/apple" "$docs/Mango"
+          grep -q "urls: \[{url: ''apple/docs/openapi'', name: ''apple''}, {url: ''Mango/docs/openapi'', name: ''Mango''}, {url: ''Zebra/docs/openapi'', name: ''Zebra''}\]" "$docs/page.camel.yaml"
+          clash="$(mktemp -d)"
+          cp -r samples/flows/greetings "$clash/greetings"
+          sed -i 's#url: /greetings#url: /api-docs/v1#' "$clash/greetings/greetings-api.yaml"
+          if pipeline/build-flow.sh "$clash" --jar-only --out "$clash/build" 2> "$clash/err.txt"; then
+            echo "The bundle build should have failed"; exit 1
+          fi
+          cat "$clash/err.txt"
+          grep -q "/api-docs is the bundle's combined API docs page" "$clash/err.txt"
       - name: A disabled flow is left out of the bundle
         if: matrix.mode == 'bundle'
         run: |
