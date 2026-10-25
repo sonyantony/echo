@@ -53,6 +53,12 @@ export async function designMenu(page: Page, item: string | RegExp) {
   await page.getByRole('menuitem', { name: item }).click();
 }
 
+/** Picks an item from the Interface menu (Design opens the flow's OpenAPI spec). */
+export async function interfaceMenu(page: Page, item: string | RegExp) {
+  await page.getByRole('button', { name: 'Interface', exact: true }).click();
+  await page.getByRole('menuitem', { name: item }).click();
+}
+
 /** Adds a processor (e.g. "setBody") at the end of the route through Kaoto's catalog. */
 export async function addStep(page: Page, placeholderIndex: number, processor: string) {
   await page.getByTestId(`placeholder-node__route.from.steps.${placeholderIndex}.placeholder`).click();

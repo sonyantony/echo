@@ -9,7 +9,6 @@ import {
   Spinner,
   Alert,
 } from '@patternfly/react-core';
-import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { editorSettings, flowsApi } from '../api/flows';
@@ -44,6 +43,8 @@ import './ApiSpecPanel.css';
 export interface ApiSpecPanelHandle {
   /** Saves the spec if it has unsaved edits (asking for a name if it has none). Resolves to false when it was not saved. */
   saveIfChanged(): Promise<boolean>;
+  /** Interface > Design: back to the spec's overview (its info, tags and Base Path), unless an editor dialog is open. */
+  showOverview(): void;
   /** Openapi > Upload: picks a .yaml or .json spec and stores it in the flow under its own name. */
   upload(): void;
   /** Openapi > New From Samples: asks for a sample request and response and puts the spec made from them on screen, unsaved. */
@@ -392,6 +393,9 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   useImperativeHandle(ref, () => ({
     saveIfChanged: async () => (dirty ? save() : true),
+    showOverview: () => {
+      if (!dialogOpen) editor.current?.showApiInfo();
+    },
     upload: pickUpload,
     newFromSamples: () => setDialog({ kind: 'samples' }),
     download,
@@ -436,6 +440,16 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           <Radio id="echo-spec-yaml" name="echo-spec-format" label="Yaml" isChecked={format === 'yaml'} onChange={() => setFormat('yaml')} />
           <Radio id="echo-spec-json" name="echo-spec-format" label="Json" isChecked={format === 'json'} onChange={() => setFormat('json')} />
         </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="echo-api-spec__info"
+          onClick={() => editor.current?.showApiInfo()}
+          isAriaDisabled={dialogOpen}
+          title={dialogOpen ? "Close the editor's dialog (Cancel or Save) first" : "The spec's own details: info and tags"}
+        >
+          Design
+        </Button>
         <Button variant="primary" size="sm" onClick={() => save()} isLoading={saving} isDisabled={saving || (!dirty && !!name)}>
           Save
         </Button>
@@ -451,22 +465,6 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
         <Button variant="secondary" size="sm" onClick={() => (dirty ? setDialog({ kind: 'discard' }) : discard())} isDisabled={saving}>
           Discard
         </Button>
-        <Button
-          variant="link"
-          size="sm"
-          className="echo-api-spec__info"
-          onClick={() => editor.current?.showApiInfo()}
-          isAriaDisabled={dialogOpen}
-          title={dialogOpen ? "Close the editor's dialog (Cancel or Save) first" : "The spec's own details: info and tags"}
-        >
-          API Overview
-        </Button>
-        <span
-          className="echo-api-spec__hint"
-          title="To build a schema from a sample request or response, use Add a data type and paste the sample JSON as its example. Mark required fields afterwards."
-        >
-          <OutlinedQuestionCircleIcon /> Schema from a sample
-        </span>
         {status && (
           <span
             className={`echo-api-spec__status echo-api-spec__status--${status.variant}`}

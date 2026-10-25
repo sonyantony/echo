@@ -1,4 +1,4 @@
-import { Dropdown, DropdownItem, DropdownList, MenuToggle } from '@patternfly/react-core';
+import { Divider, Dropdown, DropdownItem, DropdownList, MenuToggle } from '@patternfly/react-core';
 import { CodeIcon, CopyIcon, DownloadIcon, UploadIcon } from '@patternfly/react-icons';
 import { useState, type RefObject } from 'react';
 import { useDismissMenu } from '../editor/menuDismiss';
@@ -8,7 +8,9 @@ import type { ApiSpecPanelHandle } from './ApiSpecPanel';
 interface Props {
   /** Interface's view is open: its item has the tab line's underline. */
   current: boolean;
-  /** Opens Interface's view (clicking the item does, as well as opening the menu). */
+  /** Makes the spec's editor ready, out of sight, so the menu's items have it to work on. */
+  onOpen(): void;
+  /** Opens Interface's view: Design, and the items whose result is seen there. */
   onShow(): void;
   panel: RefObject<ApiSpecPanelHandle | null>;
   onCopy(): void;
@@ -17,9 +19,10 @@ interface Props {
 /**
  * Interface (the flow's Openapi spec), on the tab line right after File: API-first flows start from the spec, then
  * Flow. The spec is also the flow's REST service: ECHO makes it from the spec (no Rest tab).
- * Like Flow it opens its view (the flow's OpenAPI spec, in place of Kaoto's views) and a menu.
+ * Like Flow, clicking it only opens its menu; Design opens its view (the flow's OpenAPI spec, in place of
+ * Kaoto's views) at the spec's overview.
  */
-export function ApiSpecMenu({ current, onShow, panel, onCopy }: Props) {
+export function ApiSpecMenu({ current, onOpen, onShow, panel, onCopy }: Props) {
   const [open, setOpen] = useState(false);
   useDismissMenu(open, setOpen);
   return (
@@ -39,7 +42,7 @@ export function ApiSpecMenu({ current, onShow, panel, onCopy }: Props) {
             aria-current={current ? 'page' : undefined}
             isExpanded={open}
             onClick={() => {
-              onShow();
+              onOpen();
               setOpen((was) => !was);
             }}
           >
@@ -49,9 +52,22 @@ export function ApiSpecMenu({ current, onShow, panel, onCopy }: Props) {
       >
         <DropdownList>
           <DropdownItem
+            key="design"
+            onClick={() => {
+              onShow();
+              panel.current?.showOverview();
+            }}
+            description="The flow's OpenAPI spec: paths, data types and responses"
+          >
+            Design
+          </DropdownItem>
+          <DropdownItem
             key="upload"
             icon={<UploadIcon />}
-            onClick={() => panel.current?.upload()}
+            onClick={() => {
+              onShow();
+              panel.current?.upload();
+            }}
             description="Store a .yaml or .json OpenAPI file in this flow, under its own name"
           >
             Upload
@@ -59,7 +75,10 @@ export function ApiSpecMenu({ current, onShow, panel, onCopy }: Props) {
           <DropdownItem
             key="copy"
             icon={<CopyIcon />}
-            onClick={onCopy}
+            onClick={() => {
+              onShow();
+              onCopy();
+            }}
             description="Start this flow's spec from a copy of another flow's"
           >
             Copy From Another Flow
@@ -67,11 +86,15 @@ export function ApiSpecMenu({ current, onShow, panel, onCopy }: Props) {
           <DropdownItem
             key="samples"
             icon={<CodeIcon />}
-            onClick={() => panel.current?.newFromSamples()}
+            onClick={() => {
+              onShow();
+              panel.current?.newFromSamples();
+            }}
             description="Make the spec from a sample request and response"
           >
             New From Samples
           </DropdownItem>
+          <Divider component="li" key="download-divider" />
           <DropdownItem
             key="yaml"
             icon={<DownloadIcon />}
