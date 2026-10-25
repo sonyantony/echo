@@ -124,7 +124,7 @@
   color: var(--echo-text-subtle);
 }
 
-/* ---------- API Overview page (the spec's main page) ---------- */
+/* ---------- The spec's main form (Info, Tag Definitions, Source on the left) ---------- */
 
 /*
  * Only the sections flows need: Info, Tag Definitions and Servers, shown as Base Path (below).
@@ -239,6 +239,80 @@
 /* Vendor Extensions (x-… fields) are hidden on every page: overview, paths, operations, data types. */
 :root[data-echo-theme] extensions-section {
   display: none !important;
+}
+
+/* ---------- Info, Tag Definitions and Source in the list on the left (apispec/overviewNav.ts) ---------- */
+
+/*
+ * The spec's own details are items in the list, above Paths and below Responses; each shows its part
+ * of the main form on the right (the root's data-echo-pane). With none picked the right pane is empty.
+ */
+:root[data-echo-theme] .echo-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 7px 13px;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--echo-border);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--echo-text);
+  cursor: pointer;
+}
+:root[data-echo-theme] .echo-nav-item .fa {
+  font-size: 13px;
+  color: var(--echo-text-subtle);
+}
+:root[data-echo-theme] .echo-nav--bottom {
+  margin-top: 12px;
+}
+:root[data-echo-theme] .echo-nav-item:hover {
+  background-color: var(--echo-ink-faint);
+}
+:root[data-echo-theme] .echo-nav-item:focus-visible {
+  outline: 2px solid var(--echo-brand);
+  outline-offset: -2px;
+}
+:root[data-echo-theme][data-echo-pane='info'] .echo-nav-item[data-pane='info'],
+:root[data-echo-theme][data-echo-pane='tags'] .echo-nav-item[data-pane='tags'],
+:root[data-echo-theme][data-echo-pane='source'] .echo-nav-item[data-pane='source'] {
+  background-color: var(--echo-brand-subtle);
+  border-left-color: var(--echo-brand);
+}
+:root[data-echo-theme][data-echo-pane='none'] .editor-detail > main-form,
+:root[data-echo-theme]:not([data-echo-pane='none']) main-form > .detail-tabs,
+:root[data-echo-theme][data-echo-pane='info'] main-form .detail-content > :not(info-section, servers-section),
+:root[data-echo-theme][data-echo-pane='tags'] main-form .detail-content > :not(tags-section) {
+  display: none !important;
+}
+/* A quiet hint while the pane is empty. */
+:root[data-echo-theme][data-echo-pane='none'] .editor-detail:has(> main-form)::before {
+  content: 'Pick an item on the left to see it here.';
+  display: block;
+  padding: 24px;
+  font-size: 13px;
+  color: var(--echo-text-subtle);
+}
+/* Base Path is one more field of Info, after Version and Description (no heading of its own). */
+:root[data-echo-theme] main-form .servers-section {
+  margin-top: -14px;
+}
+:root[data-echo-theme] main-form .servers-section .section-header {
+  border-bottom: none !important;
+  padding-left: 12px;
+}
+:root[data-echo-theme] main-form .servers-section .section-header > a::before {
+  display: none;
+}
+/* Its label as small as Version's and Description's, and lined up with them. */
+:root[data-echo-theme] main-form .servers-section .section-label::before {
+  font-size: 13px;
+}
+:root[data-echo-theme] main-form .servers-section .section-header > a {
+  padding-left: 4px;
+}
+:root[data-echo-theme] main-form .servers-section .section-body {
+  padding-top: 0;
 }
 
 /* ---------- Outline on the left: Paths, Data Types, Responses ---------- */

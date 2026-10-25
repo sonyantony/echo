@@ -1,7 +1,7 @@
 /**
  * Apicurio's server dialog, shown as Base Path (theme/apicurio-mapping.css): a URL there only counts once
  * Apply is pressed (or Enter), which the dialog's Save waits for. ECHO hides Apply and presses it
- * as the user types, and gives the field an example as its placeholder. On the API Overview a set
+ * as the user types, and gives the field an example as its placeholder. Under Info a set
  * Base Path is one line with a pencil (its menu and details hidden).
  */
 export function simplifyBasePathDialog(doc: Document) {

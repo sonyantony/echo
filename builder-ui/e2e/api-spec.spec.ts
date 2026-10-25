@@ -195,9 +195,9 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
   await page.keyboard.press('Escape');
   await openSpec(page);
-  // The bar: Design right before Save; no "Schema from a sample" note.
+  // The bar: Save, Rename, Discard (Info and the rest are in the list on the left); no "Schema from a sample" note.
   const bar = page.locator('.echo-api-spec__bar');
-  await expect(bar.getByRole('button')).toHaveText(['Design', 'Save', 'Rename', 'Discard']);
+  await expect(bar.getByRole('button')).toHaveText(['Save', 'Rename', 'Discard']);
   await expect(bar).not.toContainText('Schema from a sample');
   const editor = editorOf(page);
   for (const name of ['File', 'Flow', 'Run', 'Advanced']) {
@@ -206,14 +206,14 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await expect(page.getByRole('button', { name: 'Interface', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
 
   // The editor has ECHO's theme and font, not Apicurio's own; its title bar's API name is hidden
-  // under ECHO's bar, which its Design button stands in for.
+  // under ECHO's bar.
   const html = editor.locator('html');
   await expect(html).toHaveAttribute('data-echo-theme', 'navy');
   expect(await editor.locator('body').evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Inter');
   await expect(editor.locator('.editor-title-bar > h1')).toBeHidden();
   await expect(editor.getByRole('button', { name: /Issues/ })).toBeVisible();
 
-  // Apicurio's full-page dialogs start below ECHO's bar, and Design waits until they close.
+  // Apicurio's full-page dialogs start below ECHO's bar.
   await editor.getByText('Add a data type').click();
   const heading = editor.getByText('Define a New Data Type');
   await expect(heading).toBeVisible();
@@ -221,9 +221,7 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   const frame = (await page.locator('iframe[title="OpenAPI editor"]').boundingBox())!;
   const headingBox = (await heading.boundingBox())!;
   expect(frame.y + headingBox.y).toBeGreaterThanOrEqual(barBox.y + barBox.height);
-  await expect(page.locator('.echo-api-spec__bar').getByRole('button', { name: 'Design', exact: true })).toHaveAttribute('aria-disabled', 'true');
   await editor.getByRole('button', { name: 'Cancel' }).first().click();
-  await expect(page.locator('.echo-api-spec__bar').getByRole('button', { name: 'Design', exact: true })).not.toHaveAttribute('aria-disabled', 'true');
 
   // An unsaved spec edit is saved by File > Save, from any view; without a name it asks for one.
   await editor.getByText('Add a data type').click();
@@ -240,15 +238,25 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   const spec = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/customers.json`)).json();
   expect(spec.components.schemas.Customer).toBeDefined();
 
-  // Design opens the spec's own details (Apicurio's title bar click).
+  // The spec's own details are items in the list on the left: Info and Tag Definitions above Paths,
+  // Source below Responses. Interface > Design opens the spec with nothing shown on the right.
   await openSpec(page);
-  await editor.getByText('Customer', { exact: true }).first().click();
+  const outline = editor.locator('.editor-outline');
+  await expect(outline.locator('.echo-nav-item')).toHaveText(['Info', 'Tag Definitions', 'Source']);
+  await expect(editor.locator('main-form')).toBeHidden();
+  await expect(editor.locator('definition-form')).toBeHidden();
+  await outline.getByText('Customer', { exact: true }).first().click();
   await expect(editor.locator('definition-form')).toBeVisible();
   await expect(editor.getByText('Vendor Extensions', { exact: true })).toBeHidden();
-  await page.locator('.echo-api-spec__bar').getByRole('button', { name: 'Design', exact: true }).click();
-  await expect(editor.getByText('Tag Definitions', { exact: true })).toBeVisible();
-  // Only Info, Tag Definitions and Servers (as Base Path) are shown there (Vendor Extensions is hidden on every
-  // page); headings are in title case, and tags and Base Path get a short explanation.
+  await interfaceMenu(page, /^Design/);
+  await expect(editor.locator('definition-form')).toBeHidden();
+  await expect(editor.locator('main-form')).toBeHidden();
+
+  // Tag Definitions shows only the tags, with a short explanation; headings are in title case.
+  await outline.locator('.echo-nav-item', { hasText: 'Tag Definitions' }).click();
+  await expect(editor.locator('main-form .tags-section')).toBeVisible();
+  await expect(editor.locator('main-form .info-section')).toBeHidden();
+  await expect(editor.locator('main-form .detail-tabs')).toBeHidden();
   for (const hidden of ['Contact', 'License', 'Security Schemes', 'Security Requirements', 'Vendor Extensions']) {
     await expect(editor.getByText(hidden, { exact: true })).toBeHidden();
   }
@@ -262,8 +270,11 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
     .evaluate((el) => getComputedStyle(el, '::after').maskImage);
   expect(tagIcon).toMatch(/^url\("data:image\/svg\+xml,/);
 
-  // Servers shows as Base Path: "/" with a pencil until one is set; one path, typed and saved (no Apply,
-  // description or variables).
+  // Info shows Version, Description and Base Path (Servers): "/" with a pencil until one is set; one path,
+  // typed and saved (no Apply, description or variables).
+  await outline.locator('.echo-nav-item', { hasText: 'Info' }).click();
+  await expect(editor.locator('main-form .info-section')).toBeVisible();
+  await expect(editor.locator('main-form .tags-section')).toBeHidden();
   const basePath = editor.locator('main-form .servers-section');
   const label = basePath.locator('.section-label');
   expect(await label.evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"Base Path"');
@@ -298,6 +309,15 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const saved = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/customers.json`)).json();
   expect(saved.servers.map((s: { url: string }) => s.url)).toEqual(['/customers/v2']);
+
+  // Source shows the whole spec's source with its toolbar (Upload first), no Design/Source tabs.
+  await outline.locator('.echo-nav-item', { hasText: 'Source' }).click();
+  await expect(editor.locator('main-form .echo-source-upload')).toBeVisible();
+  await expect(editor.locator('main-form .info-section')).toBeHidden();
+  await expect(editor.locator('main-form .detail-tabs')).toBeHidden();
+  await outline.locator('.echo-nav-item', { hasText: 'Info' }).click();
+  await expect(editor.locator('main-form .info-section')).toBeVisible();
+  await expect(editor.locator('main-form .echo-source-upload')).toBeHidden();
 });
 
 test("Copy From Another Flow starts this flow's spec from a copy of another flow's", async ({ page }) => {

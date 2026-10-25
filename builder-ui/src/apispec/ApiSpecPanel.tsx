@@ -43,7 +43,7 @@ import './ApiSpecPanel.css';
 export interface ApiSpecPanelHandle {
   /** Saves the spec if it has unsaved edits (asking for a name if it has none). Resolves to false when it was not saved. */
   saveIfChanged(): Promise<boolean>;
-  /** Interface > Design: back to the spec's overview (its info, tags and Base Path), unless an editor dialog is open. */
+  /** Interface > Design: the spec with nothing picked (right pane empty), unless an editor dialog is open. */
   showOverview(): void;
   /** Openapi > Upload: picks a .yaml or .json spec and stores it in the flow under its own name. */
   upload(): void;
@@ -394,7 +394,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   useImperativeHandle(ref, () => ({
     saveIfChanged: async () => (dirty ? save() : true),
     showOverview: () => {
-      if (!dialogOpen) editor.current?.showApiInfo();
+      if (!dialogOpen) editor.current?.showNothing();
     },
     upload: pickUpload,
     newFromSamples: () => setDialog({ kind: 'samples' }),
@@ -440,16 +440,6 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           <Radio id="echo-spec-yaml" name="echo-spec-format" label="Yaml" isChecked={format === 'yaml'} onChange={() => setFormat('yaml')} />
           <Radio id="echo-spec-json" name="echo-spec-format" label="Json" isChecked={format === 'json'} onChange={() => setFormat('json')} />
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="echo-api-spec__info"
-          onClick={() => editor.current?.showApiInfo()}
-          isAriaDisabled={dialogOpen}
-          title={dialogOpen ? "Close the editor's dialog (Cancel or Save) first" : "The spec's own details: info and tags"}
-        >
-          Design
-        </Button>
         <Button variant="primary" size="sm" onClick={() => save()} isLoading={saving} isDisabled={saving || (!dirty && !!name)}>
           Save
         </Button>

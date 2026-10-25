@@ -4,6 +4,7 @@ import { fillNewOperationId } from './operationIdFiller';
 import { simplifyBasePathDialog } from './basePath';
 import { titleCaseSectionLabels } from './sectionLabels';
 import { addSourceUpload } from './sourceToolbar';
+import { addOverviewNav, showPane } from './overviewNav';
 
 /**
  * Apicurio's OpenAPI editor, the prebuilt build from Apicurio Registry served from
@@ -30,10 +31,10 @@ const DIALOG_SELECTOR = '.entity-editor';
 
 export interface ApicurioEditorHandle {
   /**
-   * Opens the spec's own details (info, servers, security...). Apicurio does this when its title
-   * bar is clicked; ECHO hides that bar (theme/apicurio-mapping.css), so its title is clicked for it.
+   * Leaves the right pane empty: nothing picked in the list on the left (overviewNav.ts), where Info,
+   * Tag Definitions and Source open the spec's own details.
    */
-  showApiInfo(): void;
+  showNothing(): void;
 }
 
 export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(function ApicurioEditorHost(
@@ -45,7 +46,13 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
   const stopDialogs = useRef<() => void>(undefined);
   const frame = useRef<HTMLIFrameElement>(null);
   useImperativeHandle(ref, () => ({
-    showApiInfo: () => frame.current?.contentDocument?.querySelector<HTMLElement>('.editor-title-bar > h1')?.click(),
+    showNothing: () => {
+      const doc = frame.current?.contentDocument;
+      if (!doc) return;
+      // Apicurio always has something picked; its main form is, and ECHO shows none of it.
+      doc.querySelector<HTMLElement>('.editor-title-bar > h1')?.click();
+      showPane(doc, 'none');
+    },
   }), []);
   const onUploadRef = useRef(onUpload);
   onUploadRef.current = onUpload;
@@ -57,6 +64,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
   const stopBasePath = useRef<() => void>(undefined);
   const stopLabels = useRef<() => void>(undefined);
   const stopUpload = useRef<() => void>(undefined);
+  const stopNav = useRef<() => void>(undefined);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -77,6 +85,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
       stopBasePath.current?.();
       stopLabels.current?.();
       stopUpload.current?.();
+      stopNav.current?.();
     };
   }, []);
 
@@ -97,6 +106,8 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     stopLabels.current = frameDoc ? titleCaseSectionLabels(frameDoc) : undefined;
     stopUpload.current?.();
     stopUpload.current = frameDoc ? addSourceUpload(frameDoc, () => onUploadRef.current?.()) : undefined;
+    stopNav.current?.();
+    stopNav.current = frameDoc ? addOverviewNav(frameDoc) : undefined;
     sendContent();
   };
 
@@ -113,7 +124,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     }, 100);
   };
 
-  /** Tells onDialogChange when a full-page dialog opens or closes (API Overview cannot work under one). */
+  /** Tells onDialogChange when a full-page dialog opens or closes (Interface > Design cannot work under one). */
   const watchDialogs = (doc: Document) => {
     let open = false;
     const check = () => {
