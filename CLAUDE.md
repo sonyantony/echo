@@ -8,7 +8,7 @@ app and built into an image by the buyer's pipeline).
 - Decisions: `docs/decisions/` (one short note per significant choice).
 - Save As, Save As Template and Open Template (templates in `templates/` next to `flows/`): `docs/decisions/0007-save-as-and-templates.md`.
 - The REST service made from the flow's spec (Base Path, 404 for missing operations, no Rest tab): `docs/decisions/0008-rest-from-the-spec.md`.
-- operationIds are made by ECHO from method + path (Interface hides them, renames move the routes,
+- operationIds are made by ECHO from method + path where missing (uploaded specs keep theirs and their comments; Interface hides them, renames move the routes,
   Flow > Add Route For Operation, methods added in Interface get a route at once and deleted ones ask about theirs, Publish warns about operations without a route):
   `docs/decisions/0013-operation-ids-from-method-and-path.md`.
 - Disabling a published flow (`"disabled": true` in `echo-flow.json`, skipped by `build-flow.sh`) and a route (`autoStartup: false` answers 404, "Disabled" badge): `docs/decisions/0011-disable-flows-and-routes.md`.

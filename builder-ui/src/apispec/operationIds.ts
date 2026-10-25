@@ -3,9 +3,9 @@ import YAML, { isMap, isSeq, type Document, type YAMLMap } from 'yaml';
 /**
  * operationIds are ECHO's business, not the user's (docs/decisions/0013). Camel sends each operation
  * of the flow's spec to direct:<operationId>, so the id is what connects an operation to its route.
- * ECHO names every operation after its method and path (GET /cards/{cardId} is getCardsCardId)
- * when the spec is saved, and when a path or method changes it renames the operation and the
- * flow's routes together. Openapi hides the Operation ID field, and Flow > Add Route For Operation
+ * An operation without one gets one named after its method and path (GET /cards/{cardId} is
+ * getCardsCardId); one that has one (e.g. from an uploaded spec) keeps it. When a path or method
+ * changes, ECHO renames the operation and the flow's routes together. Openapi hides the Operation ID field, and Flow > Add Route For Operation
  * makes routes without anyone typing an id. The backend fills in missing ids the same way
  * (OperationIds.java) when a flow leaves the editor.
  */
@@ -67,27 +67,42 @@ export interface OperationRename {
   label: string;
 }
 
+/** What an operationId may be: it names the direct endpoint of the operation's route. */
+const VALID_ID = /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/;
+
 /**
- * Every operation gets its natural id: its method and path in camelCase, with 2, 3... added if two
- * paths come out the same (/cards-x and /cards_x). One that already has that id keeps it. One that
- * had another id (its path or method changed, or it came from an upload) is renamed, and the rename
- * is returned so the flow's routes can follow. Operations without an id are new: nothing to rename.
+ * The ids the operations should have when the spec is saved. An operation keeps the id it has (the
+ * one an uploaded spec came with, or ECHO's), unless its path or method changed since `before` (the
+ * spec as stored), or another operation has the id already, or it cannot name a route: then it gets
+ * its natural id, its method and path in camelCase, with 2, 3... added if that is taken (/cards-x
+ * and /cards_x). Operations without an id get their natural id too. A renamed operation's rename is
+ * returned so the flow's routes can follow.
  *
+ * @param before the spec as stored (editor JSON); left out, no path or method counts as changed
  * @returns the spec as the editor's JSON (the same string when nothing changed) and the renames
  */
-export function naturalOperationIds(editorJson: string): { json: string; renames: OperationRename[] } {
+export function naturalOperationIds(editorJson: string, before?: string): { json: string; renames: OperationRename[] } {
   const spec = JSON.parse(editorJson) as Record<string, unknown>;
   const ops = operationsIn(spec);
+  /** Where each id was when the spec was stored: GET /cards. */
+  const was = new Map<string, string>();
+  if (before) {
+    for (const { method, path, op } of operationsIn(JSON.parse(before) as Record<string, unknown>)) {
+      const id = idOf(op);
+      if (id) was.set(id, operationLabel({ method, path }));
+    }
+  }
   const bases = ops.map(({ method, path }) => operationIdFor(method, path));
   const assigned: (string | undefined)[] = ops.map(() => undefined);
   const taken = new Set<string>();
-  // Ids that are already natural stay, so adding an operation never renames another.
-  ops.forEach(({ op }, i) => {
+  // Ids that stay are decided first, so adding or renaming an operation never renames another.
+  ops.forEach(({ method, path, op }, i) => {
     const id = idOf(op);
-    if (id && (id === bases[i] || new RegExp(`^${bases[i]}\\d+$`).test(id)) && !taken.has(id)) {
-      assigned[i] = id;
-      taken.add(id);
-    }
+    if (!id || !VALID_ID.test(id) || taken.has(id)) return;
+    const moved = was.has(id) && was.get(id) !== operationLabel({ method, path });
+    if (moved && !(id === bases[i] || new RegExp(`^${bases[i]}\\d+$`).test(id))) return;
+    assigned[i] = id;
+    taken.add(id);
   });
   ops.forEach((_, i) => {
     if (assigned[i]) return;
@@ -114,6 +129,26 @@ export function naturalOperationIds(editorJson: string): { json: string; renames
     op.operationId = to;
   });
   return { json: changed ? JSON.stringify(spec, null, 2) : editorJson, renames };
+}
+
+/**
+ * The spec with these operations' ids changed (old id to new): a save renamed them while the editor
+ * still shows the old ones.
+ *
+ * @returns the editor's JSON (the same string when nothing matched)
+ */
+export function renameOperationIds(editorJson: string, renames: ReadonlyMap<string, string>): string {
+  if (!renames.size) return editorJson;
+  const spec = JSON.parse(editorJson) as Record<string, unknown>;
+  let changed = false;
+  for (const { op } of operationsIn(spec)) {
+    const to = renames.get(idOf(op) ?? '');
+    if (to !== undefined) {
+      op.operationId = to;
+      changed = true;
+    }
+  }
+  return changed ? JSON.stringify(spec, null, 2) : editorJson;
 }
 
 /**

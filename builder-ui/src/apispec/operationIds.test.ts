@@ -9,6 +9,7 @@ import {
   operationIdFor,
   removeDirectRoutes,
   renameDirectRoutes,
+  renameOperationIds,
   routableOperations,
   routeForOperation,
   specOperations,
@@ -49,14 +50,19 @@ describe('operationIds', () => {
     expect(fillMissingOperationIds(full)).toBe(full);
   });
 
-  it('renames an operation whose path or method changed, and two that swapped', () => {
+  it('renames an operation whose path or method changed since it was stored, and two that swapped', () => {
+    const before = spec({
+      '/cards': { get: { operationId: 'getCards' } },
+      '/a': { post: { operationId: 'postA' } },
+      '/b': { post: { operationId: 'postB' } },
+    });
     const json = spec({
       '/payment-cards': { get: { operationId: 'getCards' } },
       '/cards': { get: {} },
       '/a': { post: { operationId: 'postB' } },
       '/b': { post: { operationId: 'postA' } },
     });
-    const { json: named, renames } = naturalOperationIds(json);
+    const { json: named, renames } = naturalOperationIds(json, before);
     expect(ids(named)).toEqual(['getPaymentCards', 'getCards', 'postA', 'postB']);
     expect(renames).toEqual([
       { from: 'getCards', to: 'getPaymentCards', label: 'GET /payment-cards' },
@@ -65,10 +71,30 @@ describe('operationIds', () => {
     ]);
   });
 
-  it('does not move routes for an id two operations share, but does for an uploaded one', () => {
-    const json = spec({ '/a': { get: { operationId: 'dup' } }, '/b': { get: { operationId: 'dup' } }, '/orders/{id}': { get: { operationId: 'getOrder' } } });
-    const { renames } = naturalOperationIds(json);
-    expect(renames).toEqual([{ from: 'getOrder', to: 'getOrdersId', label: 'GET /orders/{id}' }]);
+  it("keeps an uploaded spec's own ids, and the ids of operations whose path and method stayed", () => {
+    const json = spec({ '/orders': { get: { operationId: 'listOrders' }, post: {} }, '/orders/{id}': { get: { operationId: 'fetchOrder' } } });
+    const { json: named, renames } = naturalOperationIds(json);
+    expect(ids(named)).toEqual(['listOrders', 'postOrders', 'fetchOrder']);
+    expect(renames).toEqual([]);
+    // Saved again with an edit elsewhere: the ids stay.
+    const edited = spec({ '/orders': { get: { operationId: 'listOrders', summary: 'All' }, post: { operationId: 'postOrders' } }, '/orders/{id}': { get: { operationId: 'fetchOrder' } } });
+    expect(naturalOperationIds(edited, named).json).toBe(edited);
+    // Its path changed: it is ECHO's to name now, and its route follows.
+    const moved = spec({ '/orders': { get: { operationId: 'listOrders' }, post: { operationId: 'postOrders' } }, '/purchases/{id}': { get: { operationId: 'fetchOrder' } } });
+    expect(naturalOperationIds(moved, named).renames).toEqual([{ from: 'fetchOrder', to: 'getPurchasesId', label: 'GET /purchases/{id}' }]);
+  });
+
+  it('renames an id two operations share (the second) or one that cannot name a route, moving routes only for the latter', () => {
+    const json = spec({ '/a': { get: { operationId: 'dup' } }, '/b': { get: { operationId: 'dup' } }, '/orders/{id}': { get: { operationId: 'get order' } } });
+    const { json: named, renames } = naturalOperationIds(json);
+    expect(ids(named)).toEqual(['dup', 'getB', 'getOrdersId']);
+    expect(renames).toEqual([{ from: 'get order', to: 'getOrdersId', label: 'GET /orders/{id}' }]);
+  });
+
+  it('changes the ids a save renamed while the editor still shows the old ones', () => {
+    const json = spec({ '/payment-cards': { get: { operationId: 'getCards' } } });
+    expect(ids(renameOperationIds(json, new Map([['getCards', 'getPaymentCards']])))).toEqual(['getPaymentCards']);
+    expect(renameOperationIds(json, new Map())).toBe(json);
   });
 
   it('renames the routes, in either way of writing a direct endpoint, and their ECHO-made ids and labels', () => {

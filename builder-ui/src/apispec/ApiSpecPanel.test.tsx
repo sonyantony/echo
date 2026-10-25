@@ -118,6 +118,66 @@ describe('Openapi panel', () => {
     expect(put?.body).toEqual({ openapi: '3.0.3', info: { title: 'Orders', version: '1.0.0' }, paths: {} });
   });
 
+  it("keeps the file's comments and an operation's own id on Save; a moved path renames it once", async () => {
+    const { calls } = mockFetch({
+      'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
+      'GET /api/flows/1': { status: 200, body: flow('cards.yaml') },
+      'PUT /api/flows/1/api-spec/cards.yaml': { status: 200, body: flow('cards.yaml') },
+    });
+    const yaml = [
+      '# Cards, from the partner',
+      'openapi: 3.0.3',
+      'info: { title: Cards, version: 1.0.0 }',
+      'paths:',
+      '  /cards:',
+      '    get: { operationId: listCards }',
+      '  /cards/{id}:',
+      '    # one card',
+      '    get: { operationId: fetchCard }',
+      '',
+    ].join('\n');
+    const stub = fetch as unknown as ReturnType<typeof vi.fn>;
+    const json = stub.getMockImplementation()!;
+    stub.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input) === '/api/flows/1/files/cards.yaml' ? new Response(yaml, { status: 200 }) : json(input, init),
+    );
+    const onOperationIdsRenamed = vi.fn();
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <ApiSpecPanel flowId={1} flowName="cards" onOperationIdsRenamed={onOperationIdsRenamed} />
+      </QueryClientProvider>,
+    );
+    await screen.findByTitle('OpenAPI editor');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled());
+    const moved = {
+      openapi: '3.0.3',
+      info: { title: 'Cards', version: '1.0.0' },
+      paths: { '/payment-cards': { get: { operationId: 'listCards' } }, '/cards/{id}': { get: { operationId: 'fetchCard' } } },
+    };
+    await waitFor(() => {
+      edit(screen.getByTitle('OpenAPI editor') as HTMLIFrameElement, moved);
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved cards.yaml.')).toBeInTheDocument();
+    let put = calls.filter((c) => c.method === 'PUT').at(-1)!.body as string;
+    expect(put).toContain('# Cards, from the partner\n');
+    expect(put).toContain('  /cards/{id}:\n    # one card\n    get: { operationId: fetchCard }');
+    expect(put).toContain('/payment-cards');
+    expect(put).toContain('operationId: getPaymentCards');
+    expect(onOperationIdsRenamed).toHaveBeenCalledWith([{ from: 'listCards', to: 'getPaymentCards', label: 'GET /payment-cards' }]);
+
+    // The editor still shows the old id; another edit saved keeps the new one, without renaming again.
+    edit(screen.getByTitle('OpenAPI editor') as HTMLIFrameElement, { ...moved, info: { title: 'Cards', version: '1.1.0' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
+    put = calls.filter((c) => c.method === 'PUT').at(-1)!.body as string;
+    expect(put).toContain('version: 1.1.0');
+    expect(put).toContain('operationId: getPaymentCards');
+    expect(put).toContain('# one card');
+    expect(onOperationIdsRenamed).toHaveBeenCalledTimes(1);
+  });
+
   it('asks before Discard throws away unsaved edits, then starts from a blank spec', async () => {
     mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
@@ -184,7 +244,13 @@ describe('Openapi panel', () => {
     // A copy from another flow goes on screen under its own name, still unsaved.
     act(() => panel.current!.show('cards.yaml', 'openapi: 3.0.3\ninfo:\n  title: Cards\n  version: 1.0.0\npaths: {}\n'));
     expect(await screen.findByText('Opened cards.yaml: save the flow to keep it.')).toBeInTheDocument();
-    expect(panel.current!.unsavedSpec()).toEqual({ json: expect.stringContaining('Cards'), format: 'yaml', name: 'cards.yaml' });
+    expect(panel.current!.unsavedSpec()).toEqual({
+      json: expect.stringContaining('Cards'),
+      format: 'yaml',
+      name: 'cards.yaml',
+      // The file itself, whose comments the flow's first Save keeps.
+      text: 'openapi: 3.0.3\ninfo:\n  title: Cards\n  version: 1.0.0\npaths: {}\n',
+    });
 
     // Nothing is written: there is no flow to write to yet (and autosave stays off).
     await new Promise((resolve) => setTimeout(resolve, 1200));

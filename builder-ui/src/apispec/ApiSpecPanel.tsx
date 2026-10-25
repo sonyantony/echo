@@ -31,6 +31,7 @@ import {
   fillMissingOperationIds,
   naturalOperationIds,
   operationChanges,
+  renameOperationIds,
   routableOperations,
   type OperationRename,
   type RoutableOperation,
@@ -65,6 +66,8 @@ export interface UnsavedSpec {
   format: SpecFormat;
   /** The file name it came with (an upload or a copy), its extension following the format; null for one made here. */
   name: string | null;
+  /** The file it came with (an upload or a copy), whose comments and layout are kept; undefined for one made here. */
+  text?: string;
 }
 
 interface Props {
@@ -104,6 +107,8 @@ interface Loaded {
   name: string | null;
   /** The saved spec as the editor's JSON; null when the flow has none. */
   json: string | null;
+  /** The file as stored, whose comments and layout a save keeps; null when the flow has none. */
+  text: string | null;
 }
 
 type Dialog =
@@ -136,14 +141,14 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   const spec = useQuery({
     queryKey: ['flow', id ?? 'untitled', 'api-spec'],
     queryFn: async (): Promise<Loaded> => {
-      if (id === undefined) return { name: null, json: null };
+      if (id === undefined) return { name: null, json: null, text: null };
       const name = (await flowsApi.get(id)).apiSpec ?? null;
       const text = name ? await flowsApi.readFile(id, name) : undefined;
-      if (!name || text === undefined) return { name: null, json: null };
+      if (!name || text === undefined) return { name: null, json: null, text: null };
       try {
-        return { name, json: toEditorJson(text) };
+        return { name, json: toEditorJson(text), text };
       } catch {
-        return { name, json: null };
+        return { name, json: null, text: null };
       }
     },
     staleTime: Infinity,
@@ -157,6 +162,13 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   const [name, setName] = useState<string | null>(null);
   /** The name of the spec stored in the flow, which a save under another name replaces. */
   const [storedName, setStoredName] = useState<string | null>(null);
+  /**
+   * The spec as stored: the file (a save writes only what changed, keeping its comments) and its
+   * editor JSON (a save renames only operations whose path or method changed since).
+   */
+  const stored = useRef<{ text: string; json: string } | undefined>(undefined);
+  /** The file an upload or a copy put on the untitled flow's screen, for its first Save. */
+  const unsavedText = useRef<string | undefined>(undefined);
   const [format, setFormat] = useState<SpecFormat>('yaml');
   /** What the editor opens: changing editorKey reopens it with initialJson (Upload, Discard). */
   const [initialJson, setInitialJson] = useState<string>();
@@ -172,6 +184,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   const open = useCallback((loaded: Loaded) => {
     named.current = undefined;
+    stored.current = loaded.text !== null && loaded.json !== null ? { text: loaded.text, json: loaded.json } : undefined;
+    unsavedText.current = undefined;
     saved.current = loaded.json;
     latest.current = undefined;
     setName(loaded.name);
@@ -267,11 +281,20 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   }, [visible, openNamed]);
 
   /**
-   * Stores text as the flow's spec under fileName; the editor already shows it as json. Every
-   * operation is stored with its natural operationId; renamed ones take the flow's routes along.
-   * Resolves to the spec as stored (the editor's JSON), or undefined when it was not stored.
+   * Stores json (what the editor shows) as the flow's spec under fileName, written over `base` (the
+   * stored file, or an upload) so that its comments stay. Operations without an operationId get
+   * one, and those whose path or method changed since base are renamed, taking the flow's routes
+   * along (operationIds.ts). Resolves to the spec as stored (the editor's JSON), or undefined when
+   * it was not stored.
+   *
+   * @param base the file this replaces and its editor JSON; for an upload, the uploaded file and no JSON
    */
-  const store = useCallback(async (fileName: string, text: string, json: string, auto = false): Promise<string | undefined> => {
+  const store = useCallback(async (
+    fileName: string,
+    json: string,
+    auto = false,
+    base: { text: string; json?: string } | undefined = stored.current,
+  ): Promise<string | undefined> => {
     if (id === undefined) {
       // Nowhere to store it yet: it stays on screen, unsaved, under fileName until the flow's first Save.
       latest.current = json;
@@ -284,8 +307,11 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     setSaving(true);
     if (!auto) setStatus(undefined);
     try {
-      const naming = naturalOperationIds(json);
-      await flowsApi.saveApiSpec(id, fileName, naming.json === json ? text : serialize(naming.json, formatOf(fileName) ?? 'yaml'));
+      // Ids a save renamed while the editor still shows the old ones are compared under their new ones.
+      const naming = naturalOperationIds(renameOperationIds(json, renamedSince.current), base?.json);
+      const text = serialize(naming.json, formatOf(fileName) ?? 'yaml', base?.text);
+      await flowsApi.saveApiSpec(id, fileName, text);
+      stored.current = { text, json: naming.json };
       saved.current = json;
       setName(fileName);
       setStoredName(fileName);
@@ -295,7 +321,10 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
       setStatus({ variant: 'success', text: auto ? `Autosaved at ${time}` : `Saved ${fileName}.` });
       if (naming.renames.length) {
         // The editor still shows the old ids (and a later save renames from them again).
-        for (const r of naming.renames) renamedSince.current.set(r.from, r.to);
+        for (const r of naming.renames) {
+          for (const [shown, now] of renamedSince.current) if (now === r.from) renamedSince.current.set(shown, r.to);
+          renamedSince.current.set(r.from, r.to);
+        }
         onRenamedRef.current?.(naming.renames);
       }
       named.current = naming.json === json ? undefined : naming.json;
@@ -317,7 +346,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   /** Saves what is on screen as fileName, in the format its extension says. */
   const saveUnder = useCallback(async (fileName: string, auto = false) => {
     const json = latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowTitle, flowDescription);
-    return (await store(fileName, serialize(json, formatOf(fileName) ?? 'yaml'), json, auto)) !== undefined;
+    return (await store(fileName, json, auto)) !== undefined;
   }, [store, initialJson, flowTitle, flowDescription]);
 
   /** Save: asks for a name the first time. */
@@ -337,7 +366,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   const download = (fileFormat: SpecFormat) => {
     try {
-      const text = serialize(naturalOperationIds(currentJson()).json, fileFormat);
+      const current = renameOperationIds(currentJson(), renamedSince.current);
+      const text = serialize(naturalOperationIds(current, stored.current?.json).json, fileFormat, stored.current?.text);
       const fileName = withFormat(name ?? storedName ?? `${defaultSpecBase(flowName)}.json`, fileFormat);
       const url = URL.createObjectURL(new Blob([text], { type: fileFormat === 'json' ? 'application/json' : 'application/yaml' }));
       const link = document.createElement('a');
@@ -350,18 +380,23 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     }
   };
 
-  /** Keeps an uploaded spec exactly as it is (name, format and text), as the flow's spec. */
+  /**
+   * Keeps an uploaded spec as it is (name, format, operationIds and comments), as the flow's spec;
+   * only operations without an operationId get one.
+   */
   const storeUpload = async (fileName: string, text: string) => {
     setDialog(undefined);
     const json = toEditorJson(text);
     latest.current = undefined;
-    const stored = await store(fileName, text, json);
-    if (stored !== undefined) {
-      if (id !== undefined) saved.current = stored;
+    renamedSince.current = new Map();
+    const result = await store(fileName, json, false, { text });
+    if (result !== undefined) {
+      if (id !== undefined) saved.current = result;
+      else unsavedText.current = text;
       named.current = undefined;
-      setInitialJson(stored);
+      setInitialJson(result);
       setEditorKey((k) => k + 1);
-      setContentDirty(id === undefined && stored !== saved.current);
+      setContentDirty(id === undefined && result !== saved.current);
       setDialogOpen(false);
     }
   };
@@ -388,7 +423,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   const discard = () => {
     setDialog(undefined);
     setStatus(undefined);
-    open({ name: null, json: null });
+    open({ name: null, json: null, text: null });
   };
 
   useImperativeHandle(ref, () => ({
@@ -403,7 +438,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
       setStatus(undefined);
       void storeUpload(fileName, text);
     },
-    unsavedSpec: () => (dirty ? { json: currentJson(), format, name: name && withFormat(name, format) } : undefined),
+    unsavedSpec: () =>
+      dirty ? { json: currentJson(), format, name: name && withFormat(name, format), text: unsavedText.current } : undefined,
     reload: async () => {
       const { data } = await spec.refetch();
       if (!data) return;

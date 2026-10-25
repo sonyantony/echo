@@ -36,7 +36,7 @@ async function upload(page: Page, text: string) {
   await (await chooser).setFiles({ name: 'cards-api.yaml', mimeType: 'application/yaml', buffer: Buffer.from(text) });
 }
 
-test('operations get routes without anyone typing an operationId, renames follow, Publish warns about the rest', async ({ page }) => {
+test('operations get routes without anyone typing an operationId, an uploaded spec keeps its ids, Publish warns about the rest', async ({ page }) => {
   await login(page);
   const name = uniqueName('opids');
   await createFlow(page, name);
@@ -80,18 +80,17 @@ test('operations get routes without anyone typing an operationId, renames follow
   await expect(dialog.getByText('Has a route')).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 
-  // A new version of the spec moves GET /cards to /payment-cards (the operation keeps its old id
-  // there, as when a path is renamed in the editor): the operation and its route are renamed together.
+  // A new version of the spec moves GET /cards to /payment-cards and keeps its operationId there:
+  // an uploaded spec keeps its own ids, so the route still handles the operation.
   await interfaceMenu(page, /^Design/);
   await upload(page, spec('/payment-cards', 'getCards'));
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
   await interfaceItem(page, 'Paths');
   await expect(editor.getByText('/payment-cards')).toBeVisible();
-  await expect.poll(async () => (await page.request.get(routeFile)).text()).toMatch(/name: getPaymentCards/);
+  await expect.poll(async () => (await page.request.get(`/api/flows/${flowId}/files/cards-api.yaml`)).text()).toContain('/payment-cards');
+  expect(await (await page.request.get(`/api/flows/${flowId}/files/cards-api.yaml`)).text()).toContain('operationId: getCards');
   route = await (await page.request.get(routeFile)).text();
-  expect(route).toContain('description: GET /payment-cards');
-  expect(route).toContain('id: route-getPaymentCards');
-  expect(await (await page.request.get(`/api/flows/${flowId}/files/cards-api.yaml`)).text()).toContain('operationId: getPaymentCards');
+  expect(route).toMatch(/uri: direct\n\s+parameters:\n\s+name: getCards/);
 
   // DELETE /cards/{id} still has no route: Publish lists it and asks.
   await designMenu(page, /^Design/);
@@ -192,6 +191,9 @@ test('a method added in Interface gets a route at once; deleting it asks about a
   const addPath = editor.getByRole('dialog', { name: 'Add Path' });
   await addPath.getByRole('textbox').fill('/cards');
   await addPath.getByRole('button', { name: 'Add' }).click();
+  // The path opens on the right: the editor is done with the dialog.
+  await expect(addPath).toBeHidden();
+  await expect(editor.locator('.operation-tab').getByText('Get', { exact: true })).toBeVisible();
   // The spec is named once (File > Save saves it with the canvas from then on).
   await fileMenu(page, /^Save(?! As)/);
   await page.getByRole('dialog', { name: 'Save' }).getByRole('button', { name: 'Save' }).click();

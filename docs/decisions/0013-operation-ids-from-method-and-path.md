@@ -38,8 +38,8 @@ route.
   name and no route; Publish lists it. Nothing is ever connected to the wrong route by guessing.
 - **Two operations sharing an id** (only in a hand-edited or uploaded spec) both get their natural
   names, but no route moves, as it cannot be told which one the route was for.
-- **Specs from elsewhere.** An uploaded spec is named on Upload, and routes already in the flow for
-  its old ids follow, so a partner's spec with its own ids keeps working. A spec that reaches a
+- **Specs from elsewhere.** An uploaded spec keeps its own ids (changed 2026-10-25, see the last
+  section; it used to be renamed on Upload). A spec that reaches a
   flow without being saved in Openapi (a .zip upload, Copy From Another Flow of an old spec, a
   template) keeps its ids until it is next saved; when the flow leaves the editor, the backend
   fills in any missing id with the same naming (`OperationIds.fill`, in `RestFromSpec.apply`), so
@@ -94,3 +94,27 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   Operation and the Publish warning cover them.
 - **After a save renamed operations** (and before the editor opens the renamed spec), a deleted
   operation is looked up by its new id, which its routes already start from.
+
+## Uploaded specs keep their own operationIds and comments
+
+Added 2026-10-25. Users asked that an uploaded spec keep the operationIds its author gave it, with
+ECHO's name only for operations that have none, and that no comment in the file is ever removed.
+
+- **An operation keeps the id it has**, whether ECHO or the spec's author gave it. A save renames
+  one only when its path or method changed since the spec was stored (compared by id with the
+  stored spec; after a rename the editor's old ids are read as the new ones until it reopens), and
+  its routes follow as before. A moved operation with an author's id gets ECHO's name from then on.
+  Upload compares with nothing, so every id in the file stays, and routes for them keep working.
+- **Only what cannot work is renamed**: a missing id gets ECHO's name; the second of two operations
+  sharing an id, and an id that cannot name a `direct:` endpoint (anything but letters, digits,
+  `_`, `.` and `-`), get ECHO's name too.
+- **Comments stay.** The spec is no longer written out afresh on each save: what the editor holds
+  is applied onto the stored file (`serialize` in `apiSpec.ts`, with the `yaml` library's document
+  model), so in YAML the comments, layout and quoting stay wherever the spec did not change, and a
+  file whose spec did not change is left byte for byte. A comment goes with what it is on when
+  that is deleted. Upload adds just the missing ids to the file as it came. This covers Save,
+  autosave, Rename, Upload, the untitled flow's first Save and Download. JSON has no comments.
+  The backend still fills in missing ids when a flow leaves the editor (`OperationIds.fill`), which
+  writes the file afresh; a spec saved in Interface has none missing.
+- We chose this over always using ECHO's names (earlier in this decision): the worry was stale
+  names, and an author's id now only stays while its operation's path and method do.

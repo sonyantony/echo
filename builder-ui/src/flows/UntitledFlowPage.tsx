@@ -100,8 +100,8 @@ export function UntitledFlowPage() {
    * the spec in Openapi, stored under specFileName in the format its extension says.
    */
   const saveAsFlow = async (name: string, description: string, specFileName?: string) => {
-    // The spec's operations get their natural operationIds, and routes already on the canvas for
-    // operations that had other ids (an uploaded spec) follow them (operationIds.ts).
+    // Operations without an operationId get one (an uploaded spec keeps its own), and routes on the
+    // canvas follow any that had to be renamed (operationIds.ts).
     const spec = saving?.spec;
     const naming = spec && specFileName ? naturalOperationIds(spec.json) : undefined;
     const canvas = await editor.current!.getContent();
@@ -111,7 +111,7 @@ export function UntitledFlowPage() {
     if (!isEmpty(yaml)) await flowsApi.writeFile(flow.id, flow.routeFile, yaml);
     for (const [path, content] of files.files) await flowsApi.writeFile(flow.id, path, content);
     if (spec && specFileName && naming) {
-      await flowsApi.saveApiSpec(flow.id, specFileName, serialize(naming.json, formatOf(specFileName) ?? spec.format));
+      await flowsApi.saveApiSpec(flow.id, specFileName, serialize(naming.json, formatOf(specFileName) ?? spec.format, spec.text));
     }
     setSaving(undefined);
     await openDraft(flow.id, showSpec);
