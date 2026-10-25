@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { createFlow, designMenu, interfaceMenu, login, uniqueName } from './helpers';
+import { createFlow, designMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
 // V2: a flow's OpenAPI spec is designed in Apicurio's editor (Openapi), and a data type's
 // schema can be generated from a sample JSON. The spec is one file in the flow folder, under the
@@ -11,7 +11,7 @@ const flowIdOf = (page: Page) => page.url().replace(/.*\/flows\/(\d+).*/, '$1');
 
 async function openSpec(page: Page) {
   await interfaceMenu(page, /^Design/);
-  await expect(editorOf(page).getByText('Paths', { exact: true })).toBeVisible();
+  await expect(editorOf(page).locator('.echo-nav-item', { hasText: 'Paths' })).toBeVisible();
 }
 
 test('a schema made from a sample JSON is saved as YAML under the name given on Save', async ({ page }) => {
@@ -31,6 +31,7 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   await expect(page.getByRole('radio', { name: 'Yaml' })).toBeChecked();
   const editor = editorOf(page);
 
+  await interfaceItem(page, 'Data Types');
   await editor.getByText('Add a data type').click();
   await editor.getByPlaceholder('Enter a unique data type name.').fill('Order');
   await editor.locator('.ace_editor').nth(1).click();
@@ -48,6 +49,7 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
   await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
   await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
   await openSpec(page);
+  await interfaceItem(page, 'Data Types');
   await expect(editor.getByText('Order', { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId('unsaved')).toBeVisible();
 
@@ -93,6 +95,7 @@ test('a schema made from a sample JSON is saved as YAML under the name given on 
 
   // The saved spec opens again from the flow folder.
   await page.reload();
+  await interfaceItem(page, 'Data Types');
   await expect(editor.getByText('Order', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Json' })).toBeChecked();
 });
@@ -122,6 +125,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   const chooser = page.waitForEvent('filechooser');
   await interfaceMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'Customer_API.v2.yml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
+  await interfaceItem(page, 'Paths');
   await expect(editorOf(page).getByText('/customers/{id}')).toBeVisible();
   // Stored exactly as uploaded, comment included.
   expect(await (await page.request.get(`/api/flows/${flowId}/files/Customer_API.v2.yml`)).text()).toBe(yaml);
@@ -146,6 +150,8 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   await (await chooser2).setFiles({ name: 'orders.json', mimeType: 'application/json', buffer: Buffer.from(second) });
   await expect(page.getByRole('dialog')).toContainText('orders.json replaces Customer_API.v2.yml');
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
+  await interfaceItem(page, 'Paths');
+  await expect(editorOf(page).getByText('No paths have been created.')).toBeVisible();
   await expect(editorOf(page).getByText('/customers/{id}')).toBeHidden();
   expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('orders.json');
   expect((await page.request.get(`/api/flows/${flowId}/files/Customer_API.v2.yml`)).status()).toBe(404);
@@ -157,6 +163,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   await expect(page.getByRole('alert')).toContainText('not an OpenAPI spec');
 
   // Discard starts again from a blank spec, without a name; the saved one stays in the flow.
+  await interfaceItem(page, 'Data Types');
   await editorOf(page).getByText('Add a data type').click();
   await editorOf(page).getByPlaceholder('Enter a unique data type name.').fill('Draft');
   await editorOf(page).getByRole('button', { name: 'Save' }).first().click();
@@ -167,6 +174,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click();
   await expect(page.getByTestId('unsaved')).toBeHidden();
   await expect(page.getByRole('radio', { name: 'Yaml' })).toBeChecked();
+  await interfaceItem(page, 'Data Types');
   await expect(editorOf(page).getByText('Add a data type')).toBeVisible();
   expect((await (await page.request.get(`/api/flows/${flowId}`)).json()).apiSpec).toBe('orders.json');
 });
@@ -183,6 +191,7 @@ test('a flow saved before specs kept their name opens its openapi.json', async (
   await page.reload();
   await openSpec(page);
   await expect(page.getByRole('radio', { name: 'Json' })).toBeChecked();
+  await interfaceItem(page, 'Data Types');
   await expect(editorOf(page).getByText('LegacyOrder', { exact: true }).first()).toBeVisible();
 });
 
@@ -214,6 +223,7 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await expect(editor.getByRole('button', { name: /Issues/ })).toBeVisible();
 
   // Apicurio's full-page dialogs start below ECHO's bar.
+  await interfaceItem(page, 'Data Types');
   await editor.getByText('Add a data type').click();
   const heading = editor.getByText('Define a New Data Type');
   await expect(heading).toBeVisible();
@@ -224,6 +234,7 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await editor.getByRole('button', { name: 'Cancel' }).first().click();
 
   // An unsaved spec edit is saved by File > Save, from any view; without a name it asks for one.
+  await interfaceItem(page, 'Data Types');
   await editor.getByText('Add a data type').click();
   await editor.getByPlaceholder('Enter a unique data type name.').fill('Customer');
   await editor.getByRole('button', { name: 'Save' }).first().click();
@@ -238,14 +249,23 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   const spec = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/customers.json`)).json();
   expect(spec.components.schemas.Customer).toBeDefined();
 
-  // The spec's own details are items in the list on the left: Info and Tag Definitions above Paths,
-  // Source below Responses. Interface > Design opens the spec with nothing shown on the right.
+  // The list on the left is plain items, none of which folds open: Info, Tag Definitions, Paths, Data
+  // Types, Responses and Source, with counts. Interface > Design opens the spec with nothing on the right.
   await openSpec(page);
   const outline = editor.locator('.editor-outline');
-  await expect(outline.locator('.echo-nav-item')).toHaveText(['Info', 'Tag Definitions', 'Source']);
+  await expect(outline.locator('.echo-nav-item')).toHaveText(['Info', 'Tag Definitions', 'Paths', 'Data Types(1)', 'Responses', 'Source']);
   await expect(editor.locator('main-form')).toBeHidden();
   await expect(editor.locator('definition-form')).toBeHidden();
-  await outline.getByText('Customer', { exact: true }).first().click();
+  await expect(editor.getByPlaceholder('Search everything...')).toBeHidden();
+  await expect(outline.getByText('Customer', { exact: true })).toBeHidden();
+  // Data Types shows Apicurio's list in the right pane; an entry opens in its place.
+  await interfaceItem(page, 'Data Types');
+  const types = editor.locator('.definition-section');
+  const navBox = (await outline.locator('.echo-nav').boundingBox())!;
+  expect((await types.boundingBox())!.x).toBeGreaterThanOrEqual(navBox.x + navBox.width);
+  await expect(types.locator('.section-header > a')).toHaveCSS('pointer-events', 'none'); // no folding away
+  await types.getByText('Customer', { exact: true }).click();
+  await expect(types).toBeHidden();
   await expect(editor.locator('definition-form')).toBeVisible();
   await expect(editor.getByText('Vendor Extensions', { exact: true })).toBeHidden();
   await interfaceMenu(page, /^Design/);

@@ -26,12 +26,14 @@ The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Y
 **Rename** and **Discard**. It takes the place of Apicurio's title bar with the API's name
 (hidden by `theme/apicurio-mapping.css`); Apicurio's undo, redo and Issues stay at its right.
 
-The spec's own details are items in Apicurio's list on the left (`apispec/overviewNav.ts`): **Info**
-and **Tag Definitions** above Paths, **Source** (the whole spec's source, Upload on its toolbar) below
-Responses. Each shows its part on the right; until one of them, a path, a data type or a response is
-picked, the right pane is empty (Interface > Design opens it that way). Info holds Version, Description
-and Base Path. Contact, License and Security are hidden, though a spec that has them keeps them and
-Source shows them; Vendor Extensions is hidden on every page, the same way.
+Apicurio's list on the left is plain items (`apispec/overviewNav.ts`): **Info**, **Tag Definitions**,
+**Paths**, **Data Types**, **Responses** (with their counts) and **Source** (the whole spec's source,
+Upload on its toolbar). None of them folds open; each shows its content in the right pane. Paths, Data
+Types and Responses show Apicurio's own list there (Add, right-click Rename / Clone / Delete), and an
+entry picked from it opens in its place. Until something is picked the right pane is empty (Interface >
+Design opens it that way). Apicurio's search box, which only filtered the left lists, is hidden. Info
+holds Version, Description and Base Path. Contact, License and Security are hidden, though a spec that
+has them keeps them and Source shows them; Vendor Extensions is hidden on every page, the same way.
 
 **Base Path** is Apicurio's Servers section under another name: the path the flow serves its
 operations under, e.g. `/customers/v1` (the spec's `/orders` is then called as
