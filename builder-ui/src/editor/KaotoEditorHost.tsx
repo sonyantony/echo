@@ -11,6 +11,7 @@ import type { FlowFiles } from './flowFiles';
 import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
 import { disabledRouteCss, disabledRouteIds } from './disabledRoutes';
+import { selectedRouteCss, selectedRouteGroupId } from './selectedRoute';
 import { trackTabUnderline } from './tabUnderline';
 import { trackCanvasScrollbars } from './canvasScrollbars';
 import './KaotoEditorHost.css';
@@ -87,6 +88,8 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   /** "Disabled" badges in Kaoto's Routes list for the routes switched off (autoStartup: false). */
   const [disabledCss, setDisabledCss] = useState(() => disabledRouteCss(disabledRouteIds(initialContent)));
   const setLatest = (content: string) => setDisabledCss(disabledRouteCss(disabledRouteIds(content)));
+  /** The route holding the selection on the canvas, outlined and marked in the Routes list. */
+  const [selectedRoute, setSelectedRoute] = useState<string>();
   const pickRef = useRef<((files: Picked) => void) | null>(null);
   const loadSpecRef = useRef(loadSpec);
   loadSpecRef.current = loadSpec;
@@ -237,6 +240,8 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     container.addEventListener('click', onClick, true);
     const observer = new MutationObserver(attach);
     observer.observe(container, { childList: true, subtree: true });
+    const selection = new MutationObserver(() => setSelectedRoute(selectedRouteGroupId(container)));
+    selection.observe(container, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-selected'] });
     attach();
     const stopUnderline = trackTabUnderline(container);
     const stopScrollbars = trackCanvasScrollbars(container);
@@ -244,6 +249,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       container.removeEventListener('click', onClick, true);
       heights.disconnect();
       observer.disconnect();
+      selection.disconnect();
       stopUnderline();
       stopScrollbars();
       slot.remove();
@@ -283,6 +289,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     <div className="echo-kaoto-host" data-testid="kaoto-editor-host">
       {error && <div role="alert">Could not start the flow editor: {error}</div>}
       {disabledCss && <style data-testid="disabled-route-badges">{disabledCss}</style>}
+      {selectedRoute && <style data-testid="selected-route">{selectedRouteCss(selectedRoute)}</style>}
       <div ref={containerRef} className="echo-kaoto-host__editor" />
       {cover && (
         <div className="echo-kaoto-host__cover" hidden={!coverVisible} style={{ top: tabBarHeight }}>

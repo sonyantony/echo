@@ -229,6 +229,52 @@ test('the canvas route list marks routes switched off with autoStartup false as 
   await page.screenshot({ path: 'test-results/routes-disabled-badge.png' });
 });
 
+test('the route holding the selected step is outlined and marked in the Routes list', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('selroute');
+  await createFlow(page, name);
+  const flowId = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
+  const token = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
+  const route = `- route:
+    id: get-order
+    from:
+      uri: direct:getOrder
+      steps:
+        - log:
+            message: one
+- route:
+    id: list-orders
+    from:
+      uri: direct:listOrders
+      steps:
+        - log:
+            message: two
+`;
+  await page.request.put(`/api/flows/${flowId}/files/${name}.camel.yaml`, {
+    data: route,
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': token },
+  });
+  await page.reload();
+  const box = (id: string) => page.locator(`g[data-id="${id}|route"] > .custom-group .custom-group__container`);
+  const width = (id: string) => box(id).evaluate((el) => getComputedStyle(el).borderTopWidth);
+  await expect(box('list-orders')).toBeVisible();
+  expect(await width('list-orders')).toBe('1px');
+  // A step inside the route selects the route too.
+  await page.locator('g[data-id="list-orders|route.from.steps.0.log"] .custom-node__container').click();
+  await expect.poll(() => width('list-orders')).toBe('2px');
+  expect(await width('get-order')).toBe('1px');
+  await page.getByTestId('flows-list-dropdown').click();
+  const list = page.getByTestId('flows-list-table');
+  const weight = (id: string) => list.getByTestId(`flows-list-row-${id}`).locator('td').first().evaluate((el) => getComputedStyle(el).fontWeight);
+  expect(Number(await weight('list-orders'))).toBeGreaterThan(Number(await weight('get-order')));
+  await page.screenshot({ path: 'test-results/selected-route.png' });
+  await page.keyboard.press('Escape');
+  // Clicking the other route's title bar moves the outline there.
+  await page.locator('[data-testid="get-order|route|drag-handle"]').click();
+  await expect.poll(() => width('get-order')).toBe('2px');
+  expect(await width('list-orders')).toBe('1px');
+});
+
 test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate and Publish replace copy to clipboard', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
