@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createFlow, designMenu, fileMenu, interfaceMenu, login, uniqueName } from './helpers';
+import { createFlow, designMenu, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
 // operationIds are ECHO's business (decision 0013): every operation is named after its method and
 // path, Openapi hides the field, Flow > Add Route For Operation makes the routes, renaming a path
@@ -46,6 +46,7 @@ test('operations get routes without anyone typing an operationId, renames follow
   // An uploaded spec without operationIds is stored with its natural ones.
   await upload(page, spec('/cards'));
   const editor = editorOf(page);
+  await interfaceItem(page, 'Paths');
   await expect(editor.getByText('/cards/{id}')).toBeVisible();
   await expect.poll(async () => (await page.request.get(`/api/flows/${flowId}/files/cards-api.yaml`)).text())
     .toMatch(/operationId: getCards[^]*operationId: deleteCardsId/);
@@ -84,6 +85,7 @@ test('operations get routes without anyone typing an operationId, renames follow
   await interfaceMenu(page, /^Design/);
   await upload(page, spec('/payment-cards', 'getCards'));
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
+  await interfaceItem(page, 'Paths');
   await expect(editor.getByText('/payment-cards')).toBeVisible();
   await expect.poll(async () => (await page.request.get(routeFile)).text()).toMatch(/name: getPaymentCards/);
   route = await (await page.request.get(routeFile)).text();
@@ -113,6 +115,7 @@ test('an operation added in Openapi gets its operationId at once, before any Sav
   await createFlow(page, uniqueName('opnow'));
   await interfaceMenu(page, /^Design/);
   const editor = editorOf(page);
+  await interfaceItem(page, 'Paths');
   await editor.getByText('Add a path').click();
   const addPath = editor.getByRole('dialog', { name: 'Add Path' });
   await addPath.getByRole('textbox').fill('/something/haha/Hihi');
@@ -136,6 +139,7 @@ test('an operation added in Openapi gets its operationId at once, before any Sav
   await expect(editor.locator('.ace_editor').first()).toContainText('operationId: getSomethingHahaHihi');
   // And an operation on a second path (added with the + next to Paths) gets one too.
   await editor.locator('.editor-detail').getByText('Design', { exact: true }).first().click();
+  await interfaceItem(page, 'Paths');
   await editor.locator('button:has(.pficon-add-circle-o)').first().click();
   await addPath.getByRole('textbox').fill('/hhjhjhjhkk/ttttt');
   await addPath.getByRole('button', { name: 'Add' }).click();
@@ -183,6 +187,7 @@ test('a method added in Interface gets a route at once; deleting it asks about a
 
   await interfaceMenu(page, /^Design/);
   const editor = editorOf(page);
+  await interfaceItem(page, 'Paths');
   await editor.getByText('Add a path').click();
   const addPath = editor.getByRole('dialog', { name: 'Add Path' });
   await addPath.getByRole('textbox').fill('/cards');

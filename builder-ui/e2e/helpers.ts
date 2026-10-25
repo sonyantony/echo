@@ -59,6 +59,11 @@ export async function interfaceMenu(page: Page, item: string | RegExp) {
   await page.getByRole('menuitem', { name: item }).click();
 }
 
+/** Clicks an item of the Interface's list on the left (Info, Paths, Data Types...), which shows it on the right. */
+export async function interfaceItem(page: Page, item: 'Info' | 'Tag Definitions' | 'Paths' | 'Data Types' | 'Responses' | 'Source') {
+  await page.frameLocator('iframe[title="OpenAPI editor"]').locator('.echo-nav-item', { hasText: item }).click();
+}
+
 /** Adds a processor (e.g. "setBody") at the end of the route through Kaoto's catalog. */
 export async function addStep(page: Page, placeholderIndex: number, processor: string) {
   await page.getByTestId(`placeholder-node__route.from.steps.${placeholderIndex}.placeholder`).click();

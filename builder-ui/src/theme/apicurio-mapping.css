@@ -241,12 +241,19 @@
   display: none !important;
 }
 
-/* ---------- Info, Tag Definitions and Source in the list on the left (apispec/overviewNav.ts) ---------- */
+/* ---------- The list on the left: plain items, shown in the right pane (apispec/overviewNav.ts) ---------- */
 
 /*
- * The spec's own details are items in the list, above Paths and below Responses; each shows its part
- * of the main form on the right (the root's data-echo-pane). With none picked the right pane is empty.
+ * Info, Tag Definitions, Paths, Data Types, Responses and Source are plain items; each shows its
+ * content on the right (the root's data-echo-pane). With none picked the right pane is empty.
+ * Apicurio's search only filtered the lists on the left, so it is hidden.
  */
+:root[data-echo-theme] .editor-search {
+  display: none !important;
+}
+:root[data-echo-theme] .echo-nav {
+  margin-top: 8px;
+}
 :root[data-echo-theme] .echo-nav-item {
   display: flex;
   align-items: center;
@@ -263,8 +270,9 @@
   font-size: 13px;
   color: var(--echo-text-subtle);
 }
-:root[data-echo-theme] .echo-nav--bottom {
-  margin-top: 12px;
+:root[data-echo-theme] .echo-nav-item__count {
+  font-weight: 400;
+  color: var(--echo-text-subtle);
 }
 :root[data-echo-theme] .echo-nav-item:hover {
   background-color: var(--echo-ink-faint);
@@ -275,14 +283,44 @@
 }
 :root[data-echo-theme][data-echo-pane='info'] .echo-nav-item[data-pane='info'],
 :root[data-echo-theme][data-echo-pane='tags'] .echo-nav-item[data-pane='tags'],
-:root[data-echo-theme][data-echo-pane='source'] .echo-nav-item[data-pane='source'] {
+:root[data-echo-theme][data-echo-pane='source'] .echo-nav-item[data-pane='source'],
+:root[data-echo-theme][data-echo-pane='paths'] .echo-nav-item[data-pane='paths'],
+:root[data-echo-theme][data-echo-pane='definitions'] .echo-nav-item[data-pane='definitions'],
+:root[data-echo-theme][data-echo-pane='responses'] .echo-nav-item[data-pane='responses'] {
   background-color: var(--echo-brand-subtle);
   border-left-color: var(--echo-brand);
 }
-:root[data-echo-theme][data-echo-pane='none'] .editor-detail > main-form,
+:root[data-echo-theme] .editor-outline > section,
+:root[data-echo-theme]:is([data-echo-pane='none'], [data-echo-pane='paths'], [data-echo-pane='definitions'], [data-echo-pane='responses']) .editor-detail > main-form,
 :root[data-echo-theme]:not([data-echo-pane='none']) main-form > .detail-tabs,
 :root[data-echo-theme][data-echo-pane='info'] main-form .detail-content > :not(info-section, servers-section),
 :root[data-echo-theme][data-echo-pane='tags'] main-form .detail-content > :not(tags-section) {
+  display: none !important;
+}
+/*
+ * Paths, Data Types and Responses: Apicurio's own section (heading with count and Add, the list, its
+ * right-click menu) laid over the right pane, at the place overviewNav.ts measured. Its heading no
+ * longer folds the list away, so it has no arrow.
+ */
+:root[data-echo-theme][data-echo-pane='paths'] .editor-outline > section:has(> .path-section),
+:root[data-echo-theme][data-echo-pane='definitions'] .editor-outline > section:has(> .definition-section),
+:root[data-echo-theme][data-echo-pane='responses'] .editor-outline > section:has(> .response-section) {
+  display: block !important;
+  position: fixed;
+  top: var(--detail-pane-top, 42px);
+  left: var(--detail-pane-left, 420px);
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  overflow: auto;
+  padding: 12px 16px;
+  background-color: var(--echo-surface);
+}
+:root[data-echo-theme] .editor-outline > section .section-header > a {
+  pointer-events: none;
+}
+:root[data-echo-theme] .editor-outline > section .section-header > a::before,
+:root[data-echo-theme] .editor-outline > section context-help {
   display: none !important;
 }
 /* A quiet hint while the pane is empty. */
