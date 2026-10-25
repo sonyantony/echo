@@ -43,7 +43,11 @@ public class TemplateService {
         this.clock = clock;
     }
 
-    public record Template(String name, String description, String savedBy, String savedAt) {}
+    /**
+     * @param name the template's folder (its identifier)
+     * @param displayName what users call it: from its metadata file, else the folder name
+     */
+    public record Template(String name, String displayName, String description, String savedBy, String savedAt) {}
 
     public List<Template> list() {
         var primary = targets.primary();
@@ -54,31 +58,42 @@ public class TemplateService {
                 .filter(folder -> folder.files().containsKey(FlowNames.routeFile(folder.name())))
                 .map(folder -> {
                     var meta = metadata(folder.files());
-                    return new Template(folder.name(), text(meta, "description"), text(meta, "savedBy"),
+                    String displayName = text(meta, "displayName");
+                    return new Template(folder.name(),
+                            displayName == null || displayName.isBlank() ? folder.name() : displayName,
+                            text(meta, "description"), text(meta, "savedBy"),
                             text(meta, "savedAt"));
                 }).toList();
     }
 
     /**
-     * Saves a flow as a template named {@code name}: its files, with the route file renamed and
-     * holding {@code routeContent} when given. An existing template is replaced only when
+     * Saves a flow as a template called {@code displayName}, in the folder made from that name
+     * ({@link FlowNames#idFor}): its files, with the route file renamed and holding
+     * {@code routeContent} when given. An existing template in that folder is replaced only when
      * {@code overwrite} is true.
      */
     @Transactional(readOnly = true)
-    public Template save(long flowId, String name, String routeContent, boolean overwrite, String user) {
-        if (!FlowNames.isValidName(name)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ("Template name '%s' is not allowed: use "
-                    + "lowercase letters, digits and dashes, starting with a letter.").formatted(name));
+    public Template save(long flowId, String displayName, String routeContent, boolean overwrite, String user) {
+        if (!FlowNames.isValidDisplayName(displayName)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Give the template a name of at most %d characters."
+                    .formatted(FlowNames.MAX_DISPLAY_NAME_LENGTH));
         }
+        String display = displayName.strip();
+        String name = FlowNames.idFor(display);
         var enabled = targets.require();
         var flow = flows.get(flowId);
-        if (!overwrite && enabled.get(0).templates().read(name).isPresent()) {
-            throw FlowExceptions.confirmOverwrite("A template named '%s' already exists. Replace it?".formatted(name));
+        if (!overwrite) {
+            var existing = enabled.get(0).templates().read(name);
+            if (existing.isPresent()) {
+                String existingName = text(metadata(existing.get()), "displayName");
+                throw FlowExceptions.confirmOverwrite("A template named '%s' already exists. Replace it?"
+                        .formatted(existingName == null ? name : existingName));
+            }
         }
         var files = new LinkedHashMap<>(flows.files(flowId));
         String route = files.remove(FlowNames.routeFile(flow.getName()));
         files.put(FlowNames.routeFile(name), routeContent != null ? routeContent : route);
-        var template = new Template(name, flow.getDescription(), user, clock.instant().toString());
+        var template = new Template(name, display, flow.getDescription(), user, clock.instant().toString());
         files.put(METADATA_FILE, metadata(template));
 
         var failures = new ArrayList<String>();
@@ -96,7 +111,7 @@ public class TemplateService {
         return template;
     }
 
-    /** Creates a new draft named {@code flowName} from a template. */
+    /** Creates a new draft called {@code flowName} (a display name) from a template. */
     @Transactional
     public Flow open(String templateName, String flowName, String description, String user) {
         var all = targets.require().get(0).templates().read(templateName)
@@ -111,6 +126,7 @@ public class TemplateService {
     private String metadata(Template t) {
         var map = new LinkedHashMap<String, Object>();
         map.put("name", t.name());
+        map.put("displayName", t.displayName());
         map.put("description", t.description());
         map.put("savedBy", t.savedBy());
         map.put("savedAt", t.savedAt());

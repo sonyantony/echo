@@ -18,7 +18,8 @@ import {
 } from '@patternfly/react-core';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { FLOW_NAME_HINT, FLOW_NAME_PATTERN, templatesApi, type FlowDetail } from '../api/flows';
+import { isValidDisplayName, templatesApi, type FlowDetail } from '../api/flows';
+import { flowNameHint, useFlowIdPreview } from './FlowNameHint';
 
 interface Props {
   onOpened(flow: FlowDetail): void;
@@ -34,7 +35,8 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
   const [error, setError] = useState<string>();
   const [opening, setOpening] = useState(false);
   const chosen = template || templates.data?.[0]?.name || '';
-  const nameValid = FLOW_NAME_PATTERN.test(name) && name.length <= 63;
+  const nameValid = isValidDisplayName(name);
+  const id = useFlowIdPreview(name);
   const chosenDescription = templates.data?.find((t) => t.name === chosen)?.description;
 
   const submit = async (event?: FormEvent) => {
@@ -43,7 +45,7 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
     setOpening(true);
     setError(undefined);
     try {
-      onOpened(await templatesApi.open(chosen, name, description));
+      onOpened(await templatesApi.open(chosen, name.trim(), description));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setOpening(false);
@@ -73,7 +75,7 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
             <FormGroup label="Template" isRequired fieldId="open-template-template">
               <FormSelect id="open-template-template" value={chosen} onChange={(_e, v) => setTemplate(v)}>
                 {templates.data.map((t) => (
-                  <FormSelectOption key={t.name} value={t.name} label={t.name} />
+                  <FormSelectOption key={t.name} value={t.name} label={t.displayName || t.name} />
                 ))}
               </FormSelect>
               {chosenDescription && (
@@ -94,7 +96,9 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
               />
               <FormHelperText>
                 <HelperText>
-                  <HelperTextItem variant={!name || nameValid ? 'default' : 'error'}>{FLOW_NAME_HINT}</HelperTextItem>
+                  <HelperTextItem variant={!name || nameValid ? 'default' : 'error'}>
+                    {flowNameHint(name, id)}
+                  </HelperTextItem>
                 </HelperText>
               </FormHelperText>
             </FormGroup>

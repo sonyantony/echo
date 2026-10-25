@@ -18,6 +18,11 @@ public final class FlowExceptions {
                         .formatted(name, FlowNames.MAX_NAME_LENGTH));
     }
 
+    static ResponseStatusException invalidDisplayName() {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Give the flow a name of at most %d characters.".formatted(FlowNames.MAX_DISPLAY_NAME_LENGTH));
+    }
+
     static ResponseStatusException invalidPath(String path) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, "File path '%s' is not allowed.".formatted(path));
     }

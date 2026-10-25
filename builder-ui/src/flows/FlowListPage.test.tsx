@@ -7,9 +7,10 @@ import { mockFetch } from '../test/fetchMock';
 vi.mock('./FlowEditorPage', () => ({ FlowEditorPage: () => <p>Flow editor</p> }));
 vi.mock('./UntitledFlowPage', () => ({ UntitledFlowPage: () => <p>Untitled canvas</p> }));
 
-const flow = (id: number, name: string, status = 'DRAFT') => ({
+const flow = (id: number, name: string, status = 'DRAFT', displayName = name) => ({
   id,
   name,
+  displayName,
   description: `${name} flow`,
   status,
   updatedBy: 'designer',
@@ -314,14 +315,53 @@ describe('Flow list', () => {
     const dialog = await screen.findByRole('dialog');
     const name = within(dialog).getByLabelText(/Name/);
 
-    await userEvent.type(name, 'My Orders');
+    await userEvent.type(name, ' ');
     expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled();
+    await userEvent.type(name, 'x'.repeat(101));
+    expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled();
+    expect(within(dialog).getByText('Use at most 100 characters.')).toBeInTheDocument();
 
     await userEvent.clear(name);
     await userEvent.type(name, 'orders');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
     expect(await within(dialog).findByText("A flow named 'orders' already exists.")).toBeInTheDocument();
     expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'orders', description: '' });
+  });
+
+  it('takes any name and shows the ID made from it', async () => {
+    const { calls } = mockFetch({
+      ...loggedIn,
+      'GET /api/flows': { status: 200, body: [] },
+      'GET /api/published-flows': { status: 200, body: [] },
+      'POST /api/flows': { status: 201, body: { ...flow(2, 'first-flow', 'DRAFT', 'First Flow'), files: [] } },
+    });
+    render(<App queryClient={createQueryClient()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'New flow' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText(/Name/), 'First Flow');
+    expect(within(dialog).getByText('ID: first-flow (its folder in Git is flows/first-flow/).')).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'First Flow', description: '' });
+  });
+
+  it('shows the flow name, with its ID under it when they differ', async () => {
+    mockFetch({
+      ...loggedIn,
+      'GET /api/flows': { status: 200, body: [flow(1, 'first-flow', 'DRAFT', 'First Flow'), flow(2, 'orders')] },
+      'GET /api/published-flows': {
+        status: 200,
+        body: [{ ...published('first-flow', 1), flowId: 1, displayName: 'First Flow', draftChanged: false }],
+      },
+    });
+    render(<App queryClient={createQueryClient()} />);
+    expect(await screen.findByRole('link', { name: 'First Flow' })).toHaveAttribute('href', '/flows/1');
+    expect(screen.getByRole('button', { name: 'First Flow' })).toBeInTheDocument();
+    expect(screen.getAllByText('ID: first-flow')).toHaveLength(2);
+    expect(screen.queryByText('ID: orders')).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Search flows' }), 'first-fl');
+    expect(screen.queryByRole('link', { name: 'orders' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'First Flow' })).toBeInTheDocument();
   });
 
   it('deletes a flow after confirmation', async () => {

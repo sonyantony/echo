@@ -108,7 +108,7 @@ public class PublishService {
         var now = clock.instant();
         // A flow disabled on the Open Flow page stays disabled when a new version is published.
         boolean disabled = published.isDisabled(previousName != null ? previousName : flow.getName());
-        files.put(METADATA_FILE, metadata(flow.getName(), flow.getDescription(), version, user, now.toString(),
+        files.put(METADATA_FILE, metadata(flow.getName(), flow.getDisplayName(), flow.getDescription(), version, user, now.toString(),
                 disabled));
 
         String commitMessage = message == null || message.isBlank()
@@ -161,10 +161,11 @@ public class PublishService {
         return events.findByFlowIdOrderByPublishedAtDescIdDesc(flowId);
     }
 
-    private String metadata(String name, String description, long version, String author, String publishedAt,
+    private String metadata(String name, String displayName, String description, long version, String author, String publishedAt,
             boolean disabled) {
         var map = new LinkedHashMap<String, Object>();
         map.put("name", name);
+        map.put("displayName", displayName);
         map.put("description", description);
         map.put("version", version);
         map.put("author", author);

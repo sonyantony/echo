@@ -85,11 +85,11 @@ public class FlowController {
         return service.detail(id);
     }
 
-    /** Save As: the flow (route as on screen) under another name; 409 with confirmOverwrite if that name is taken. */
+    /** Save As: the flow (route as on screen) under another display name; 409 with confirmOverwrite if a flow has it. */
     @PostMapping("/{id}/save-as")
     public ResponseEntity<FlowDetail> saveAs(@PathVariable long id, @Valid @RequestBody FlowDtos.SaveAs request,
             Principal user) {
-        boolean existed = service.findByName(request.name()).isPresent();
+        boolean existed = service.findByDisplayName(request.name()).isPresent();
         var flow = service.saveAs(id, request.name(), request.routeContent(), request.overwrite(), user.getName());
         var detail = service.detail(flow.getId());
         return existed ? ResponseEntity.ok(detail)

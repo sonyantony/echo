@@ -69,7 +69,10 @@ export interface UnsavedSpec {
 interface Props {
   /** Left out for the untitled flow: its spec stays on screen until the flow's first Save (onSaveFlow) stores both. */
   flowId?: number;
+  /** The flow's ID, which the default spec file name is made from (orders-api.yaml). */
   flowName: string;
+  /** What users call the flow: a new spec's title. The ID when left out. */
+  flowTitle?: string;
   flowDescription?: string | null;
   /** Called when the spec gets, or no longer has, unsaved edits. */
   onDirtyChange?(dirty: boolean): void;
@@ -125,7 +128,7 @@ function operationsOf(json: string | undefined) {
  * folder, under the name it was uploaded or saved with, in YAML or JSON (the format buttons).
  */
 export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSpecPanel(
-  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored, onOperationIdsRenamed, onOperationsChanged, visible = true },
+  { flowId: id, flowName, flowTitle = flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored, onOperationIdsRenamed, onOperationsChanged, visible = true },
   ref,
 ) {
   const queryClient = useQueryClient();
@@ -173,11 +176,11 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     setName(loaded.name);
     setFormat((loaded.name && formatOf(loaded.name)) || 'yaml');
     // Operations without an id (a spec from elsewhere) show one at once; it is stored on the next save.
-    setInitialJson(loaded.json ? fillMissingOperationIds(loaded.json) : newApiSpec(flowName, flowDescription));
+    setInitialJson(loaded.json ? fillMissingOperationIds(loaded.json) : newApiSpec(flowTitle, flowDescription));
     setEditorKey((k) => k + 1);
     setContentDirty(false);
     setDialogOpen(false);
-  }, [flowName, flowDescription]);
+  }, [flowTitle, flowDescription]);
 
   // Opened once: a later fetch of the same spec must not throw away edits made since.
   const opened = useRef(false);
@@ -236,7 +239,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   }, []);
 
   /** What is on screen, as the editor's JSON. */
-  const currentJson = () => latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowName, flowDescription);
+  const currentJson = () => latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowTitle, flowDescription);
 
   /**
    * The stored spec as it is after a save named its operations (operationIds.ts), while the editor
@@ -312,9 +315,9 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   /** Saves what is on screen as fileName, in the format its extension says. */
   const saveUnder = useCallback(async (fileName: string, auto = false) => {
-    const json = latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowName, flowDescription);
+    const json = latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowTitle, flowDescription);
     return (await store(fileName, serialize(json, formatOf(fileName) ?? 'yaml'), json, auto)) !== undefined;
-  }, [store, initialJson, flowName, flowDescription]);
+  }, [store, initialJson, flowTitle, flowDescription]);
 
   /** Save: asks for a name the first time. */
   const save = useCallback(async (): Promise<boolean> => {
@@ -561,7 +564,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           onClose={() => setDialog(undefined)}
           onGenerate={(samples) => {
             setDialog(undefined);
-            const json = specFromSamples({ ...samples, current: currentJson(), flowName, flowDescription });
+            const json = specFromSamples({ ...samples, current: currentJson(), flowName: flowTitle, flowDescription });
             latest.current = json;
             setInitialJson(json);
             setEditorKey((k) => k + 1);

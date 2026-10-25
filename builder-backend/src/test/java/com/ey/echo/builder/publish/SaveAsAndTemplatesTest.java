@@ -168,4 +168,49 @@ class SaveAsAndTemplatesTest {
                 .content(request.formatted(2, ",\"overwrite\":true"))).andExpect(status().isOk());
         assertThat(REMOTE.read("main", "templates/http-json/http-json.camel.yaml")).contains("v2");
     }
+
+    @Test
+    void saveAsTakesAnyNameAndMatchesExistingFlowsByName() throws Exception {
+        long id = create("orders");
+        mvc.perform(as(post("/api/flows/%d/save-as".formatted(id))).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Orders Copy\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("orders-copy"))
+                .andExpect(jsonPath("$.displayName").value("Orders Copy"))
+                .andExpect(jsonPath("$.routeFile").value("orders-copy.camel.yaml"));
+        // The same name in other letter case is that flow: replacing it is asked first.
+        mvc.perform(as(post("/api/flows/%d/save-as".formatted(id))).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"orders copy\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("A flow named 'Orders Copy' already exists. Replace it?"));
+        // Another name that makes the same ID gets a numbered ID.
+        mvc.perform(as(post("/api/flows/%d/save-as".formatted(id))).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Orders, copy\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("orders-copy-2"));
+    }
+
+    @Test
+    void aTemplateMayHaveAnyNameAndIsKeptInAFolderMadeFromIt() throws Exception {
+        long id = create("orders");
+        mvc.perform(as(post("/api/templates/from-flow/%d".formatted(id))).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"HTTP to JSON\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("http-to-json"))
+                .andExpect(jsonPath("$.displayName").value("HTTP to JSON"));
+        assertThat(REMOTE.read("main", "templates/http-to-json/echo-template.json"))
+                .contains("\"displayName\" : \"HTTP to JSON\"");
+        mvc.perform(as(get("/api/templates"))).andExpect(jsonPath("$[0].displayName").value("HTTP to JSON"));
+        mvc.perform(as(post("/api/templates/from-flow/%d".formatted(id))).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"http to json\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("A template named 'HTTP to JSON' already exists. Replace it?"));
+
+        mvc.perform(as(post("/api/templates/http-to-json/flows")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"My Payments\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("my-payments"))
+                .andExpect(jsonPath("$.displayName").value("My Payments"))
+                .andExpect(jsonPath("$.routeFile").value("my-payments.camel.yaml"));
+    }
 }

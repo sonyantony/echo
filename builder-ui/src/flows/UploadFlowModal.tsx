@@ -14,7 +14,7 @@ import {
   TextInput,
 } from '@patternfly/react-core';
 import { useState, type FormEvent } from 'react';
-import { FLOW_NAME_HINT, FLOW_NAME_PATTERN, flowsApi, type FlowDetail } from '../api/flows';
+import { flowsApi, isValidDisplayName, type FlowDetail } from '../api/flows';
 
 interface Props {
   onUploaded(flow: FlowDetail): void;
@@ -28,7 +28,7 @@ export function UploadFlowModal({ onUploaded, onClose }: Props) {
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string>();
   const [uploading, setUploading] = useState(false);
-  const nameValid = !name || (FLOW_NAME_PATTERN.test(name) && name.length <= 63);
+  const nameValid = !name.trim() || isValidDisplayName(name);
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -36,7 +36,7 @@ export function UploadFlowModal({ onUploaded, onClose }: Props) {
     setUploading(true);
     setError(undefined);
     try {
-      onUploaded(await flowsApi.upload(file, name, description));
+      onUploaded(await flowsApi.upload(file, name.trim(), description));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setUploading(false);
@@ -71,7 +71,7 @@ export function UploadFlowModal({ onUploaded, onClose }: Props) {
             <FormHelperText>
               <HelperText>
                 <HelperTextItem variant={nameValid ? 'default' : 'error'}>
-                  Leave empty to keep the name in the file. {FLOW_NAME_HINT}
+                  Leave empty to keep the name in the file. Any name, e.g. First Flow.
                 </HelperTextItem>
               </HelperText>
             </FormHelperText>

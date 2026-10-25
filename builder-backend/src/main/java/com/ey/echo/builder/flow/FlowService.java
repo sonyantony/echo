@@ -40,6 +40,18 @@ public class FlowService {
         return flows.findByNameIgnoreCase(name);
     }
 
+    /**
+     * The flow a user means by {@code name}: the one with that display name, else the one with that
+     * identifier (both ignoring case).
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<Flow> findByDisplayName(String name) {
+        String typed = name == null ? "" : name.strip();
+        var all = list();
+        return all.stream().filter(f -> f.getDisplayName().equalsIgnoreCase(typed)).findFirst()
+                .or(() -> all.stream().filter(f -> f.getName().equalsIgnoreCase(typed)).findFirst());
+    }
+
     /** Flow with its file list, loaded inside the transaction. */
     @Transactional(readOnly = true)
     public FlowDtos.FlowDetail detail(long id) {
@@ -60,36 +72,46 @@ public class FlowService {
         return RestFromSpec.apply(FlowNames.routeFile(flow.getName()), apiSpecs.find(flow), result);
     }
 
-    public Flow create(String name, String description, String user) {
-        checkName(name);
-        if (flows.existsByNameIgnoreCase(name)) {
-            throw duplicateName(name);
-        }
-        var flow = new Flow(name, blankToNull(description), user, now());
+    /** A new flow called {@code displayName}; its identifier is made from that name ({@link FlowNames#idFor}). */
+    public Flow create(String displayName, String description, String user) {
+        String display = checkNewDisplayName(displayName, null);
+        String name = newId(display);
+        var flow = new Flow(name, display, blankToNull(description), user, now());
         flow.putFile(FlowNames.routeFile(name), FlowTemplates.route(name));
         flow.putFile("application.properties", FlowTemplates.applicationProperties(name));
         return flows.save(flow);
     }
 
     /**
-     * Creates a flow from an uploaded zip. The flow is named after the zip's route file unless a
-     * name is given, in which case the route file is renamed to match.
+     * Creates a flow from an uploaded zip, called {@code displayName} if given, else after the zip's
+     * route file. The route file is renamed to match the flow's identifier.
      */
-    public Flow importArchive(FlowArchive.Contents archive, String name, String description, String user) {
-        var flowName = name == null || name.isBlank() ? archive.name() : name.strip();
-        checkName(flowName);
-        if (flows.existsByNameIgnoreCase(flowName)) {
-            throw duplicateName(flowName);
+    public Flow importArchive(FlowArchive.Contents archive, String displayName, String description, String user) {
+        String display = checkNewDisplayName(
+                displayName == null || displayName.isBlank() ? archive.name() : displayName, null);
+        return importArchive(archive, newId(display), display, description, user);
+    }
+
+    /**
+     * Creates a flow from files under the given identifier (a published flow's folder name, which
+     * must stay the same so publishing writes to that folder again).
+     */
+    public Flow importArchive(FlowArchive.Contents archive, String name, String displayName, String description,
+            String user) {
+        checkName(name);
+        if (flows.existsByNameIgnoreCase(name)) {
+            throw duplicateName(name);
         }
         if (description != null && description.length() > 1000) {
             throw FlowExceptions.descriptionTooLong();
         }
-        var flow = new Flow(flowName, blankToNull(description), user, now());
+        String display = FlowNames.isValidDisplayName(displayName) ? displayName.strip() : null;
+        var flow = new Flow(name, display, blankToNull(description), user, now());
         var originalRoute = FlowNames.routeFile(archive.name());
         // A downloaded or published flow carries the REST part made from its spec; the draft does not.
         archive.files().forEach((path, content) -> {
             if (path.equals(originalRoute)) {
-                flow.putFile(FlowNames.routeFile(flowName), RestFromSpec.strip(content));
+                flow.putFile(FlowNames.routeFile(name), RestFromSpec.strip(content));
             } else {
                 flow.putFile(path, content);
             }
@@ -97,17 +119,14 @@ public class FlowService {
         return flows.save(flow);
     }
 
-    /** Renames and/or re-describes a flow. Renaming also renames its route file. */
-    public Flow update(long id, String name, String description, String user) {
+    /**
+     * Renames and/or re-describes a flow. Only the display name changes: the identifier (Git folder,
+     * route file) stays, so a published flow keeps its folder.
+     */
+    public Flow update(long id, String displayName, String description, String user) {
         var flow = get(id);
-        if (!flow.getName().equals(name)) {
-            checkName(name);
-            if (flows.existsByNameIgnoreCase(name)) {
-                throw duplicateName(name);
-            }
-            var oldRoute = FlowNames.routeFile(flow.getName());
-            flow.file(oldRoute).ifPresent(f -> f.setPath(FlowNames.routeFile(name)));
-            flow.setName(name);
+        if (!flow.getDisplayName().equals(displayName == null ? null : displayName.strip())) {
+            flow.setDisplayName(checkNewDisplayName(displayName, flow));
         }
         flow.setDescription(blankToNull(description));
         flow.touch(user, now());
@@ -115,34 +134,35 @@ public class FlowService {
     }
 
     /**
-     * Save As: copies a flow, with its side files, to a draft with another name. The route file is
-     * renamed to match and gets {@code routeContent} (what is on screen) when given. An existing
-     * draft with that name is replaced only when {@code overwrite} is true; the source keeps its
-     * last saved state. Saving under the flow's own name is a plain save.
+     * Save As: copies a flow, with its side files, to a draft called {@code displayName}. The route
+     * file is renamed to match and gets {@code routeContent} (what is on screen) when given. An
+     * existing draft with that name is replaced only when {@code overwrite} is true; the source
+     * keeps its last saved state. Saving under the flow's own name is a plain save.
      */
-    public Flow saveAs(long sourceId, String name, String routeContent, boolean overwrite, String user) {
-        checkName(name);
+    public Flow saveAs(long sourceId, String displayName, String routeContent, boolean overwrite, String user) {
+        if (!FlowNames.isValidDisplayName(displayName)) {
+            throw FlowExceptions.invalidDisplayName();
+        }
+        String display = displayName.strip();
         var source = get(sourceId);
         String sourceRoute = FlowNames.routeFile(source.getName());
-        if (source.getName().equals(name)) {
+        var existing = findByDisplayName(display);
+        if (existing.isPresent() && existing.get().getId().equals(sourceId)) {
             if (routeContent != null) {
                 writeFile(sourceId, sourceRoute, routeContent, user);
             }
             return source;
         }
+        if (existing.isPresent() && !overwrite) {
+            throw FlowExceptions.confirmOverwrite(
+                    "A flow named '%s' already exists. Replace it?".formatted(existing.get().getDisplayName()));
+        }
+        var target = existing.orElseGet(() -> new Flow(newId(display), display, source.getDescription(), user, now()));
+        target.setDisplayName(display);
         var files = new java.util.TreeMap<String, String>();
         source.getFiles().forEach(f -> files.put(f.getPath(), f.getContent()));
         String route = files.remove(sourceRoute);
-        files.put(FlowNames.routeFile(name), routeContent != null ? routeContent : route);
-
-        var existing = flows.findByNameIgnoreCase(name);
-        if (existing.isPresent() && existing.get().getId().equals(sourceId)) {
-            throw duplicateName(name); // differs only in case from the source's own name
-        }
-        if (existing.isPresent() && !overwrite) {
-            throw FlowExceptions.confirmOverwrite("A flow named '%s' already exists. Replace it?".formatted(name));
-        }
-        var target = existing.orElseGet(() -> new Flow(name, source.getDescription(), user, now()));
+        files.put(FlowNames.routeFile(target.getName()), routeContent != null ? routeContent : route);
         replaceFiles(target, files);
         target.touch(user, now());
         return existing.isPresent() ? target : flows.save(target);
@@ -161,6 +181,9 @@ public class FlowService {
                     "The template '%s' has no %s.".formatted(templateName, templateRoute));
         }
         templateFiles.keySet().forEach(FlowService::checkPath);
+        if (name == null || name.isBlank()) {
+            throw FlowExceptions.invalidDisplayName();
+        }
         return importArchive(new FlowArchive.Contents(templateName, templateFiles), name, description, user);
     }
 
@@ -240,7 +263,7 @@ public class FlowService {
     @Transactional(readOnly = true)
     public List<FlowDtos.ApiSpecRef> apiSpecs() {
         return list().stream()
-                .flatMap(f -> apiSpecs.find(f).map(spec -> new FlowDtos.ApiSpecRef(f.getId(), f.getName(), spec)).stream())
+                .flatMap(f -> apiSpecs.find(f).map(spec -> new FlowDtos.ApiSpecRef(f.getId(), f.getDisplayName(), spec)).stream())
                 .toList();
     }
 
@@ -253,7 +276,7 @@ public class FlowService {
     public String copyApiSpec(long id, long sourceId, String user) {
         var source = get(sourceId);
         String name = apiSpecs.find(source)
-                .orElseThrow(() -> notFound("An OpenAPI spec in flow " + source.getName()));
+                .orElseThrow(() -> notFound("An OpenAPI spec in flow " + source.getDisplayName()));
         if (sourceId != id) {
             saveApiSpec(id, name, source.file(name).orElseThrow().getContent(), user);
         }
@@ -274,6 +297,27 @@ public class FlowService {
 
     private Instant now() {
         return clock.instant();
+    }
+
+    /**
+     * The display name, stripped, if it is allowed and no other flow (than {@code self}) is called
+     * that or has it as identifier.
+     */
+    private String checkNewDisplayName(String displayName, Flow self) {
+        if (!FlowNames.isValidDisplayName(displayName)) {
+            throw FlowExceptions.invalidDisplayName();
+        }
+        String display = displayName.strip();
+        var other = findByDisplayName(display);
+        if (other.isPresent() && (self == null || !other.get().getId().equals(self.getId()))) {
+            throw duplicateName(display);
+        }
+        return display;
+    }
+
+    /** A new flow's identifier: made from its display name, with -2, -3... if another flow has it. */
+    private String newId(String displayName) {
+        return FlowNames.uniqueIdFor(displayName, flows::existsByNameIgnoreCase);
     }
 
     private static void checkName(String name) {

@@ -110,6 +110,26 @@ class PublishedFlowControllerTest {
     }
 
     @Test
+    void theDisplayNameGoesToGitAndComesBackWithTheDraft() throws Exception {
+        long id = createAndPublish("Customer Refunds");
+        assertThat(REMOTE.read("main", "flows/customer-refunds/echo-flow.json"))
+                .contains("\"name\" : \"customer-refunds\"", "\"displayName\" : \"Customer Refunds\"");
+        mvc.perform(as(get("/api/published-flows")))
+                .andExpect(jsonPath("$[0].name").value("customer-refunds"))
+                .andExpect(jsonPath("$[0].displayName").value("Customer Refunds"));
+
+        mvc.perform(as(delete("/api/flows/{id}", id))).andExpect(status().isNoContent());
+        publisher.publish("customer-refunds", null, java.util.Map.of(
+                "customer-refunds.camel.yaml", "- route: {}\n",
+                "echo-flow.json", "{\"name\":\"customer-refunds\",\"displayName\":\"Customer Refunds\"}"),
+                "someone", "Back in Git");
+        mvc.perform(as(post("/api/published-flows/customer-refunds/draft")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("customer-refunds"))
+                .andExpect(jsonPath("$.displayName").value("Customer Refunds"));
+    }
+
+    @Test
     void opensAGitOnlyFlowAsANewDraft() throws Exception {
         publisher.publish("legacy", null, java.util.Map.of("legacy.camel.yaml", "- route: {}\n",
                 "echo-flow.json", "{\"description\":\"Old one\"}"), "someone", "Added in Git");

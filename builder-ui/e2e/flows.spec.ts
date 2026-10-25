@@ -224,3 +224,19 @@ test('Cancel on Open Flow goes back', async ({ page }) => {
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
 });
+
+// A flow name may have capitals and spaces; ECHO makes the flow's ID (its Git folder) from it.
+test('names a flow with capitals and spaces and shows the ID made from it', async ({ page }) => {
+  await login(page);
+  const stamp = Date.now().toString(36);
+  const name = `First Flow ${stamp.toUpperCase()}`;
+  const id = `first-flow-${stamp}`;
+  await createFlow(page, name);
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
+  await expect(page.getByTestId('flow-name-tag')).toHaveAttribute('title', new RegExp(`ID: ${id}`));
+
+  await fileMenu(page, /^Open Flow/);
+  const row = page.getByRole('row').filter({ hasText: name });
+  await expect(row.getByRole('link', { name })).toBeVisible();
+  await expect(row).toContainText(`ID: ${id}`);
+});

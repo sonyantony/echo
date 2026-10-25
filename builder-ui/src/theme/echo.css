@@ -64,3 +64,9 @@
 [data-echo-theme] .echo-kaoto-host .custom-edge__connector {
   stroke-width: 1.5;
 }
+
+/* A flow's ID (its Git folder) under its name on Open Flow, when the two differ. */
+.echo-flow-id {
+  color: var(--echo-text-subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}

@@ -23,7 +23,7 @@ import {
 import { TrashIcon } from '@patternfly/react-icons';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   downloadFlow,
@@ -50,18 +50,38 @@ function listRows(flows: FlowSummary[], published: PublishedFlowSummary[]): Row[
     ...published.map((p): Row => ({ kind: 'published', published: p })),
     ...flows.map((f): Row => ({ kind: 'draft', flow: f })),
   ];
-  const name = (r: Row) => (r.kind === 'draft' ? r.flow.name : r.published.name);
-  return rows.sort((a, b) => name(a).localeCompare(name(b)) || (a.kind === 'published' ? -1 : 1));
+  return rows.sort(
+    (a, b) =>
+      displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base' }) ||
+      id(a).localeCompare(id(b)) ||
+      (a.kind === 'published' ? -1 : 1),
+  );
 }
+
+/** The row's flow ID: its folder in Git. */
+const id = (r: Row) => (r.kind === 'draft' ? r.flow.name : r.published.name);
+/** What users call the row's flow. */
+const displayName = (r: Row) => (r.kind === 'draft' ? r.flow.displayName : r.published.displayName || r.published.name);
 
 /** True when the row shows as Published (a Published row, or a draft that matches what was published). */
 const isPublished = (r: Row) => r.kind === 'published' || r.flow.status === 'PUBLISHED';
 
-/** Case-insensitive match on the flow's name or description. */
+/** Case-insensitive match on the flow's name, ID or description. */
 function matches(r: Row, search: string) {
-  const { name, description } = r.kind === 'draft' ? r.flow : r.published;
+  const { description } = r.kind === 'draft' ? r.flow : r.published;
   const text = search.trim().toLowerCase();
-  return !text || name.toLowerCase().includes(text) || (description ?? '').toLowerCase().includes(text);
+  return !text || [displayName(r), id(r), description ?? ''].some((t) => t.toLowerCase().includes(text));
+}
+
+/** The flow's name, with its ID (Git folder) under it when the two differ. */
+function NameCell({ row, children }: { row: Row; children: ReactNode }) {
+  const name = displayName(row);
+  return (
+    <>
+      {children}
+      {name !== id(row) && <div className="echo-flow-id">ID: {id(row)}</div>}
+    </>
+  );
 }
 
 export function StatusLabel({ status }: { status: FlowSummary['status'] }) {
@@ -292,7 +312,9 @@ export function FlowListPage() {
                     row.kind === 'draft' ? (
                       <Tr key={`draft-${row.flow.id}`}>
                         <Td dataLabel="Name">
-                          <Link to={`/flows/${row.flow.id}`}>{row.flow.name}</Link>
+                          <NameCell row={row}>
+                            <Link to={`/flows/${row.flow.id}`}>{row.flow.displayName}</Link>
+                          </NameCell>
                         </Td>
                         <Td dataLabel="Description">{row.flow.description}</Td>
                         <Td dataLabel="Status">
@@ -302,7 +324,7 @@ export function FlowListPage() {
                         <Td dataLabel="Last changed">
                           {new Date(row.flow.updatedAt).toLocaleString()} by {row.flow.updatedBy}
                         </Td>
-                        <Td isActionCell>{deleteButton(row, row.flow.name)}</Td>
+                        <Td isActionCell>{deleteButton(row, row.flow.displayName)}</Td>
                         <Td
                           isActionCell
                           actions={{
@@ -317,9 +339,11 @@ export function FlowListPage() {
                     ) : (
                       <Tr key={`published-${row.published.name}`}>
                         <Td dataLabel="Name">
-                          <Button variant="link" isInline className="echo-text-link" onClick={() => open(row.published)}>
-                            {row.published.name}
-                          </Button>
+                          <NameCell row={row}>
+                            <Button variant="link" isInline className="echo-text-link" onClick={() => open(row.published)}>
+                              {displayName(row)}
+                            </Button>
+                          </NameCell>
                         </Td>
                         <Td dataLabel="Description">{row.published.description}</Td>
                         <Td dataLabel="Status">
@@ -339,7 +363,7 @@ export function FlowListPage() {
                             ? `${new Date(row.published.publishedAt).toLocaleString()} by ${row.published.publishedBy ?? 'unknown'}`
                             : 'Added outside the Builder'}
                         </Td>
-                        <Td isActionCell>{deleteButton(row, row.published.name)}</Td>
+                        <Td isActionCell>{deleteButton(row, displayName(row))}</Td>
                         <Td
                           isActionCell
                           actions={{
@@ -409,8 +433,9 @@ export function FlowListPage() {
         <FlowFormModal
           title="Rename flow"
           submitLabel="Save"
-          initialName={renaming.name}
+          initialName={renaming.displayName}
           initialDescription={renaming.description}
+          keepId={renaming.name}
           onClose={() => setRenaming(undefined)}
           onSubmit={async (name, description) => {
             await flowsApi.update(renaming.id, name, description);
@@ -422,7 +447,7 @@ export function FlowListPage() {
       {choosing && (
         <Modal isOpen variant="small" onClose={() => setChoosing(undefined)} aria-labelledby="choose-title">
           <ModalHeader
-            title={`Open ${choosing.name} from ${choosing.target ?? 'Git'}?`}
+            title={`Open ${choosing.displayName || choosing.name} from ${choosing.target ?? 'Git'}?`}
             titleIconVariant="warning"
             labelId="choose-title"
           />
@@ -453,7 +478,7 @@ export function FlowListPage() {
       )}
       {disabling && (
         <Modal isOpen variant="small" onClose={() => setDisabling(undefined)} aria-labelledby="disable-title">
-          <ModalHeader title={`Disable ${disabling.name}?`} titleIconVariant="warning" labelId="disable-title" />
+          <ModalHeader title={`Disable ${disabling.displayName || disabling.name}?`} titleIconVariant="warning" labelId="disable-title" />
           <ModalBody>
             The flow stays in {disabling.target ?? 'Git'}, but the pipeline leaves it out of the images it builds from
             now on, so it stops running once the next build is deployed. Publishing a new version keeps it disabled; use
@@ -479,7 +504,7 @@ export function FlowListPage() {
       {deleting && (
         <Modal isOpen variant="small" onClose={() => setDeleting(undefined)} aria-labelledby="delete-title">
           <ModalHeader
-            title={`Delete ${deleting.kind === 'draft' ? deleting.flow.name : deleting.published.name}?`}
+            title={`Delete ${displayName(deleting)}?`}
             titleIconVariant="warning"
             labelId="delete-title"
           />
