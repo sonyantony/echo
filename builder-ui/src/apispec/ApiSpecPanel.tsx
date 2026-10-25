@@ -28,7 +28,14 @@ import {
   withFormat,
   type SpecFormat,
 } from './apiSpec';
-import { fillMissingOperationIds, naturalOperationIds, type OperationRename } from './operationIds';
+import {
+  fillMissingOperationIds,
+  naturalOperationIds,
+  operationChanges,
+  routableOperations,
+  type OperationRename,
+  type RoutableOperation,
+} from './operationIds';
 import { SamplesSpecModal } from './SamplesSpecModal';
 import { SpecNameModal } from './SpecNameModal';
 import { specFromSamples } from './specFromSamples';
@@ -79,6 +86,12 @@ interface Props {
    * them must start from the new direct:<operationId> (operationIds.ts).
    */
   onOperationIdsRenamed?(renames: OperationRename[]): void;
+  /**
+   * Called when an edit in the editor added or removed operations, by the operationId their route
+   * starts from (a renamed path keeps its operation). Not called when the whole spec is replaced
+   * (Upload, Copy From Another Flow, New From Samples, Discard).
+   */
+  onOperationsChanged?(changes: { added: RoutableOperation[]; removed: RoutableOperation[] }): void;
   /** False while a Kaoto view covers the panel; left out, it counts as shown. */
   visible?: boolean;
 }
@@ -97,13 +110,22 @@ type Dialog =
   | { kind: 'replace'; fileName: string; text: string }
   | { kind: 'rename-upload'; fileName: string; text: string };
 
+/** The operations of the editor's JSON; undefined when there is none or it cannot be read. */
+function operationsOf(json: string | undefined) {
+  try {
+    return json === undefined ? undefined : routableOperations(json);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The flow's OpenAPI spec, edited in Apicurio's editor. Shown by the flow editor in place of
  * Kaoto's views when Openapi is picked on its tab line. The spec is one file in the flow
  * folder, under the name it was uploaded or saved with, in YAML or JSON (the format buttons).
  */
 export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSpecPanel(
-  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored, onOperationIdsRenamed, visible = true },
+  { flowId: id, flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored, onOperationIdsRenamed, onOperationsChanged, visible = true },
   ref,
 ) {
   const queryClient = useQueryClient();
@@ -185,9 +207,32 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   onFormatChangeRef.current = onFormatChange;
   useEffect(() => onFormatChangeRef.current?.(format), [format]);
 
+  const onOperationsChangedRef = useRef(onOperationsChanged);
+  onOperationsChangedRef.current = onOperationsChanged;
+  /** The operations the editor showed at its last change; set again each time it opens a spec. */
+  const operations = useRef<RoutableOperation[]>(undefined);
+  /**
+   * Operations a save renamed while the editor still shows their old ids (see named below): their
+   * routes start from the new id already, old id to new.
+   */
+  const renamedSince = useRef(new Map<string, string>());
+  useEffect(() => {
+    operations.current = operationsOf(initialJson);
+    renamedSince.current = new Map();
+  }, [editorKey, initialJson]);
+
   const onChange = useCallback((content: string) => {
     latest.current = content;
     setContentDirty(content !== saved.current);
+    const now = operationsOf(content);
+    if (!now) return;
+    const before = operations.current;
+    operations.current = now;
+    if (!before) return;
+    const { added, removed } = operationChanges(before, now);
+    if (!added.length && !removed.length) return;
+    const current = (op: RoutableOperation) => ({ ...op, operationId: renamedSince.current.get(op.operationId) ?? op.operationId });
+    onOperationsChangedRef.current?.({ added, removed: removed.map(current) });
   }, []);
 
   /** What is on screen, as the editor's JSON. */
@@ -244,7 +289,11 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
       setContentDirty(latest.current !== undefined && latest.current !== json);
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setStatus({ variant: 'success', text: auto ? `Autosaved at ${time}` : `Saved ${fileName}.` });
-      if (naming.renames.length) onRenamedRef.current?.(naming.renames);
+      if (naming.renames.length) {
+        // The editor still shows the old ids (and a later save renames from them again).
+        for (const r of naming.renames) renamedSince.current.set(r.from, r.to);
+        onRenamedRef.current?.(naming.renames);
+      }
       named.current = naming.json === json ? undefined : naming.json;
       if (!visibleRef.current) openNamed();
       onStoredRef.current?.();

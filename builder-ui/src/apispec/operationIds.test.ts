@@ -1,13 +1,18 @@
 import YAML from 'yaml';
 import {
   appendRoute,
+  callsDirect,
   directRoutes,
   fillMissingOperationIds,
   naturalOperationIds,
+  operationChanges,
   operationIdFor,
+  removeDirectRoutes,
   renameDirectRoutes,
+  routableOperations,
   routeForOperation,
   specOperations,
+  untouchedRoutes,
 } from './operationIds';
 
 const spec = (paths: Record<string, Record<string, object>>) => JSON.stringify({ openapi: '3.0.3', info: { title: 'Cards' }, paths }, null, 2);
@@ -115,5 +120,52 @@ describe('operationIds', () => {
       },
     });
     expect(appendRoute('', routeForOperation(op))).toBe(routeForOperation(op));
+  });
+
+  it('tells which operations an edit added and removed, a renamed path keeping its operation', () => {
+    const before = routableOperations(spec({ '/cards': { get: { operationId: 'getCards' }, delete: { operationId: 'deleteCards' } } }));
+    const after = routableOperations(spec({ '/payment-cards': { get: { operationId: 'getCards' }, post: {} } }));
+    const { added, removed } = operationChanges(before, after);
+    expect(added).toMatchObject([{ method: 'POST', path: '/payment-cards', operationId: 'postPaymentCards' }]);
+    expect(removed).toMatchObject([{ method: 'DELETE', operationId: 'deleteCards' }]);
+    expect(operationChanges(after, after)).toEqual({ added: [], removed: [] });
+  });
+
+  it('removes the routes for operations and gives them back as they were', () => {
+    const designed = `- route:
+    id: mine
+    from:
+      uri: direct
+      parameters:
+        name: getCards
+      steps:
+        - setBody:
+            constant: hi
+`;
+    const yaml = appendRoute(designed, routeForOperation({ method: 'POST', path: '/cards', operationId: 'postCards' }));
+    const { yaml: left, removed } = removeDirectRoutes(yaml, ['getCards', 'other']);
+    expect(directRoutes(left)).toEqual(new Map([['postCards', true]]));
+    expect([...removed.keys()]).toEqual(['getCards']);
+    expect(YAML.parse(appendRoute(left, removed.get('getCards')!))[1]).toEqual(YAML.parse(designed)[0]);
+    expect(removeDirectRoutes(yaml, ['other']).yaml).toBe(yaml);
+    expect(directRoutes(removeDirectRoutes(yaml, ['getCards', 'postCards']).yaml).size).toBe(0);
+  });
+
+  it('tells routes still as ECHO made them from ones somebody worked on', () => {
+    const made = routeForOperation({ method: 'GET', path: '/cards', operationId: 'getCards' });
+    expect(untouchedRoutes(made)).toEqual(new Set(['getCards']));
+    expect(untouchedRoutes(made.replace('called', 'was called'))).toEqual(new Set(['getCards']));
+    const added = made.replace(/( +)- log:/, '$1- setBody:\n$1    constant: hi\n$1- log:');
+    expect(directRoutes(added).has('getCards')).toBe(true);
+    expect(untouchedRoutes(added).size).toBe(0);
+    expect(untouchedRoutes(made.replace('id: log-getCards', 'id: log-1234')).size).toBe(0);
+    expect(untouchedRoutes(made.replace('    description:', '    autoStartup: false\n    description:')).size).toBe(0);
+  });
+
+  it('finds calls to a direct endpoint, in either form', () => {
+    const caller = (to: string) => `- route:\n    from:\n      uri: direct:a\n      steps:\n        - to:\n${to}`;
+    expect(callsDirect(caller('            uri: direct:getCards?timeout=5\n'), 'getCards')).toBe(true);
+    expect(callsDirect(caller('            uri: direct\n            parameters:\n              name: getCards\n'), 'getCards')).toBe(true);
+    expect(callsDirect(caller('            uri: direct:other\n'), 'getCards')).toBe(false);
   });
 });

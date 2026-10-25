@@ -6,7 +6,7 @@ request validation, Swagger UI).
 
 ## Editing
 
-In the flow editor, **Openapi Design** (on the tab line, right after File: API-first flows start
+In the flow editor, **Interface** (called Openapi Design, then Openapi, before; on the tab line, right after File: API-first flows start
 from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI editor
 (visual designer plus a Source tab), in place of Kaoto's views. Like Flow Design it is also a menu:
 
@@ -74,6 +74,13 @@ itself keeps only what is designed, so the service always follows the spec's cur
   operation, and the flow's routes for it follow (`direct:` endpoints, and the route's ECHO-made
   id and label). **Flow > Add Route For Operation** lists the operations by method and path and
   adds a route for each one picked, so nobody types an id.
+- **Routes follow the methods edited in Interface.** A method added there gets its route on the
+  canvas at once (`direct:<operationId>` and a log step, as Add Route For Operation makes it). A
+  method deleted there takes its route away without asking while the route is still as ECHO made
+  it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user
+  picks **Remove Route** in the dialog that asks, and Undo in Interface brings it back as it was.
+  Upload, Copy From Another Flow, New From Samples and Discard replace the whole spec and leave
+  the routes alone.
 - **An operation without a route** answers **404** with a JSON message naming the operation. The
   service has `missingOperation: ignore` (so the flow starts), and ECHO adds a small
   `echo-missing-<operationId>` route for each such operation; add a route for it and it takes

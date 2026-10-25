@@ -10,7 +10,7 @@ const editorOf = (page: Page) => page.frameLocator('iframe[title="OpenAPI editor
 const flowIdOf = (page: Page) => page.url().replace(/.*\/flows\/(\d+).*/, '$1');
 
 async function openSpec(page: Page) {
-  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
+  await page.getByRole('button', { name: 'Interface', exact: true }).click();
   // Clicking opens the view and its menu; the menu is closed again for the tests that don't use it.
   await expect(page.getByRole('menuitem', { name: /^Upload/ })).toBeVisible();
   await page.keyboard.press('Escape');
@@ -18,7 +18,7 @@ async function openSpec(page: Page) {
 }
 
 async function specMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
+  await page.getByRole('button', { name: 'Interface', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();
 }
 
@@ -202,7 +202,7 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   for (const name of ['File', 'Flow', 'Run', 'Advanced']) {
     await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   }
-  await expect(page.getByRole('button', { name: 'Openapi', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
+  await expect(page.getByRole('button', { name: 'Interface', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
 
   // The editor has ECHO's theme and font, not Apicurio's own; its title bar's API name is hidden
   // under ECHO's bar, which "API Overview" stands in for.

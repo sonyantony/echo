@@ -60,7 +60,7 @@ export function CopySpecModal({ flowId, ownSpec, specDirty, onClose, onCopied, o
     }
   };
 
-  const replaces = [ownSpec && `${ownSpec} is replaced`, specDirty && 'unsaved edits in Openapi are lost']
+  const replaces = [ownSpec && `${ownSpec} is replaced`, specDirty && 'unsaved edits in Interface are lost']
     .filter(Boolean)
     .join(', and ');
 

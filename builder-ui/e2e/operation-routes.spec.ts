@@ -32,7 +32,7 @@ const spec = (cardsPath: string, cardsId?: string) =>
 
 async function upload(page: Page, text: string) {
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
+  await page.getByRole('button', { name: 'Interface', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Upload/ }).click();
   await (await chooser).setFiles({ name: 'cards-api.yaml', mimeType: 'application/yaml', buffer: Buffer.from(text) });
 }
@@ -82,7 +82,7 @@ test('operations get routes without anyone typing an operationId, renames follow
 
   // A new version of the spec moves GET /cards to /payment-cards (the operation keeps its old id
   // there, as when a path is renamed in the editor): the operation and its route are renamed together.
-  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
+  await page.getByRole('button', { name: 'Interface', exact: true }).click();
   await page.keyboard.press('Escape');
   await upload(page, spec('/payment-cards', 'getCards'));
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
@@ -113,7 +113,7 @@ test('an operation added in Openapi gets its operationId at once, before any Sav
   });
   await login(page);
   await createFlow(page, uniqueName('opnow'));
-  await page.getByRole('button', { name: 'Openapi', exact: true }).click();
+  await page.getByRole('button', { name: 'Interface', exact: true }).click();
   await page.keyboard.press('Escape');
   const editor = editorOf(page);
   await editor.getByText('Add a path').click();
@@ -147,5 +147,92 @@ test('an operation added in Openapi gets its operationId at once, before any Sav
   await expect(editor.locator('pf-inline-text-editor[nodepath="operationId"]')).toContainText('getHhjhjhjhkkTtttt');
   await editor.getByText('Source', { exact: true }).first().click();
   await expect(editor.locator('.ace_editor').first()).toContainText('operationId: getHhjhjhjhkkTtttt');
+  expect(editorErrors).toEqual([]);
+});
+
+test('a method added in Interface gets a route at once; deleting it asks about a route somebody worked on', async ({ page }) => {
+  const editorErrors: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error' && m.text().startsWith('ERROR')) editorErrors.push(m.text());
+  });
+  await login(page);
+  const name = uniqueName('autoroute');
+  await createFlow(page, name);
+  const routeFile = `/api/flows/${flowIdOf(page)}/files/${name}.camel.yaml`;
+  const saved = async () => {
+    await fileMenu(page, /^Save(?! As)/);
+    await expect(page.getByText('Saved.')).toBeVisible();
+    return (await page.request.get(routeFile)).text();
+  };
+  // GET /cards already has a designed route.
+  const put = await page.request.put(routeFile, {
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value },
+    data: [
+      '- route:',
+      '    id: cards',
+      '    from:',
+      '      uri: direct',
+      '      parameters:',
+      '        name: getCards',
+      '      steps:',
+      '        - setBody:',
+      '            constant: all the cards',
+      '',
+    ].join('\n'),
+  });
+  expect(put.ok()).toBe(true);
+  await page.reload();
+  await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Interface', exact: true }).click();
+  await page.keyboard.press('Escape');
+  const editor = editorOf(page);
+  await editor.getByText('Add a path').click();
+  const addPath = editor.getByRole('dialog', { name: 'Add Path' });
+  await addPath.getByRole('textbox').fill('/cards');
+  await addPath.getByRole('button', { name: 'Add' }).click();
+  // The spec is named once (File > Save saves it with the canvas from then on).
+  await fileMenu(page, /^Save(?! As)/);
+  await page.getByRole('dialog', { name: 'Save' }).getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  const method = (label: string) => editor.locator('.operation-tab').getByText(label, { exact: true });
+  const deleteOperation = async (label: string) => {
+    await method(label).click();
+    await editor.locator('button.dropdown-toggle.btn-link').nth(1).click();
+    await editor.getByText('Delete Operation', { exact: true }).click();
+  };
+  const undo = () => editor.getByTitle('Click to undo the last change.').click();
+
+  // GET has its route already; POST gets one.
+  await method('Get').click();
+  await editor.getByRole('button', { name: 'Add Operation' }).click();
+  await method('Post').click();
+  await editor.getByRole('button', { name: 'Add Operation' }).click();
+  await expect(page.getByText('Added a route for POST /cards.')).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/5-route-added-at-once.png` });
+  let route = await saved();
+  expect(route).toMatch(/name: postCards\n\s+steps:\n\s+- log:\n\s+id: log-postCards\n\s+message: POST \/cards called/);
+  expect(route.match(/name: getCards/g)).toHaveLength(1);
+
+  // POST's route is still as ECHO made it: deleting POST takes it away without asking.
+  await deleteOperation('Post');
+  await expect.poll(async () => (await saved()).includes('postCards')).toBe(false);
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  // GET's route was designed: deleting GET asks. Keep leaves it.
+  await deleteOperation('Get');
+  const dialog = page.getByRole('dialog', { name: 'Remove its route too?' });
+  await expect(dialog.getByText('GET /cards', { exact: true })).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/6-remove-route-dialog.png` });
+  await dialog.getByRole('button', { name: 'Keep Route' }).click();
+  expect(await saved()).toContain('constant: all the cards');
+
+  // Undo brings GET back to its route; Remove takes the route away, and undo puts it back as it was.
+  await undo();
+  await deleteOperation('Get');
+  await dialog.getByRole('button', { name: 'Remove Route' }).click();
+  await expect.poll(async () => (await saved()).includes('getCards')).toBe(false);
+  await undo();
+  await expect.poll(async () => (await saved()).includes('constant: all the cards')).toBe(true);
   expect(editorErrors).toEqual([]);
 });
