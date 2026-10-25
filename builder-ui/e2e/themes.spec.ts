@@ -1,5 +1,5 @@
 import { expect, test, type Frame, type Page, type TestInfo } from '@playwright/test';
-import { createFlow, login, uniqueName } from './helpers';
+import { createFlow, interfaceItem, login, uniqueName } from './helpers';
 
 // Every theme (theme/themes.css) across the main screens, the embedded Kaoto and Openapi
 // (Apicurio) editors included. Kaoto and Apicurio are restyled through their class names
@@ -121,6 +121,7 @@ for (const theme of THEMES) {
     await page.goto(`/flows/${flowId}/api`);
     const editor = page.frameLocator('iframe[title="OpenAPI editor"]');
     const outline = editor.locator('.editor-outline');
+    await interfaceItem(page, 'Paths');
     await expect(outline.getByText('/orders')).toBeVisible();
     await expect(editor.locator('html')).toHaveAttribute('data-echo-theme', theme);
     const frame = page.frames().find((f) => f.url().includes('apicurio-editor'))!;
@@ -131,11 +132,13 @@ for (const theme of THEMES) {
     await editor.locator('.editor-detail').evaluate((e) => (e.scrollTop = 500));
     await check(page, testInfo, theme, 'openapi-operation', frame);
 
+    await interfaceItem(page, 'Data Types');
     await outline.locator('button[title="Create Data Type"]').click();
     await expect(editor.getByText('Define a New Data Type')).toBeVisible();
     await check(page, testInfo, theme, 'openapi-add-data-type', frame);
     await editor.locator('.entity-editor button').filter({ hasText: 'Cancel' }).first().click();
 
+    await interfaceItem(page, 'Paths');
     await outline.locator('icon-button[type=add] button').first().click();
     await expect(editor.locator('.modal-content')).toBeVisible();
     await check(page, testInfo, theme, 'openapi-add-path', frame);
