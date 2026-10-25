@@ -95,8 +95,10 @@ interface Props {
   onOperationIdsRenamed?(renames: OperationRename[]): void;
   /**
    * Called when an edit in the editor added or removed operations, by the operationId their route
-   * starts from (a renamed path keeps its operation). Not called when the whole spec is replaced
-   * (Upload, Copy From Another Flow, New From Samples, Discard).
+   * starts from (a renamed path keeps its operation), and when Upload replaced the spec: every
+   * operation of the uploaded file counts as added (those with a route keep it) and those of the
+   * spec before that it lacks as removed. Not called when Copy From Another Flow, New From Samples
+   * or Discard replace the whole spec.
    */
   onOperationsChanged?(changes: { added: RoutableOperation[]; removed: RoutableOperation[] }): void;
   /** False while a Kaoto view covers the panel; left out, it counts as shown. */
@@ -382,10 +384,14 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   /**
    * Keeps an uploaded spec as it is (name, format, operationIds and comments), as the flow's spec;
-   * only operations without an operationId get one.
+   * only operations without an operationId get one. With routes, each of its operations gets a
+   * route (onOperationsChanged), and the routes of the operations it no longer has are dealt with
+   * as when they are deleted in the editor.
    */
-  const storeUpload = async (fileName: string, text: string) => {
+  const storeUpload = async (fileName: string, text: string, routes = true) => {
     setDialog(undefined);
+    // Removed operations are looked up by the ids their routes start from (renamed by a save).
+    const before = (operations.current ?? []).map((op) => ({ ...op, operationId: renamedSince.current.get(op.operationId) ?? op.operationId }));
     const json = toEditorJson(text);
     latest.current = undefined;
     renamedSince.current = new Map();
@@ -393,6 +399,12 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     if (result !== undefined) {
       if (id !== undefined) saved.current = result;
       else unsavedText.current = text;
+      const after = operationsOf(result);
+      if (routes && after) {
+        // The uploaded file's operations get routes, under the ids it came with.
+        const { removed } = operationChanges(before, after);
+        onOperationsChangedRef.current?.({ added: after, removed });
+      }
       named.current = undefined;
       setInitialJson(result);
       setEditorKey((k) => k + 1);
@@ -436,7 +448,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     download,
     show: (fileName, text) => {
       setStatus(undefined);
-      void storeUpload(fileName, text);
+      void storeUpload(fileName, text, false);
     },
     unsavedSpec: () =>
       dirty ? { json: currentJson(), format, name: name && withFormat(name, format), text: unsavedText.current } : undefined,

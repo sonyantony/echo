@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import YAML from 'yaml';
 import { createFlow, designMenu, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
 // operationIds are ECHO's business (decision 0013): every operation is named after its method and
-// path, Openapi hides the field, Flow > Add Route For Operation makes the routes, renaming a path
-// renames its route too, and Publish asks before publishing operations that have no route.
+// path unless the spec has its own, Openapi hides the field, an uploaded spec gets a route per
+// operation, Flow > Add Route For Operation makes the rest, renaming a path renames its route too,
+// and Publish asks before publishing operations that have no route.
 
 const shots = process.env.ECHO_E2E_SCREENSHOTS;
 const editorOf = (page: Page) => page.frameLocator('iframe[title="OpenAPI editor"]');
@@ -36,20 +38,22 @@ async function upload(page: Page, text: string) {
   await (await chooser).setFiles({ name: 'cards-api.yaml', mimeType: 'application/yaml', buffer: Buffer.from(text) });
 }
 
-test('operations get routes without anyone typing an operationId, an uploaded spec keeps its ids, Publish warns about the rest', async ({ page }) => {
+test('an uploaded spec gets a route per operation under its own ids; Add Route For Operation and the Publish warning cover the rest', async ({ page }) => {
   await login(page);
   const name = uniqueName('opids');
   await createFlow(page, name);
   const flowId = flowIdOf(page);
   const routeFile = `/api/flows/${flowId}/files/${name}.camel.yaml`;
 
-  // An uploaded spec without operationIds is stored with its natural ones.
-  await upload(page, spec('/cards'));
+  // An uploaded spec keeps the operationIds it has; only the operation without one gets ECHO's.
+  await upload(page, spec('/cards', 'listCards'));
   const editor = editorOf(page);
   await interfaceItem(page, 'Paths');
   await expect(editor.getByText('/cards/{id}')).toBeVisible();
   await expect.poll(async () => (await page.request.get(`/api/flows/${flowId}/files/cards-api.yaml`)).text())
-    .toMatch(/operationId: getCards[^]*operationId: deleteCardsId/);
+    .toMatch(/operationId: listCards[^]*operationId: deleteCardsId/);
+  // Each operation got a route on the canvas at once.
+  await expect(page.getByText('Added a route for GET /cards, DELETE /cards/{id}.')).toBeVisible();
 
   // Openapi does not show the field.
   await editor.getByText('/cards', { exact: true }).first().click();
@@ -58,49 +62,54 @@ test('operations get routes without anyone typing an operationId, an uploaded sp
   await expect(editor.getByText('Operation ID', { exact: true })).toBeHidden();
   if (shots) await page.screenshot({ path: `${shots}/1-no-operation-id.png` });
 
-  // Flow > Add Route For Operation lists the operations by method and path.
-  await designMenu(page, 'Add Route For Operation');
-  const dialog = page.getByRole('dialog', { name: 'Add Route For Operation' });
-  await expect(dialog.getByText('DELETE /cards/{id}')).toBeVisible();
-  await dialog.getByRole('checkbox', { name: 'GET /cards', exact: true }).check();
-  if (shots) await page.screenshot({ path: `${shots}/2-add-route-for-operation.png` });
-  await dialog.getByRole('button', { name: 'Add' }).click();
-  await expect(page.getByText('Added a route for GET /cards. Design it on the canvas.')).toBeVisible();
-  await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
-  if (shots) await page.screenshot({ path: `${shots}/3-route-added.png` });
   await fileMenu(page, /^Save(?! As)/);
   await expect(page.getByText('Saved.')).toBeVisible();
   let route = await (await page.request.get(routeFile)).text();
   expect(route).toContain('description: GET /cards');
-  expect(route).toMatch(/uri: direct\n\s+parameters:\n\s+name: getCards/);
+  expect(route).toMatch(/uri: direct\n\s+parameters:\n\s+name: listCards/);
+  expect(route).toMatch(/uri: direct\n\s+parameters:\n\s+name: deleteCardsId/);
 
-  // It has a route now.
-  await designMenu(page, 'Add Route For Operation');
-  await expect(dialog.getByRole('checkbox', { name: 'GET /cards Has a route', exact: true })).toBeDisabled();
-  await expect(dialog.getByText('Has a route')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-
-  // A new version of the spec moves GET /cards to /payment-cards and keeps its operationId there:
-  // an uploaded spec keeps its own ids, so the route still handles the operation.
+  // A new version of the spec moves GET /cards to /payment-cards under the same id: its route stays.
   await interfaceMenu(page, /^Design/);
-  await upload(page, spec('/payment-cards', 'getCards'));
+  await upload(page, spec('/payment-cards', 'listCards'));
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
   await interfaceItem(page, 'Paths');
   await expect(editor.getByText('/payment-cards')).toBeVisible();
   await expect.poll(async () => (await page.request.get(`/api/flows/${flowId}/files/cards-api.yaml`)).text()).toContain('/payment-cards');
-  expect(await (await page.request.get(`/api/flows/${flowId}/files/cards-api.yaml`)).text()).toContain('operationId: getCards');
+  await fileMenu(page, /^Save(?! As)/);
   route = await (await page.request.get(routeFile)).text();
-  expect(route).toMatch(/uri: direct\n\s+parameters:\n\s+name: getCards/);
+  expect(route).toMatch(/name: listCards/);
+  expect(route).toContain('description: GET /payment-cards');
+  expect(route.match(/uri: direct\n/g)).toHaveLength(2);
 
-  // DELETE /cards/{id} still has no route: Publish lists it and asks.
+  // A route taken out (here outside the editor): Publish lists its operation and asks.
+  const xsrf = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
+  const withoutDelete = YAML.stringify((YAML.parse(route) as { route?: { id?: string } }[]).filter((e) => e.route?.id !== 'route-deleteCardsId'));
+  expect(withoutDelete).not.toContain('deleteCardsId');
+  await page.request.put(routeFile, { data: withoutDelete, headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf } });
+  await page.reload();
   await designMenu(page, /^Design/);
+  await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   const publish = page.getByRole('dialog');
   await publish.getByRole('button', { name: 'Publish' }).click();
   await expect(publish.getByText('These operations have no route')).toBeVisible();
   await expect(publish.getByRole('listitem')).toHaveText(['DELETE /cards/{id}']);
   if (shots) await page.screenshot({ path: `${shots}/4-publish-warning.png` });
-  await publish.getByRole('button', { name: 'Publish Anyway' }).click();
+  await publish.getByRole('button', { name: 'Cancel' }).click();
+
+  // Flow > Add Route For Operation lists the operations by method and path and adds the route.
+  await designMenu(page, 'Add Route For Operation');
+  const dialog = page.getByRole('dialog', { name: 'Add Route For Operation' });
+  await expect(dialog.getByRole('checkbox', { name: 'GET /payment-cards Has a route', exact: true })).toBeDisabled();
+  await dialog.getByRole('checkbox', { name: 'DELETE /cards/{id}', exact: true }).check();
+  if (shots) await page.screenshot({ path: `${shots}/2-add-route-for-operation.png` });
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByText('Added a route for DELETE /cards/{id}. Design it on the canvas.')).toBeVisible();
+  await fileMenu(page, /^Save(?! As)/);
+  await expect(page.getByText('Saved.')).toBeVisible();
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await publish.getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
 });
 

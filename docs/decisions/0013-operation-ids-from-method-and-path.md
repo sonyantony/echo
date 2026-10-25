@@ -89,9 +89,11 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   came back while the dialog was open keeps its route.
 - **Like any canvas edit.** The routes change in the editor on screen (unsaved canvas work stays)
   and are saved with the next Save or autosave. This works on the untitled flow too.
-- **Whole-spec changes are left alone.** Upload, Copy From Another Flow, New From Samples and
-  Discard open a new spec in the editor: no routes are added or asked about. Add Route For
-  Operation and the Publish warning cover them.
+- **Upload gives every operation a route** (added 2026-10-25), under the operationId the file
+  has (ECHO's only where it has none): one that has a route already keeps it. Operations of the
+  spec before that the uploaded file lacks are handled as deleted (quietly when untouched, else
+  Keep/Remove). Copy From Another Flow, New From Samples and Discard still add no routes; Add Route
+  For Operation and the Publish warning cover them.
 - **After a save renamed operations** (and before the editor opens the renamed spec), a deleted
   operation is looked up by its new id, which its routes already start from.
 

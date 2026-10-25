@@ -5,6 +5,7 @@ import {
   callsDirect,
   directRoutes,
   operationLabel,
+  relabelRoutes,
   removeDirectRoutes,
   routeForOperation,
   untouchedRoutes,
@@ -72,7 +73,8 @@ export function useOperationRoutes(
       const gone = removed.filter((op) => routes.has(op.operationId));
       const quiet = gone.filter((op) => untouched.has(op.operationId));
       const ask = gone.filter((op) => !untouched.has(op.operationId));
-      let next = removeDirectRoutes(yaml, quiet.map((op) => op.operationId)).yaml;
+      // A route kept for an operation that moved under the same id (an upload) shows where it is now.
+      let next = relabelRoutes(removeDirectRoutes(yaml, quiet.map((op) => op.operationId)).yaml, added);
       const made: RoutableOperation[] = [];
       for (const op of added) {
         if (directRoutes(next).has(op.operationId)) continue;

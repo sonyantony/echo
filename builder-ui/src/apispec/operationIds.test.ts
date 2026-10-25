@@ -7,6 +7,7 @@ import {
   naturalOperationIds,
   operationChanges,
   operationIdFor,
+  relabelRoutes,
   removeDirectRoutes,
   renameDirectRoutes,
   renameOperationIds,
@@ -89,6 +90,27 @@ describe('operationIds', () => {
     const { json: named, renames } = naturalOperationIds(json);
     expect(ids(named)).toEqual(['dup', 'getB', 'getOrdersId']);
     expect(renames).toEqual([{ from: 'get order', to: 'getOrdersId', label: 'GET /orders/{id}' }]);
+  });
+
+  it('moves the label of a route whose operation moved under the same id, leaving labels people wrote', () => {
+    const yaml = `- route:
+    id: route-listCards
+    description: GET /cards
+    from:
+      uri: direct:listCards
+- route:
+    description: Lists the cards
+    from:
+      uri: direct:other
+`;
+    const ops = [
+      { method: 'GET', path: '/payment-cards', operationId: 'listCards' },
+      { method: 'GET', path: '/x', operationId: 'other' },
+    ];
+    const next = relabelRoutes(yaml, ops);
+    expect(next).toContain('description: GET /payment-cards');
+    expect(next).toContain('description: Lists the cards');
+    expect(relabelRoutes(next, ops)).toBe(next);
   });
 
   it('changes the ids a save renamed while the editor still shows the old ones', () => {
