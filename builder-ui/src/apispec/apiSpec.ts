@@ -1,4 +1,4 @@
-import YAML from 'yaml';
+import YAML, { isAlias, isMap, isScalar, isSeq, type Document } from 'yaml';
 
 /**
  * A flow's OpenAPI spec is a side file next to the Camel YAML, like the DataMapper schemas. It
@@ -63,10 +63,95 @@ export function toEditorJson(text: string): string {
   return JSON.stringify(parseSpec(text), null, 2);
 }
 
-/** The editor's JSON in the file's format. */
-export function serialize(editorJson: string, format: SpecFormat): string {
-  if (format === 'json') return editorJson;
-  return YAML.stringify(JSON.parse(editorJson), { lineWidth: 0 });
+/**
+ * The editor's JSON in the file's format. With the file as it was (`previous`), only what changed
+ * is written: in YAML its comments, layout and quoting stay wherever the spec did not change (a
+ * comment goes with what it is on when that is deleted), and a file whose spec did not change at
+ * all comes back as it was.
+ *
+ * @param previous the file before the change (an upload, or the spec as stored), if any
+ */
+export function serialize(editorJson: string, format: SpecFormat, previous?: string): string {
+  const value: unknown = JSON.parse(editorJson);
+  if (format === 'json') {
+    return previous !== undefined && /^\s*\{/.test(previous) && sameJson(previous, value) ? previous : editorJson;
+  }
+  // A JSON file saved as YAML for the first time has no YAML layout to keep.
+  if (previous !== undefined && !/^\s*\{/.test(previous)) {
+    const doc = YAML.parseDocument(previous);
+    if (!doc.errors.length && doc.contents) {
+      const changed = { value: false };
+      doc.contents = merged(doc, doc.contents, value, changed) as typeof doc.contents;
+      return changed.value ? doc.toString({ lineWidth: 0 }) : previous;
+    }
+  }
+  return YAML.stringify(value, { lineWidth: 0 });
+}
+
+function sameJson(text: string, value: unknown): boolean {
+  try {
+    return JSON.stringify(JSON.parse(text)) === JSON.stringify(value);
+  } catch {
+    return false;
+  }
+}
+
+const keyOf = (key: unknown) => String(isScalar(key) ? key.value : key);
+
+/**
+ * The YAML node changed in place to hold value: maps and lists keep their entries' order (new ones
+ * go last), and an entry or scalar that stays keeps its comments. A node of another kind is replaced,
+ * keeping the comments on it.
+ */
+function merged(doc: Document, node: unknown, value: unknown, changed: { value: boolean }): unknown {
+  if (value && typeof value === 'object' && !Array.isArray(value) && isMap(node)) {
+    const entries = value as Record<string, unknown>;
+    const before = node.items.length;
+    node.items = node.items.filter((pair) => Object.hasOwn(entries, keyOf(pair.key)));
+    if (node.items.length !== before) changed.value = true;
+    for (const [key, v] of Object.entries(entries)) {
+      const pair = node.items.find((p) => keyOf(p.key) === key);
+      if (pair) {
+        pair.value = merged(doc, pair.value, v, changed);
+      } else {
+        node.items.push(doc.createPair(key, v));
+        changed.value = true;
+      }
+    }
+    return node;
+  }
+  if (Array.isArray(value) && isSeq(node)) {
+    if (node.items.length > value.length) {
+      node.items.splice(value.length);
+      changed.value = true;
+    }
+    value.forEach((v, i) => {
+      if (i < node.items.length) {
+        node.items[i] = merged(doc, node.items[i], v, changed);
+      } else {
+        node.items.push(doc.createNode(v));
+        changed.value = true;
+      }
+    });
+    return node;
+  }
+  if (isScalar(node) && (value === null || typeof value !== 'object')) {
+    if (node.value === value) return node;
+    if (node.value === null || value === null || typeof node.value === typeof value) {
+      node.value = value;
+      changed.value = true;
+      return node;
+    }
+  }
+  if (isAlias(node) && JSON.stringify(node.resolve(doc)?.toJSON()) === JSON.stringify(value)) return node;
+  changed.value = true;
+  const created = doc.createNode(value);
+  if (node && typeof node === 'object' && 'commentBefore' in node) {
+    const old = node as { commentBefore?: string | null; comment?: string | null };
+    created.commentBefore = old.commentBefore;
+    created.comment = old.comment;
+  }
+  return created;
 }
 
 /** The spec's info.title, if it has one. */

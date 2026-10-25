@@ -11,7 +11,8 @@ from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI e
 (visual designer plus a Source tab), in place of Kaoto's views. Like Flow Design it is also a menu:
 
 - **Upload**: picks a `.yaml`, `.yml` or `.json` OpenAPI (or Swagger 2.0) file and stores it in the
-  flow exactly as it is: same file name, same text. A name with characters a flow file cannot
+  flow as it is: same file name, same text, comments and operationIds; only operations without an
+  operationId get one added (docs/decisions/0013). A name with characters a flow file cannot
   have (spaces, for example) is asked for again. If the flow already has a spec, or there are
   unsaved edits, it asks before replacing them.
 - **Copy From Another Flow**: lists every other flow's spec; the picked one is copied into this
@@ -71,10 +72,11 @@ There is no Rest tab: the spec **is** the flow's REST service. Whenever the flow
 Camel sends each operation to the route `direct:<operationId>` under the Base Path. The draft
 itself keeps only what is designed, so the service always follows the spec's current name.
 
-- **operationIds are ECHO's business** (docs/decisions/0013). Every operation is named after its
-  method and path in camelCase (`GET /cards/{cardId}` is `getCardsCardId`) as soon as it is added
-  (before any Save), and Openapi hides the Operation ID field. Renaming a path or changing a method renames the
-  operation, and the flow's routes for it follow (`direct:` endpoints, and the route's ECHO-made
+- **operationIds are ECHO's business** (docs/decisions/0013). Every operation without one is named
+  after its method and path in camelCase (`GET /cards/{cardId}` is `getCardsCardId`) as soon as it
+  is added (before any Save), and Openapi hides the Operation ID field; ids an uploaded spec came
+  with stay. Saving writes only what changed into the stored file, so its comments stay. Renaming a
+  path or changing a method renames the operation, and the flow's routes for it follow (`direct:` endpoints, and the route's ECHO-made
   id and label). **Flow > Add Route For Operation** lists the operations by method and path and
   adds a route for each one picked, so nobody types an id.
 - **Routes follow the methods edited in Interface.** A method added there gets its route on the

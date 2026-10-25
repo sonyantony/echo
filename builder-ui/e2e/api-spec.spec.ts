@@ -402,3 +402,47 @@ test('a first-time user starts from the API on the untitled flow; the first Save
   await expect(page.getByText('Saved cards.yaml.')).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+test("an uploaded spec keeps its own operationIds and comments; only missing ids are added, and saves keep the comments", async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('own-ids'));
+  const flowId = flowIdOf(page);
+  await openSpec(page);
+  const yaml = [
+    '# Orders, as the partner sent it',
+    'openapi: 3.0.3',
+    'info: { title: Partner Orders, version: 3.0.0 }',
+    'paths:',
+    '  /orders:',
+    '    # every order',
+    '    get:',
+    '      operationId: listOrders',
+    "      responses: { '200': { description: ok } }",
+    '    post:',
+    "      responses: { '201': { description: created } }",
+    '',
+  ].join('\n');
+  const chooser = page.waitForEvent('filechooser');
+  await interfaceMenu(page, /^Upload/);
+  await (await chooser).setFiles({ name: 'partner-orders.yaml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
+  await expect(editorOf(page).getByText('/orders')).toBeVisible();
+  const file = () => page.request.get(`/api/flows/${flowId}/files/partner-orders.yaml`).then((r) => r.text());
+  // Only the operation without an id got one; everything else is as uploaded.
+  await expect.poll(file).toContain('operationId: postOrders');
+  let stored = await file();
+  expect(stored).toContain('# Orders, as the partner sent it\nopenapi: 3.0.3\ninfo: { title: Partner Orders, version: 3.0.0 }\n');
+  expect(stored).toContain('    # every order\n    get:\n      operationId: listOrders\n');
+
+  // An edit in the editor, saved: the comments and ids stay.
+  await editorOf(page).getByText('Add a data type').click();
+  await editorOf(page).getByPlaceholder('Enter a unique data type name.').fill('Order');
+  await editorOf(page).getByRole('button', { name: 'Save' }).first().click();
+  await expect(page.getByTestId('unsaved')).toBeVisible();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByTestId('unsaved')).toBeHidden();
+  stored = await file();
+  expect(stored).toContain('Order:');
+  expect(stored).toContain('# Orders, as the partner sent it\n');
+  expect(stored).toContain('    # every order\n    get:\n      operationId: listOrders\n');
+  expect(stored).toContain('operationId: postOrders');
+});
