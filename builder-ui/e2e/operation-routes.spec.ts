@@ -191,6 +191,9 @@ test('a method added in Interface gets a route at once; deleting it asks about a
   const addPath = editor.getByRole('dialog', { name: 'Add Path' });
   await addPath.getByRole('textbox').fill('/cards');
   await addPath.getByRole('button', { name: 'Add' }).click();
+  // The path opens on the right: the editor is done with the dialog.
+  await expect(addPath).toBeHidden();
+  await expect(editor.locator('.operation-tab').getByText('Get', { exact: true })).toBeVisible();
   // The spec is named once (File > Save saves it with the canvas from then on).
   await fileMenu(page, /^Save(?! As)/);
   await page.getByRole('dialog', { name: 'Save' }).getByRole('button', { name: 'Save' }).click();

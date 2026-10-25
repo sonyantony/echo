@@ -445,6 +445,7 @@ test("an uploaded spec keeps its own operationIds and comments; only missing ids
   const chooser = page.waitForEvent('filechooser');
   await interfaceMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'partner-orders.yaml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
+  await interfaceItem(page, 'Paths');
   await expect(editorOf(page).getByText('/orders')).toBeVisible();
   const file = () => page.request.get(`/api/flows/${flowId}/files/partner-orders.yaml`).then((r) => r.text());
   // Only the operation without an id got one; everything else is as uploaded.
@@ -454,6 +455,7 @@ test("an uploaded spec keeps its own operationIds and comments; only missing ids
   expect(stored).toContain('    # every order\n    get:\n      operationId: listOrders\n');
 
   // An edit in the editor, saved: the comments and ids stay.
+  await interfaceItem(page, 'Data Types');
   await editorOf(page).getByText('Add a data type').click();
   await editorOf(page).getByPlaceholder('Enter a unique data type name.').fill('Order');
   await editorOf(page).getByRole('button', { name: 'Save' }).first().click();
