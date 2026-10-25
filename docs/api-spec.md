@@ -22,12 +22,15 @@ from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI e
   named after the spec (or the flow while the spec has no name).
 
 The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Yaml for a new spec), **Save**,
-**Save As** and **Discard**. It takes the place of Apicurio's title bar with the API's name
-(hidden by `theme/apicurio-mapping.css`); Apicurio's undo, redo and Issues stay at its right, and
-**API Overview** opens the spec's own details (Info, Tag Definitions and Base Path; Contact,
-License and Security are hidden, though a spec that has them keeps them and Source shows them;
-Vendor Extensions is hidden on every page, the same way), which a click on that
-title used to do.
+**Rename** and **Discard**. It takes the place of Apicurio's title bar with the API's name
+(hidden by `theme/apicurio-mapping.css`); Apicurio's undo, redo and Issues stay at its right.
+
+The spec's own details are items in Apicurio's list on the left (`apispec/overviewNav.ts`): **Info**
+and **Tag Definitions** above Paths, **Source** (the whole spec's source, Upload on its toolbar) below
+Responses. Each shows its part on the right; until one of them, a path, a data type or a response is
+picked, the right pane is empty (Interface > Design opens it that way). Info holds Version, Description
+and Base Path. Contact, License and Security are hidden, though a spec that has them keeps them and
+Source shows them; Vendor Extensions is hidden on every page, the same way.
 
 **Base Path** is Apicurio's Servers section under another name: the path the flow serves its
 operations under, e.g. `/customers/v1` (the spec's `/orders` is then called as

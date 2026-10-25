@@ -124,25 +124,25 @@ test('an operation added in Openapi gets its operationId at once, before any Sav
   await expect(page.getByTestId('unsaved')).toBeVisible();
   await expect(editor.locator('pf-inline-text-editor[nodepath="operationId"]')).toContainText('putSomethingHahaHihi');
   await expect(editor.getByText('Operation ID', { exact: true })).toBeHidden();
-  await editor.getByText('Source', { exact: true }).first().click();
+  await editor.locator('.editor-detail').getByText('Source', { exact: true }).first().click();
   await expect(editor.locator('.ace_editor').first()).toContainText('operationId: putSomethingHahaHihi');
   // A second operation on the same path gets its own.
-  await editor.getByText('Design', { exact: true }).first().click();
+  await editor.locator('.editor-detail').getByText('Design', { exact: true }).first().click();
   await editor.getByText('Get', { exact: true }).first().click();
   await editor.getByRole('button', { name: 'Add Operation' }).click();
   // (Source shows the spec as it was when opened, so wait for the hidden field first.)
   await expect(editor.locator('pf-inline-text-editor[nodepath="operationId"]')).toContainText('getSomethingHahaHihi');
-  await editor.getByText('Source', { exact: true }).first().click();
+  await editor.locator('.editor-detail').getByText('Source', { exact: true }).first().click();
   await expect(editor.locator('.ace_editor').first()).toContainText('operationId: getSomethingHahaHihi');
   // And an operation on a second path (added with the + next to Paths) gets one too.
-  await editor.getByText('Design', { exact: true }).first().click();
+  await editor.locator('.editor-detail').getByText('Design', { exact: true }).first().click();
   await editor.locator('button:has(.pficon-add-circle-o)').first().click();
   await addPath.getByRole('textbox').fill('/hhjhjhjhkk/ttttt');
   await addPath.getByRole('button', { name: 'Add' }).click();
   await editor.getByText('Get', { exact: true }).first().click();
   await editor.getByRole('button', { name: 'Add Operation' }).click();
   await expect(editor.locator('pf-inline-text-editor[nodepath="operationId"]')).toContainText('getHhjhjhjhkkTtttt');
-  await editor.getByText('Source', { exact: true }).first().click();
+  await editor.locator('.editor-detail').getByText('Source', { exact: true }).first().click();
   await expect(editor.locator('.ace_editor').first()).toContainText('operationId: getHhjhjhjhkkTtttt');
   expect(editorErrors).toEqual([]);
 });
