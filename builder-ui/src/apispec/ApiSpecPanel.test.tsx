@@ -178,6 +178,36 @@ describe('Openapi panel', () => {
     expect(onOperationIdsRenamed).toHaveBeenCalledTimes(1);
   });
 
+  it('gives each operation of an uploaded spec a route under its own id, and lets go of the old ones', async () => {
+    mockFetch({
+      'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
+      'GET /api/flows/1': { status: 200, body: flow('cards.yaml') },
+      'PUT /api/flows/1/api-spec/cards-v2.yaml': { status: 200, body: flow('cards-v2.yaml') },
+    });
+    const yaml = 'openapi: 3.0.3\ninfo: { title: Cards, version: 1.0.0 }\npaths:\n  /old:\n    get: { operationId: getOld }\n  /cards:\n    get: { operationId: listCards }\n';
+    const stub = fetch as unknown as ReturnType<typeof vi.fn>;
+    const json = stub.getMockImplementation()!;
+    stub.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input) === '/api/flows/1/files/cards.yaml' ? new Response(yaml, { status: 200 }) : json(input, init),
+    );
+    const onOperationsChanged = vi.fn();
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <ApiSpecPanel flowId={1} flowName="cards" onOperationsChanged={onOperationsChanged} />
+      </QueryClientProvider>,
+    );
+    await screen.findByTitle('OpenAPI editor');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled());
+
+    const uploaded = '# v2\nopenapi: 3.0.3\ninfo: { title: Cards, version: 2.0.0 }\npaths:\n  /cards:\n    get: { operationId: listCards }\n    post: {}\n';
+    await userEvent.upload(screen.getByTestId('spec-upload-input'), new File([uploaded], 'cards-v2.yaml', { type: 'application/yaml' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Replace' }));
+    await waitFor(() => expect(onOperationsChanged).toHaveBeenCalled());
+    const { added, removed } = onOperationsChanged.mock.calls.at(-1)![0];
+    expect(added.map((op: { operationId: string }) => op.operationId)).toEqual(['listCards', 'postCards']);
+    expect(removed.map((op: { operationId: string }) => op.operationId)).toEqual(['getOld']);
+  });
+
   it('asks before Discard throws away unsaved edits, then starts from a blank spec', async () => {
     mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },

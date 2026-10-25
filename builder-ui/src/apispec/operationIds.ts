@@ -253,6 +253,28 @@ export function renameDirectRoutes(yaml: string, renames: OperationRename[]): st
   return changed ? doc.toString({ lineWidth: 0 }) : yaml;
 }
 
+/**
+ * The route YAML with the operation label (GET /cards) of each route that starts from one of these
+ * operations' direct endpoints set to where the operation is now, e.g. after an uploaded spec moved
+ * it under the same id. Only labels ECHO wrote (a method and a path) change. Unchanged (the same
+ * string) if none did.
+ */
+export function relabelRoutes(yaml: string, operations: RoutableOperation[]): string {
+  const doc = parseRoute(yaml);
+  if (!doc) return yaml;
+  const labels = new Map(operations.map((op) => [op.operationId, operationLabel(op)]));
+  let changed = false;
+  for (const { route, name } of routeEntries(doc)) {
+    const label = name === undefined ? undefined : labels.get(name);
+    const description = route?.get('description');
+    if (route && label && typeof description === 'string' && LABEL.test(description) && description !== label) {
+      route.set('description', label);
+      changed = true;
+    }
+  }
+  return changed ? doc.toString({ lineWidth: 0 }) : yaml;
+}
+
 /** The routes in the YAML, each with the direct endpoint its from starts from (if any). */
 function routeEntries(doc: Document): { entry: unknown; route: YAMLMap | undefined; name: string | undefined }[] {
   return (doc.contents as YAML.YAMLSeq).items.map((entry) => {

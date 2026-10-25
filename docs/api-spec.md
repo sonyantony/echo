@@ -86,8 +86,9 @@ itself keeps only what is designed, so the service always follows the spec's cur
   method deleted there takes its route away without asking while the route is still as ECHO made
   it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user
   picks **Remove Route** in the dialog that asks, and Undo in Interface brings it back as it was.
-  Upload, Copy From Another Flow, New From Samples and Discard replace the whole spec and leave
-  the routes alone.
+  Upload gives each operation of the file a route under its own operationId (one with a route
+  keeps it) and treats the old spec's operations it lacks as deleted. Copy From Another Flow, New
+  From Samples and Discard replace the whole spec and leave the routes alone.
 - **An operation without a route** answers **404** with a JSON message naming the operation. The
   service has `missingOperation: ignore` (so the flow starts), and ECHO adds a small
   `echo-missing-<operationId>` route for each such operation; add a route for it and it takes

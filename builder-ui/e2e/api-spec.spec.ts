@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { createFlow, designMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
+import { createFlow, designMenu, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
 // V2: a flow's OpenAPI spec is designed in Apicurio's editor (Openapi), and a data type's
 // schema can be generated from a sample JSON. The spec is one file in the flow folder, under the
@@ -460,7 +460,8 @@ test("an uploaded spec keeps its own operationIds and comments; only missing ids
   await editorOf(page).getByPlaceholder('Enter a unique data type name.').fill('Order');
   await editorOf(page).getByRole('button', { name: 'Save' }).first().click();
   await expect(page.getByTestId('unsaved')).toBeVisible();
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  // File > Save saves the spec and the routes Upload added.
+  await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toBeHidden();
   stored = await file();
   expect(stored).toContain('Order:');
