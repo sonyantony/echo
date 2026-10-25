@@ -12,6 +12,7 @@ import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
 import { disabledRouteCss, disabledRouteIds } from './disabledRoutes';
 import { trackTabUnderline } from './tabUnderline';
+import { trackCanvasScrollbars } from './canvasScrollbars';
 import './KaotoEditorHost.css';
 
 export interface KaotoEditorHandle {
@@ -238,11 +239,13 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     observer.observe(container, { childList: true, subtree: true });
     attach();
     const stopUnderline = trackTabUnderline(container);
+    const stopScrollbars = trackCanvasScrollbars(container);
     return () => {
       container.removeEventListener('click', onClick, true);
       heights.disconnect();
       observer.disconnect();
       stopUnderline();
+      stopScrollbars();
       slot.remove();
       startSlot.remove();
       advanced.remove();

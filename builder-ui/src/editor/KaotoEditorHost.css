@@ -162,3 +162,58 @@
   font-size: var(--pf-t--global--font--size--body--default);
   font-weight: var(--pf-t--global--font--weight--body--bold);
 }
+
+/* Scroll bars on the Design canvas (canvasScrollbars.ts): along its right edge, by the split with
+   the step form, and along its bottom; shown only while part of the flow is out of view. */
+.echo-kaoto-host__editor .pf-topology-visualization-surface {
+  position: relative;
+}
+.echo-canvas-scrollbar {
+  position: absolute;
+  z-index: 2;
+  padding: 2px;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--echo-canvas, #f7f8fa) 70%, transparent);
+}
+.echo-canvas-scrollbar[hidden] {
+  display: none;
+}
+.echo-canvas-scrollbar--vertical {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+}
+.echo-canvas-scrollbar--horizontal {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 12px;
+}
+/* With both showing, they meet at the corner instead of overlapping. */
+.echo-canvas-scrollbars--both .echo-canvas-scrollbar--vertical {
+  bottom: 12px;
+}
+.echo-canvas-scrollbars--both .echo-canvas-scrollbar--horizontal {
+  right: 12px;
+}
+.echo-canvas-scrollbar__thumb {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--echo-text-subtle, #4d4d4d) 45%, transparent);
+  cursor: default;
+}
+.echo-canvas-scrollbar--vertical .echo-canvas-scrollbar__thumb {
+  width: 100%;
+}
+.echo-canvas-scrollbar--horizontal .echo-canvas-scrollbar__thumb {
+  height: 100%;
+}
+.echo-canvas-scrollbar__thumb:hover,
+.echo-canvas-scrollbar--dragging .echo-canvas-scrollbar__thumb {
+  background: color-mix(in srgb, var(--echo-text-subtle, #4d4d4d) 70%, transparent);
+}
+@media print {
+  .echo-canvas-scrollbars {
+    display: none;
+  }
+}
