@@ -13,30 +13,36 @@ import {
   TextInput,
 } from '@patternfly/react-core';
 import { useState, type FormEvent } from 'react';
-import { FLOW_NAME_HINT, FLOW_NAME_PATTERN, needsOverwriteConfirmation } from '../api/flows';
+import { flowIdFor, isValidDisplayName, needsOverwriteConfirmation } from '../api/flows';
+import { flowNameHint, useFlowIdPreview } from './FlowNameHint';
 
 interface Props {
   title: string;
   description: string;
   initialName: string;
+  /** What is saved: a flow (the default) or a template. */
+  kind?: 'flow' | 'template';
   /** Saves under name; rejects with a 409 confirmOverwrite error when it would replace something. */
   onSave(name: string, overwrite: boolean): Promise<unknown>;
   onClose(): void;
 }
 
 /** Asks for a name for Save As and Save As Template, and for confirmation before replacing anything. */
-export function SaveAsModal({ title, description, initialName, onSave, onClose }: Props) {
+export function SaveAsModal({ title, description, initialName, kind = 'flow', onSave, onClose }: Props) {
   const [name, setName] = useState(initialName);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState<string>();
   const [saving, setSaving] = useState(false);
-  const nameValid = FLOW_NAME_PATTERN.test(name) && name.length <= 63;
+  const nameValid = isValidDisplayName(name);
+  const flowId = useFlowIdPreview(name);
+  // A template's folder is made from its name; saving to a folder that exists asks before replacing it.
+  const id = kind === 'flow' ? flowId : flowIdFor(name);
 
   const save = async (overwrite: boolean) => {
     setSaving(true);
     setError(undefined);
     try {
-      await onSave(name, overwrite);
+      await onSave(name.trim(), overwrite);
     } catch (e) {
       if (!overwrite && needsOverwriteConfirmation(e)) {
         setConfirm((e as Error).message);
@@ -77,7 +83,9 @@ export function SaveAsModal({ title, description, initialName, onSave, onClose }
             />
             <FormHelperText>
               <HelperText>
-                <HelperTextItem variant={!name || nameValid ? 'default' : 'error'}>{FLOW_NAME_HINT}</HelperTextItem>
+                <HelperTextItem variant={!name || nameValid ? 'default' : 'error'}>
+                  {flowNameHint(name, id, kind)}
+                </HelperTextItem>
               </HelperText>
             </FormHelperText>
           </FormGroup>

@@ -119,7 +119,7 @@ Each milestone is small enough for a few Claude Code sessions, ends with somethi
 
 ### M4. Flow drafts (CRUD)
 - H2 file database with Flyway; `flow`, `flow_file` tables; flow CRUD API.
-- Flow names validated as folder-safe and unique.
+- Flow names are free text ("First Flow"); ECHO makes a folder-safe, unique ID from each (first-flow) for the Git folder, route file and image name.
 - UI: create, rename, delete, open a flow.
 - **Done when:** API and UI tests cover create/list/update/delete, and data survives a backend restart.
 

@@ -26,6 +26,10 @@ public class Flow {
     @Column(nullable = false, unique = true)
     private String name;
 
+    /** What users call the flow; {@link #name} is its identifier. */
+    @Column(name = "display_name")
+    private String displayName;
+
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -53,8 +57,9 @@ public class Flow {
 
     protected Flow() {}
 
-    public Flow(String name, String description, String user, Instant now) {
+    public Flow(String name, String displayName, String description, String user, Instant now) {
         this.name = name;
+        this.displayName = displayName;
         this.description = description;
         this.createdBy = user;
         this.createdAt = now;
@@ -97,6 +102,15 @@ public class Flow {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    /** The name users see: the one they typed, or the identifier for flows made before display names. */
+    public String getDisplayName() {
+        return displayName == null || displayName.isBlank() ? name : displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
 
     public String getDescription() {

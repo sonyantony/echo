@@ -18,11 +18,11 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBlocker, useNavigate } from 'react-router-dom';
-import { flowsApi } from '../api/flows';
+import { flowIdFor, flowsApi, MAX_DISPLAY_NAME_LENGTH } from '../api/flows';
 import { ApiSpecMenu } from '../apispec/ApiSpecMenu';
 import { ApiSpecPanel, type ApiSpecPanelHandle, type UnsavedSpec } from '../apispec/ApiSpecPanel';
 import { CopySpecModal } from '../apispec/CopySpecModal';
-import { descriptionOf, flowNameFromTitle, formatOf, serialize, titleOf } from '../apispec/apiSpec';
+import { descriptionOf, formatOf, serialize, titleOf } from '../apispec/apiSpec';
 import { naturalOperationIds, renameDirectRoutes } from '../apispec/operationIds';
 import { InMemoryFlowFiles } from '../editor/flowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
@@ -158,14 +158,14 @@ export function UntitledFlowPage() {
     specPanel.current?.show(fileName, text);
   };
 
-  /** What the Save dialog offers: the flow and its spec named after the spec's title, e.g. Card API is card-api and card-api.yaml. */
+  /** What the Save dialog offers: the flow named as the spec's title, its spec after the flow's ID, e.g. Card API and card-api.yaml. */
   const saveDialogNames = (spec: UnsavedSpec) => {
-    const title = titleOf(spec.json);
-    const flowName = title === UNTITLED_NAME ? '' : flowNameFromTitle(title);
+    const title = (titleOf(spec.json) ?? '').trim();
+    const flowName = title === UNTITLED_NAME || title.length > MAX_DISPLAY_NAME_LENGTH ? '' : title;
     return {
       initialName: flowName,
       initialDescription: descriptionOf(spec.json),
-      spec: { initialName: spec.name ?? (flowName ? `${flowName}.${spec.format}` : ''), format: spec.format },
+      spec: { initialName: spec.name ?? (flowName ? `${flowIdFor(flowName)}.${spec.format}` : ''), format: spec.format },
     };
   };
 

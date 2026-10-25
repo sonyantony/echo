@@ -1,6 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render as renderDom, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { FlowFormModal } from './FlowFormModal';
+
+/** The dialog previews the flow's ID against the other flows (none here). */
+function render(ui: ReactElement) {
+  const client = new QueryClient();
+  client.setQueryData(['flows'], []);
+  return renderDom(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 describe('Save flow dialog', () => {
   it('asks only for the flow name when there is no OpenAPI spec', () => {
@@ -51,5 +60,24 @@ describe('Save flow dialog', () => {
     expect(screen.getByLabelText(/OpenAPI file name/)).toHaveValue('orders.json');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(onSubmit).toHaveBeenCalledWith('orders', '', 'orders.json');
+  });
+
+  it('takes a name with capitals and spaces; the spec name follows the ID made from it', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <FlowFormModal
+        title="Save flow"
+        submitLabel="Save"
+        initialName="Card API"
+        spec={{ initialName: 'card-api.yaml', format: 'yaml' }}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(screen.getByText('ID: card-api (its folder in Git is flows/card-api/).')).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/^Name/), ' Two');
+    expect(screen.getByLabelText(/OpenAPI file name/)).toHaveValue('card-api-two.yaml');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSubmit).toHaveBeenCalledWith('Card API Two', '', 'card-api-two.yaml');
   });
 });

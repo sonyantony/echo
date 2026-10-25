@@ -37,4 +37,38 @@ class FlowNamesTest {
         assertThat(FlowNames.isValidName("a".repeat(63))).isTrue();
         assertThat(FlowNames.isValidName("a".repeat(64))).isFalse();
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "First Flow, first-flow",
+        "orders, orders",
+        "'  Card API  ', card-api",
+        "Café Orders!, cafe-orders",
+        "2nd try, flow-2nd-try",
+        "'***', flow",
+        "a__b--c, a-b-c"})
+    void idsAreMadeFromDisplayNames(String displayName, String id) {
+        assertThat(FlowNames.idFor(displayName)).isEqualTo(id);
+        assertThat(FlowNames.isValidName(FlowNames.idFor(displayName))).isTrue();
+    }
+
+    @org.junit.jupiter.api.Test
+    void idsStayWithin63CharactersAndGetANumberWhenTaken() {
+        String long_ = "word ".repeat(30);
+        assertThat(FlowNames.idFor(long_)).hasSizeLessThanOrEqualTo(63).doesNotEndWith("-");
+        var taken = java.util.Set.of("first-flow", "first-flow-2");
+        assertThat(FlowNames.uniqueIdFor("First Flow", taken::contains)).isEqualTo("first-flow-3");
+        assertThat(FlowNames.uniqueIdFor(long_, id -> id.equals(FlowNames.idFor(long_))))
+                .hasSizeLessThanOrEqualTo(63).endsWith("-2");
+    }
+
+    @org.junit.jupiter.api.Test
+    void displayNamesAreAnyTextUpTo100Characters() {
+        assertThat(FlowNames.isValidDisplayName("First Flow")).isTrue();
+        assertThat(FlowNames.isValidDisplayName("x".repeat(100))).isTrue();
+        assertThat(FlowNames.isValidDisplayName("x".repeat(101))).isFalse();
+        assertThat(FlowNames.isValidDisplayName("  ")).isFalse();
+        assertThat(FlowNames.isValidDisplayName("a\nb")).isFalse();
+        assertThat(FlowNames.isValidDisplayName(null)).isFalse();
+    }
 }

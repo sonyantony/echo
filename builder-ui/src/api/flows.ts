@@ -4,7 +4,10 @@ export type FlowStatus = 'DRAFT' | 'PUBLISHED';
 
 export interface FlowSummary {
   id: number;
+  /** The flow's identifier: its Git folder (flows/<name>/), route file and image name. */
   name: string;
+  /** What users call the flow ("First Flow"); the identifier for flows made before display names. */
+  displayName: string;
   description?: string | null;
   status: FlowStatus;
   updatedBy: string;
@@ -28,7 +31,44 @@ export interface ApiSpecRef {
 }
 
 export const FLOW_NAME_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
-export const FLOW_NAME_HINT = 'Lowercase letters, digits and dashes, starting with a letter.';
+export const MAX_FLOW_ID_LENGTH = 63;
+export const MAX_DISPLAY_NAME_LENGTH = 100;
+
+/** Any name people would call a flow (or template): not blank, at most 100 characters, no control characters. */
+export function isValidDisplayName(name: string): boolean {
+  const trimmed = name.trim();
+  // eslint-disable-next-line no-control-regex
+  return trimmed.length > 0 && trimmed.length <= MAX_DISPLAY_NAME_LENGTH && !/[\u0000-\u001f\u007f-\u009f]/.test(name);
+}
+
+/**
+ * The identifier ECHO makes from a display name, as the server does (FlowNames.idFor): lowercase
+ * letters and digits, everything else one dash. "First Flow" is first-flow, "2nd try" is flow-2nd-try.
+ */
+export function flowIdFor(displayName: string): string {
+  let id = displayName
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (!id) return 'flow';
+  if (!/^[a-z]/.test(id)) id = `flow-${id}`;
+  return trimId(id, MAX_FLOW_ID_LENGTH);
+}
+
+/** flowIdFor, with -2, -3... added while another flow has that identifier (as the server does for a new flow). */
+export function uniqueFlowIdFor(displayName: string, taken: Iterable<string>): string {
+  const used = new Set(Array.from(taken, (t) => t.toLowerCase()));
+  const base = flowIdFor(displayName);
+  let id = base;
+  for (let n = 2; used.has(id); n++) id = `${trimId(base, MAX_FLOW_ID_LENGTH - String(n).length - 1)}-${n}`;
+  return id;
+}
+
+function trimId(id: string, max: number): string {
+  return id.length <= max ? id : id.slice(0, max).replace(/-+$/, '');
+}
 
 const filePath = (id: number, path: string) =>
   `/api/flows/${id}/files/${path.split('/').map(encodeURIComponent).join('/')}`;
@@ -84,7 +124,10 @@ export const flowsApi = {
 
 /** A flow template, kept in the templates folder of Git (next to the flows folder). */
 export interface TemplateSummary {
+  /** The template's folder in Git (templates/<name>/). */
   name: string;
+  /** What users call it; the folder name for templates saved before display names. */
+  displayName?: string | null;
   description?: string | null;
   savedBy?: string | null;
   savedAt?: string | null;
@@ -115,7 +158,10 @@ export function needsOverwriteConfirmation(e: unknown): boolean {
 
 /** A flow as it is in the publish target (Git, else S3). flowId is the Builder flow it belongs to, if any. */
 export interface PublishedFlowSummary {
+  /** The flow's folder (its identifier). */
   name: string;
+  /** What users call it; the folder name for flows published before display names. */
+  displayName?: string | null;
   description?: string | null;
   version?: number | null;
   publishedBy?: string | null;

@@ -41,13 +41,15 @@ public class PublishedFlowService {
     }
 
     /**
+     * @param name the flow's folder (its identifier)
+     * @param displayName what users call it: from its metadata file, else the folder name
      * @param flowId the linked Builder flow, or null if the flow is only in the publish target
      * @param draftChanged true if the linked Builder flow has changes that are not published
      * @param target where the flow is, as shown to users (e.g. {@code Git})
      * @param disabled true if the pipeline leaves the flow out of images
      */
     public record PublishedFlow(
-            String name, String description, Long version, String publishedBy, Instant publishedAt, Long flowId,
+            String name, String displayName, String description, Long version, String publishedBy, Instant publishedAt, Long flowId,
             boolean draftChanged, String target, boolean disabled) {}
 
     @Transactional(readOnly = true)
@@ -64,7 +66,9 @@ public class PublishedFlowService {
             if (flow == null) {
                 flow = flows.findByName(folder.name()).orElse(null);
             }
-            return new PublishedFlow(folder.name(), text(meta, "description"),
+            String displayName = text(meta, "displayName");
+            return new PublishedFlow(folder.name(), displayName == null || displayName.isBlank() ? folder.name() : displayName,
+                    text(meta, "description"),
                     meta.hasNonNull("version") ? meta.get("version").asLong() : null, text(meta, "author"),
                     instant(text(meta, "publishedAt")),
                     flow == null ? null : flow.getId(), flow != null && flow.getStatus() == FlowStatus.DRAFT, target,
@@ -98,7 +102,8 @@ public class PublishedFlowService {
         if (linked != null) {
             return flows.replaceWithPublished(linked.getId(), new FlowArchive.Contents(name, files), user);
         }
-        return flows.importArchive(new FlowArchive.Contents(name, files), name, text(meta, "description"), user);
+        return flows.importArchive(new FlowArchive.Contents(name, files), name, text(meta, "displayName"),
+                text(meta, "description"), user);
     }
 
     /**

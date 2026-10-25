@@ -89,28 +89,58 @@ class FlowControllerTest {
     }
 
     @Test
-    void rejectsInvalidAndDuplicateNames() throws Exception {
+    void rejectsBlankAndDuplicateNames() throws Exception {
         create("orders");
         mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"orders\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("A flow named 'orders' already exists."));
-        mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"My Orders\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail", containsString("not allowed")));
+        mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Orders\"}"))
+                .andExpect(status().isConflict());
         mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\"}"))
                 .andExpect(status().isBadRequest());
+        mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"%s\"}".formatted("x".repeat(101))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail", containsString("at most 100 characters")));
     }
 
     @Test
-    void renamingAFlowRenamesItsRouteFile() throws Exception {
+    void aFlowNameMayHaveCapitalsAndSpacesAndGetsAnIdMadeFromIt() throws Exception {
+        mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"  First Flow \"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("first-flow"))
+                .andExpect(jsonPath("$.displayName").value("First Flow"))
+                .andExpect(jsonPath("$.routeFile").value("first-flow.camel.yaml"));
+        mvc.perform(as(get("/api/flows")))
+                .andExpect(jsonPath("$[0].name").value("first-flow"))
+                .andExpect(jsonPath("$[0].displayName").value("First Flow"));
+    }
+
+    @Test
+    void aNameWhoseIdIsTakenGetsANumberedId() throws Exception {
+        create("first-flow");
+        mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"First Flow!\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("first-flow-2"))
+                .andExpect(jsonPath("$.displayName").value("First Flow!"));
+        mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"first flow\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("first-flow-3"));
+    }
+
+    @Test
+    void renamingAFlowChangesOnlyItsDisplayName() throws Exception {
         long id = create("orders");
         mvc.perform(as(put("/api/flows/{id}", id)).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"order-intake\",\"description\":\"New\"}"))
+                        .content("{\"name\":\"Order Intake\",\"description\":\"New\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("order-intake"))
+                .andExpect(jsonPath("$.name").value("orders"))
+                .andExpect(jsonPath("$.displayName").value("Order Intake"))
                 .andExpect(jsonPath("$.description").value("New"))
-                .andExpect(jsonPath("$.routeFile").value("order-intake.camel.yaml"))
-                .andExpect(jsonPath("$.files[1]").value("order-intake.camel.yaml"));
+                .andExpect(jsonPath("$.routeFile").value("orders.camel.yaml"));
     }
 
     @Test

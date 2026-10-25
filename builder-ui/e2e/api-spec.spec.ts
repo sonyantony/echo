@@ -361,7 +361,7 @@ test('a first-time user starts from the API on the untitled flow; the first Save
   // Save (Openapi's, or File > Save) asks for both names in one dialog, prefilled from the spec.
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByLabel(/^Name/)).toHaveValue('card-api');
+  await expect(dialog.getByLabel(/^Name/)).toHaveValue('Card API');
   await expect(dialog.getByLabel(/OpenAPI file name/)).toHaveValue('cards.json');
   const name = uniqueName('card-api');
   await dialog.getByLabel(/^Name/).fill(name);

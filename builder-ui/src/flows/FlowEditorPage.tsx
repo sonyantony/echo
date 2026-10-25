@@ -524,7 +524,7 @@ function FlowEditor() {
               isDisabled={starting || saving || validating}
               description={run.data ? 'Restart the flow with your latest changes' : 'Run this flow inside the Builder and send it test requests'}
             >
-              {run.data ? 'Restart' : 'Run'} {flow.data.name}
+              {run.data ? 'Restart' : 'Run'} {flow.data.displayName}
             </DropdownItem>
         </DropdownList>
       </Dropdown>
@@ -541,7 +541,7 @@ function FlowEditor() {
         onClick={validate}
         isLoading={validating}
         isDisabled={validating || saving}
-        title={`Validate ${flow.data.name}: check the flow for problems before publishing it`}
+        title={`Validate ${flow.data.displayName}: check the flow for problems before publishing it`}
       >
         Validate
       </Button>
@@ -551,7 +551,7 @@ function FlowEditor() {
         icon={<UploadIcon />}
         onClick={() => setPublishing(true)}
         isDisabled={saving || validating}
-        title={`Publish ${flow.data.name} so the pipeline can build it`}
+        title={`Publish ${flow.data.displayName} so the pipeline can build it`}
       >
         Publish
       </Button>
@@ -605,7 +605,7 @@ function FlowEditor() {
           tabBarMenus={runMenu}
           canvasToolbarActions={canvasActions}
           tabBarActions={
-            <FlowNameTag name={flow.data.name}>
+            <FlowNameTag name={flow.data.displayName} id={flow.data.name}>
               <StatusLabel status={flow.data.status} />
               {dirty || specDirty ? (
                 <span data-testid="unsaved">Unsaved changes</span>
@@ -636,6 +636,7 @@ function FlowEditor() {
                 ref={specPanel}
                 flowId={id}
                 flowName={flow.data.name}
+                flowTitle={flow.data.displayName}
                 flowDescription={flow.data.description}
                 onDirtyChange={setSpecDirty}
                 onStored={() => void reviewMappings(true)}
@@ -653,7 +654,7 @@ function FlowEditor() {
       {publishing && (
         <PublishModal
           flowId={id}
-          flowName={flow.data.name}
+          flowName={flow.data.displayName}
           beforePublish={async () => (dirty ? save() : true)}
           onClose={() => setPublishing(false)}
           onInvalid={(result) => {
@@ -676,7 +677,7 @@ function FlowEditor() {
         <SaveAsModal
           title="Save As"
           description="Saves what is on screen as a draft with another name and opens it. This flow keeps its last saved version."
-          initialName={`${flow.data.name}-copy`}
+          initialName={`${flow.data.displayName} copy`}
           onClose={() => setSavingAs(undefined)}
           onSave={async (name, overwrite) => {
             const yaml = await editor.current!.getContent();
@@ -699,13 +700,14 @@ function FlowEditor() {
         <SaveAsModal
           title="Save As Template"
           description="Saves what is on screen as a template in Git's templates folder. Pipelines do not build templates."
-          initialName={flow.data.name}
+          initialName={flow.data.displayName}
+          kind="template"
           onClose={() => setSavingAs(undefined)}
           onSave={async (name, overwrite) => {
             const yaml = await editor.current!.getContent();
-            await templatesApi.saveFromFlow(id, name, yaml, overwrite);
+            const template = await templatesApi.saveFromFlow(id, name, yaml, overwrite);
             setSavingAs(undefined);
-            setMessage({ variant: 'success', text: `Saved as template ${name}.` });
+            setMessage({ variant: 'success', text: `Saved as template ${template.displayName || template.name}.` });
             await queryClient.invalidateQueries({ queryKey: ['templates'] });
           }}
         />
@@ -822,12 +824,17 @@ function RestSettingChecks({
 /**
  * "Flow: <name>" at the right end of the editor's tab line, where History used to be, after the
  * flow's state (Draft or Published, unsaved or autosaved), which had a line of its own above the editor.
+ * Hovering shows the flow's ID (made from its name, used in Git and image names).
  */
-export function FlowNameTag({ name, children }: { name: string; children?: ReactNode }) {
+export function FlowNameTag({ name, id, children }: { name: string; id?: string; children?: ReactNode }) {
   return (
     <div className="echo-tab-actions echo-flow-state">
       {children}
-      <span className="echo-flow-name-tag" data-testid="flow-name-tag" title={`Flow: ${name}`}>
+      <span
+        className="echo-flow-name-tag"
+        data-testid="flow-name-tag"
+        title={id ? `Flow: ${name} (ID: ${id}, its folder in Git is flows/${id}/)` : `Flow: ${name}`}
+      >
         Flow: {name}
       </span>
     </div>
