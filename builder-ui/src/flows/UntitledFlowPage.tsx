@@ -36,6 +36,7 @@ import { historyMenuItem } from './HistoryModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { UploadFlowModal } from './UploadFlowModal';
+import { useOperationRoutes } from './useOperationRoutes';
 import './FlowEditorPage.css';
 import './UntitledFlowPage.css';
 
@@ -78,6 +79,8 @@ export function UntitledFlowPage() {
   const leaving = useRef(false);
 
   const onChange = useCallback((yaml: string) => setDirty(!isEmpty(yaml)), []);
+  // Methods added in Interface get a route on the canvas, as in the flow editor (only failures are told).
+  const operationRoutes = useOperationRoutes(editor, (variant, text) => variant === 'danger' && setMessage(text));
   const openFlowState: OpenFlowState = { from: '/' };
 
   const openDraft = async (id: number, spec = false) => {
@@ -262,7 +265,7 @@ export function UntitledFlowPage() {
           <div className="echo-untitled__empty">
             <EmptyState titleText="No flow is open" headingLevel="h2" variant="sm">
               <EmptyStateBody>
-                Start a new flow, or open an existing one, from the File menu. To start from the flow's API, pick Openapi.
+                Start a new flow, or open an existing one, from the File menu. To start from the flow's API, pick Interface.
               </EmptyStateBody>
             </EmptyState>
           </div>
@@ -303,6 +306,7 @@ export function UntitledFlowPage() {
                 flowName={UNTITLED_NAME}
                 onDirtyChange={setSpecDirty}
                 onSaveFlow={startSave}
+                onOperationsChanged={operationRoutes.onOperationsChanged}
               />
             )
           }
@@ -326,6 +330,7 @@ export function UntitledFlowPage() {
           onSubmit={saveAsFlow}
         />
       )}
+      {operationRoutes.dialog}
       {copyingSpec && (
         <CopySpecModal specDirty={specDirty} onClose={() => setCopyingSpec(false)} onCopy={copySpec} />
       )}

@@ -34,14 +34,23 @@ import { ApiSpecMenu } from '../apispec/ApiSpecMenu';
 import { ApiSpecPanel, type ApiSpecPanelHandle } from '../apispec/ApiSpecPanel';
 import { CopySpecModal } from '../apispec/CopySpecModal';
 import { parseSpec } from '../apispec/apiSpec';
-import { appendRoute, directRoutes, operationLabel, renameDirectRoutes, routeForOperation, type OperationRename } from '../apispec/operationIds';
+import {
+  appendRoute,
+  directRoutes,
+  operationLabel,
+  renameDirectRoutes,
+  routableOperations,
+  routeForOperation,
+  type OperationRename,
+  type RoutableOperation,
+} from '../apispec/operationIds';
 import { SpecMappingWarnings } from '../datamapper/SpecMappingWarnings';
 import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
-import { AddOperationRouteModal, addOperationRouteMenuItem, routableOperations, type RoutableOperation } from './AddOperationRouteModal';
+import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { FlowFormModal } from './FlowFormModal';
 import { FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
@@ -52,6 +61,7 @@ import { publishSummary } from './publishSummary';
 import { RunPanel } from './RunPanel';
 import { SaveAsModal } from './SaveAsModal';
 import { UploadFlowModal } from './UploadFlowModal';
+import { useOperationRoutes } from './useOperationRoutes';
 import { useAutosave } from './useAutosave';
 import { ValidationPanel } from './ValidationPanel';
 import './FlowEditorPage.css';
@@ -132,6 +142,8 @@ function FlowEditor() {
   const [addingRoutes, setAddingRoutes] = useState<{ operations: RoutableOperation[]; routes: Map<string, boolean> }>();
   /** Renaming routes after a spec save renamed operations; Add Route For Operation waits for it. */
   const renaming = useRef<Promise<void>>(undefined);
+  // Methods added in Interface get a route at once; deleted ones ask about theirs.
+  const operationRoutes = useOperationRoutes(editor, (variant, text) => setMessage({ variant, text }));
   /** Client Request Validation and Enable CORS, as the route on screen has them (Flow menu). */
   const [restSettings, setRestSettings] = useState<RestSettings>();
   // The API spec is opened on first use and then kept (hidden while a Kaoto view is open), so its
@@ -256,7 +268,7 @@ function FlowEditor() {
       await renaming.current;
       const spec = await readSavedSpec();
       if (!spec) {
-        setMessage({ variant: 'warning', text: 'The flow has no Openapi spec yet: design its operations in Openapi first.' });
+        setMessage({ variant: 'warning', text: 'The flow has no Openapi spec yet: design its operations in Interface first.' });
         return;
       }
       const yaml = await editor.current.getContent();
@@ -628,6 +640,7 @@ function FlowEditor() {
                 onDirtyChange={setSpecDirty}
                 onStored={() => void reviewMappings(true)}
                 onOperationIdsRenamed={renameRoutes}
+                onOperationsChanged={operationRoutes.onOperationsChanged}
                 visible={showSpec}
               />
             )
@@ -727,6 +740,7 @@ function FlowEditor() {
           }
         />
       )}
+      {operationRoutes.dialog}
       {showHistory && <HistoryModal flowId={id} onClose={() => setShowHistory(false)} />}
       {addingRoutes && (
         <AddOperationRouteModal
@@ -793,7 +807,7 @@ function RestSettingChecks({
         isChecked={on}
         isDisabled={!settings || (!hasSpec && !on)}
         onChange={() => toggle(key)}
-        title={hasSpec || on ? description : 'Needs an OpenAPI spec: design one in Openapi'}
+        title={hasSpec || on ? description : 'Needs an OpenAPI spec: design one in Interface'}
       />
     );
   };

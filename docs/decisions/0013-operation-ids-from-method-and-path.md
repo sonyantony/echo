@@ -67,3 +67,30 @@ route.
 - **Routes as Kaoto writes them now count.** `RestFromSpec` used to see only `uri: direct:x`, so a
   route made in Kaoto (`uri: direct` with `parameters.name: x`) was taken as missing and got a
   second `direct:x` consumer next to it. Both forms count now, for the 404 routes and the warning.
+
+## Routes follow the methods edited in Interface
+
+Added 2026-10-25. Users asked for a route to appear as soon as a method is added, and to be asked
+about the route when a method is deleted. The tab line item Openapi is now called **Interface**.
+
+- **Added: a route at once.** Each edit in Interface is compared with the one before, by the
+  operationId the route starts from (a new operation is named as soon as it is added, and a
+  renamed path keeps its id until the save, so a rename is never an add plus a delete). An
+  operation that appears and has no route gets one on the canvas straight away: the same route
+  Add Route For Operation makes (`direct:<operationId>`, a log step). The route's entry point stays
+  `direct:`, not a `platform-http` endpoint of its own: the REST service ECHO makes from the spec
+  already listens on platform-http and calls it, which keeps request validation, Swagger UI and
+  the clash checks working. An operation that has a route already (or a disabled one) gets none.
+- **Deleted: ask only when there is work to lose.** A route still as ECHO made it (nothing but
+  its log step) goes quietly, so undoing an add leaves nothing behind. Any other route is kept
+  unless the user picks **Remove Route** in the dialog that asks (several deleted at once, such as
+  a whole path, are listed in one dialog); the dialog warns when other routes call it. A route
+  removed this session comes back as it was if its operation does (Undo in Interface). One that
+  came back while the dialog was open keeps its route.
+- **Like any canvas edit.** The routes change in the editor on screen (unsaved canvas work stays)
+  and are saved with the next Save or autosave. This works on the untitled flow too.
+- **Whole-spec changes are left alone.** Upload, Copy From Another Flow, New From Samples and
+  Discard open a new spec in the editor: no routes are added or asked about. Add Route For
+  Operation and the Publish warning cover them.
+- **After a save renamed operations** (and before the editor opens the renamed spec), a deleted
+  operation is looked up by its new id, which its routes already start from.

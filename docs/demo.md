@@ -50,7 +50,7 @@ Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}
 `demo.spec.ts` does.
 
 The editor's controls sit on the same line as Kaoto's tabs: **File** (New Flow, Open Template, Open
-Flow, Upload Flow, Save, Save As, Save As Template), **Openapi Design** (API-first flows start here),
+Flow, Upload Flow, Save, Save As, Save As Template), **Interface** (the flow's Openapi spec; API-first flows start here),
 **Flow Design** (opens the canvas; its menu has Download <flow> and Download <flow> As Image), Rest,
 DataMapper, **Run** (Run <flow>), **Advanced** (Java Beans) and About, with History at the right. Validate and Publish are buttons on
 the Flow Design toolbar.

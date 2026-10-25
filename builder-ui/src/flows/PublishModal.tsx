@@ -82,7 +82,7 @@ export function PublishModal({ flowId, flowName, beforePublish, onPublished, onI
                   <ListItem key={c}>{c}</ListItem>
                 ))}
               </List>
-              <p>Give this flow its own Base Path or paths in Openapi, or rename the operationIds, then publish again.</p>
+              <p>Give this flow its own Base Path or paths in Interface, or rename the operationIds, then publish again.</p>
             </Alert>
           )}
           {missingRoutes && (

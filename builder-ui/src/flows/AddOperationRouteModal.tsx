@@ -10,9 +10,7 @@ import {
   ModalHeader,
 } from '@patternfly/react-core';
 import { useState } from 'react';
-import { naturalOperationIds, operationLabel, specOperations, type SpecOperation } from '../apispec/operationIds';
-
-export type RoutableOperation = SpecOperation & { operationId: string };
+import { operationLabel, type RoutableOperation } from '../apispec/operationIds';
 
 /** Flow > Add Route For Operation. */
 export function addOperationRouteMenuItem(onOpen?: () => void) {
@@ -26,16 +24,6 @@ export function addOperationRouteMenuItem(onOpen?: () => void) {
       Add Route For Operation
     </DropdownItem>
   );
-}
-
-/**
- * The spec's operations with the operationId a route starts from: the one in the spec, or for an
- * operation without one, the id ECHO gives it (the backend fills in the same when the flow leaves
- * the editor).
- */
-export function routableOperations(editorJson: string): RoutableOperation[] {
-  const named = specOperations(naturalOperationIds(editorJson).json);
-  return specOperations(editorJson).map((op, i) => ({ ...op, operationId: op.operationId ?? named[i].operationId! }));
 }
 
 interface Props {

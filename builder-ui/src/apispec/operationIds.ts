@@ -218,6 +218,15 @@ export function renameDirectRoutes(yaml: string, renames: OperationRename[]): st
   return changed ? doc.toString({ lineWidth: 0 }) : yaml;
 }
 
+/** The routes in the YAML, each with the direct endpoint its from starts from (if any). */
+function routeEntries(doc: Document): { entry: unknown; route: YAMLMap | undefined; name: string | undefined }[] {
+  return (doc.contents as YAML.YAMLSeq).items.map((entry) => {
+    const route = isMap(entry) ? entry.get('route') : undefined;
+    const from = isMap(route) ? route.get('from') : isMap(entry) ? entry.get('from') : undefined;
+    return { entry, route: isMap(route) ? route : undefined, name: isMap(from) ? directName(from) : undefined };
+  });
+}
+
 /**
  * The direct endpoints routes start from, by name: true when the route starts, false when it is
  * switched off (autoStartup: false). Only routes, not what calls them.
@@ -264,4 +273,87 @@ export function appendRoute(yaml: string, route: string): string {
   const trimmed = yaml.trimEnd();
   if (!trimmed || trimmed === '[]') return route;
   return `${trimmed}\n${route}`;
+}
+
+/** An operation of the spec with the operationId its route starts from. */
+export type RoutableOperation = SpecOperation & { operationId: string };
+
+/**
+ * The spec's operations with the operationId a route starts from: the one in the spec, or for an
+ * operation without one, the id ECHO gives it (the backend fills in the same when the flow leaves
+ * the editor).
+ */
+export function routableOperations(editorJson: string): RoutableOperation[] {
+  const named = specOperations(naturalOperationIds(editorJson).json);
+  return specOperations(editorJson).map((op, i) => ({ ...op, operationId: op.operationId ?? named[i].operationId! }));
+}
+
+/** Operations an edit added and removed, told apart by their operationId (a renamed path keeps it). */
+export function operationChanges(before: RoutableOperation[], after: RoutableOperation[]) {
+  const was = new Set(before.map((op) => op.operationId));
+  const now = new Set(after.map((op) => op.operationId));
+  return {
+    added: after.filter((op) => !was.has(op.operationId)),
+    removed: before.filter((op) => !now.has(op.operationId)),
+  };
+}
+
+/**
+ * The routes that start from these direct endpoints taken out of the YAML.
+ *
+ * @returns the YAML without them (the same string if there were none) and each removed route as
+ *   YAML, by name, so it can be put back with appendRoute
+ */
+export function removeDirectRoutes(yaml: string, names: string[]): { yaml: string; removed: Map<string, string> } {
+  const removed = new Map<string, string>();
+  const doc = parseRoute(yaml);
+  if (!doc || !names.length) return { yaml, removed };
+  const seq = doc.contents as YAML.YAMLSeq;
+  const kept = routeEntries(doc).filter(({ entry, name }) => {
+    if (!name || !names.includes(name)) return true;
+    const text = YAML.stringify([(entry as YAML.Node).toJSON()], { lineWidth: 0 });
+    removed.set(name, (removed.get(name) ?? '') + text);
+    return false;
+  });
+  if (!removed.size) return { yaml, removed };
+  seq.items = kept.map(({ entry }) => entry);
+  return { yaml: doc.toString({ lineWidth: 0 }), removed };
+}
+
+/**
+ * The direct endpoints whose route is still as ECHO made it (routeForOperation): nothing but its log
+ * step. Removing one of those loses no work.
+ */
+export function untouchedRoutes(yaml: string): Set<string> {
+  const names = new Set<string>();
+  const doc = parseRoute(yaml);
+  if (!doc) return names;
+  const only = (map: YAMLMap, keys: string[]) => map.items.every((pair) => keys.includes(String((pair.key as YAML.Scalar)?.value ?? pair.key)));
+  for (const { route, name } of routeEntries(doc)) {
+    if (!route || !name || !only(route, ['id', 'description', 'from'])) continue;
+    const from = route.get('from') as YAMLMap;
+    const steps = from.get('steps');
+    if (!only(from, ['id', 'uri', 'parameters', 'steps']) || !isSeq(steps) || steps.items.length !== 1) continue;
+    const step = steps.items[0];
+    const log = isMap(step) && step.items.length === 1 ? step.get('log') : undefined;
+    if (isMap(log) && log.get('id') === `log-${name}`) names.add(name);
+  }
+  return names;
+}
+
+/** Whether anything in the YAML (a to, a wireTap...) calls the direct endpoint. */
+export function callsDirect(yaml: string, name: string): boolean {
+  const doc = parseRoute(yaml);
+  if (!doc) return false;
+  let found = false;
+  YAML.visit(doc, {
+    Map(_, map) {
+      if (directName(map) === name) found = true;
+    },
+    Scalar(_, scalar) {
+      const m = typeof scalar.value === 'string' ? DIRECT_URI.exec(scalar.value.trim()) : null;
+      if (m && m[2] === name) found = true;
+    },
+  });
+  return found;
 }
