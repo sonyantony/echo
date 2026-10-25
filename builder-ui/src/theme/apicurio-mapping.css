@@ -156,7 +156,7 @@
   display: none;
 }
 :root[data-echo-theme] main-form :is(.tags-section, .servers-section) .section-label counter::after {
-  /* PatternFly's outlined question circle, as before "Schema from a sample", in the theme's subtle text colour. */
+  /* PatternFly's outlined question circle, in the theme's subtle text colour. */
   content: '';
   display: inline-block;
   width: 12px;

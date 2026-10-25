@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createFlow, designMenu, fileMenu, login, uniqueName } from './helpers';
+import { createFlow, designMenu, fileMenu, interfaceMenu, login, uniqueName } from './helpers';
 
 // operationIds are ECHO's business (decision 0013): every operation is named after its method and
 // path, Openapi hides the field, Flow > Add Route For Operation makes the routes, renaming a path
@@ -32,8 +32,7 @@ const spec = (cardsPath: string, cardsId?: string) =>
 
 async function upload(page: Page, text: string) {
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
-  await page.getByRole('menuitem', { name: /^Upload/ }).click();
+  await interfaceMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'cards-api.yaml', mimeType: 'application/yaml', buffer: Buffer.from(text) });
 }
 
@@ -82,8 +81,7 @@ test('operations get routes without anyone typing an operationId, renames follow
 
   // A new version of the spec moves GET /cards to /payment-cards (the operation keeps its old id
   // there, as when a path is renamed in the editor): the operation and its route are renamed together.
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
-  await page.keyboard.press('Escape');
+  await interfaceMenu(page, /^Design/);
   await upload(page, spec('/payment-cards', 'getCards'));
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
   await expect(editor.getByText('/payment-cards')).toBeVisible();
@@ -113,8 +111,7 @@ test('an operation added in Openapi gets its operationId at once, before any Sav
   });
   await login(page);
   await createFlow(page, uniqueName('opnow'));
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
-  await page.keyboard.press('Escape');
+  await interfaceMenu(page, /^Design/);
   const editor = editorOf(page);
   await editor.getByText('Add a path').click();
   const addPath = editor.getByRole('dialog', { name: 'Add Path' });
@@ -184,8 +181,7 @@ test('a method added in Interface gets a route at once; deleting it asks about a
   await page.reload();
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
-  await page.keyboard.press('Escape');
+  await interfaceMenu(page, /^Design/);
   const editor = editorOf(page);
   await editor.getByText('Add a path').click();
   const addPath = editor.getByRole('dialog', { name: 'Add Path' });

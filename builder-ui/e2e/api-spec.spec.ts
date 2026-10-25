@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { createFlow, designMenu, login, uniqueName } from './helpers';
+import { createFlow, designMenu, interfaceMenu, login, uniqueName } from './helpers';
 
 // V2: a flow's OpenAPI spec is designed in Apicurio's editor (Openapi), and a data type's
 // schema can be generated from a sample JSON. The spec is one file in the flow folder, under the
@@ -10,16 +10,8 @@ const editorOf = (page: Page) => page.frameLocator('iframe[title="OpenAPI editor
 const flowIdOf = (page: Page) => page.url().replace(/.*\/flows\/(\d+).*/, '$1');
 
 async function openSpec(page: Page) {
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
-  // Clicking opens the view and its menu; the menu is closed again for the tests that don't use it.
-  await expect(page.getByRole('menuitem', { name: /^Upload/ })).toBeVisible();
-  await page.keyboard.press('Escape');
+  await interfaceMenu(page, /^Design/);
   await expect(editorOf(page).getByText('Paths', { exact: true })).toBeVisible();
-}
-
-async function specMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
-  await page.getByRole('menuitem', { name: item }).click();
 }
 
 test('a schema made from a sample JSON is saved as YAML under the name given on Save', async ({ page }) => {
@@ -128,7 +120,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
     '',
   ].join('\n');
   const chooser = page.waitForEvent('filechooser');
-  await specMenu(page, /^Upload/);
+  await interfaceMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'Customer_API.v2.yml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
   await expect(editorOf(page).getByText('/customers/{id}')).toBeVisible();
   // Stored exactly as uploaded, comment included.
@@ -136,13 +128,13 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
 
   // Downloads: the spec on screen in either format, named after the spec.
   let downloading = page.waitForEvent('download');
-  await specMenu(page, 'Download Openapi File As Json');
+  await interfaceMenu(page, 'Download Openapi File As Json');
   let download = await downloading;
   expect(download.suggestedFilename()).toBe('Customer_API.v2.json');
   const json = JSON.parse(await readFile(await download.path(), 'utf8'));
   expect(json.paths['/customers/{id}'].get.operationId).toBe('getCustomersId');
   downloading = page.waitForEvent('download');
-  await specMenu(page, 'Download Openapi File As Yaml');
+  await interfaceMenu(page, 'Download Openapi File As Yaml');
   download = await downloading;
   expect(download.suggestedFilename()).toBe('Customer_API.v2.yml');
   expect(await readFile(await download.path(), 'utf8')).toContain('operationId: getCustomersId');
@@ -150,7 +142,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   // Uploading another spec replaces this one, after asking.
   const second = '{"openapi":"3.0.3","info":{"title":"Orders","version":"1.0.0"},"paths":{}}';
   const chooser2 = page.waitForEvent('filechooser');
-  await specMenu(page, /^Upload/);
+  await interfaceMenu(page, /^Upload/);
   await (await chooser2).setFiles({ name: 'orders.json', mimeType: 'application/json', buffer: Buffer.from(second) });
   await expect(page.getByRole('dialog')).toContainText('orders.json replaces Customer_API.v2.yml');
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
@@ -160,7 +152,7 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
 
   // A file that is not an OpenAPI spec is refused.
   const chooser3 = page.waitForEvent('filechooser');
-  await specMenu(page, /^Upload/);
+  await interfaceMenu(page, /^Upload/);
   await (await chooser3).setFiles({ name: 'notes.yaml', mimeType: 'application/yaml', buffer: Buffer.from('title: notes\n') });
   await expect(page.getByRole('alert')).toContainText('not an OpenAPI spec');
 
@@ -197,7 +189,16 @@ test('a flow saved before specs kept their name opens its openapi.json', async (
 test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('spec-tabs'));
+  // Clicking Interface only opens its menu, Design first; Design opens the spec.
+  await page.getByRole('button', { name: 'Interface', exact: true }).click();
+  await expect(page.getByRole('menuitem').first()).toHaveText(/^Design/);
+  await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
+  await page.keyboard.press('Escape');
   await openSpec(page);
+  // The bar: Design right before Save; no "Schema from a sample" note.
+  const bar = page.locator('.echo-api-spec__bar');
+  await expect(bar.getByRole('button')).toHaveText(['Design', 'Save', 'Rename', 'Discard']);
+  await expect(bar).not.toContainText('Schema from a sample');
   const editor = editorOf(page);
   for (const name of ['File', 'Flow', 'Run', 'Advanced']) {
     await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
@@ -205,24 +206,24 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await expect(page.getByRole('button', { name: 'Interface', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
 
   // The editor has ECHO's theme and font, not Apicurio's own; its title bar's API name is hidden
-  // under ECHO's bar, which "API Overview" stands in for.
+  // under ECHO's bar, which its Design button stands in for.
   const html = editor.locator('html');
   await expect(html).toHaveAttribute('data-echo-theme', 'navy');
   expect(await editor.locator('body').evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Inter');
   await expect(editor.locator('.editor-title-bar > h1')).toBeHidden();
   await expect(editor.getByRole('button', { name: /Issues/ })).toBeVisible();
 
-  // Apicurio's full-page dialogs start below ECHO's bar, and API Overview waits until they close.
+  // Apicurio's full-page dialogs start below ECHO's bar, and Design waits until they close.
   await editor.getByText('Add a data type').click();
   const heading = editor.getByText('Define a New Data Type');
   await expect(heading).toBeVisible();
-  const bar = (await page.locator('.echo-api-spec__bar').boundingBox())!;
+  const barBox = (await bar.boundingBox())!;
   const frame = (await page.locator('iframe[title="OpenAPI editor"]').boundingBox())!;
   const headingBox = (await heading.boundingBox())!;
-  expect(frame.y + headingBox.y).toBeGreaterThanOrEqual(bar.y + bar.height);
-  await expect(page.getByRole('button', { name: 'API Overview' })).toHaveAttribute('aria-disabled', 'true');
+  expect(frame.y + headingBox.y).toBeGreaterThanOrEqual(barBox.y + barBox.height);
+  await expect(page.locator('.echo-api-spec__bar').getByRole('button', { name: 'Design', exact: true })).toHaveAttribute('aria-disabled', 'true');
   await editor.getByRole('button', { name: 'Cancel' }).first().click();
-  await expect(page.getByRole('button', { name: 'API Overview' })).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(page.locator('.echo-api-spec__bar').getByRole('button', { name: 'Design', exact: true })).not.toHaveAttribute('aria-disabled', 'true');
 
   // An unsaved spec edit is saved by File > Save, from any view; without a name it asks for one.
   await editor.getByText('Add a data type').click();
@@ -239,12 +240,12 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   const spec = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/customers.json`)).json();
   expect(spec.components.schemas.Customer).toBeDefined();
 
-  // API Overview opens the spec's own details (Apicurio's title bar click).
+  // Design opens the spec's own details (Apicurio's title bar click).
   await openSpec(page);
   await editor.getByText('Customer', { exact: true }).first().click();
   await expect(editor.locator('definition-form')).toBeVisible();
   await expect(editor.getByText('Vendor Extensions', { exact: true })).toBeHidden();
-  await page.getByRole('button', { name: 'API Overview' }).click();
+  await page.locator('.echo-api-spec__bar').getByRole('button', { name: 'Design', exact: true }).click();
   await expect(editor.getByText('Tag Definitions', { exact: true })).toBeVisible();
   // Only Info, Tag Definitions and Servers (as Base Path) are shown there (Vendor Extensions is hidden on every
   // page); headings are in title case, and tags and Base Path get a short explanation.
@@ -315,7 +316,7 @@ test("Copy From Another Flow starts this flow's spec from a copy of another flow
 
   await createFlow(page, uniqueName('spec-user'));
   const flowId = flowIdOf(page);
-  await specMenu(page, /^Copy From Another Flow/);
+  await interfaceMenu(page, /^Copy From Another Flow/);
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'OpenAPI spec to copy' }).click();
   await page.getByText(`From flow ${other}`, { exact: true }).click();
@@ -332,7 +333,7 @@ test("Copy From Another Flow starts this flow's spec from a copy of another flow
     headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf },
   });
   await page.reload();
-  await specMenu(page, /^Copy From Another Flow/);
+  await interfaceMenu(page, /^Copy From Another Flow/);
   await dialog.getByRole('button', { name: 'OpenAPI spec to copy' }).click();
   await page.getByText(`From flow ${other}`, { exact: true }).click();
   await expect(dialog).toContainText('A flow has one OpenAPI spec: fresh-api.yaml is replaced.');
@@ -352,7 +353,7 @@ test('a first-time user starts from the API on the untitled flow; the first Save
 
   const yaml = 'openapi: 3.0.3\ninfo:\n  title: Card API\n  version: 1.0.0\npaths: {}\n';
   const chooser = page.waitForEvent('filechooser');
-  await specMenu(page, /^Upload/);
+  await interfaceMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'cards.yml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
   // There is no flow to store it in yet: it stays on screen until the flow is saved.
   await expect(page.getByText('Opened cards.yml: save the flow to keep it.')).toBeVisible();

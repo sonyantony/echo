@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createFlow, login, uniqueName } from './helpers';
+import { createFlow, interfaceMenu, login, uniqueName } from './helpers';
 
 // Tab-line menus close on any press outside them, including in the Apicurio frame (Openapi)
 // and on the Kaoto canvas, and on Escape.
@@ -11,7 +11,8 @@ test('tab-line menus close on an outside press and on Escape', async ({ page }) 
   await login(page);
   await createFlow(page, uniqueName('menus'));
 
-  // Openapi: a press inside the Apicurio frame closes its menu.
+  // Interface: a press inside the Apicurio frame closes its menu.
+  await interfaceMenu(page, /^Design/);
   await tab(page, 'Interface').click();
   await expect(menuItem(page, /^Upload/)).toBeVisible();
   // Away from where the menus hang, in Apicurio's right-hand pane.

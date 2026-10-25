@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { login, uniqueName } from './helpers';
+import { interfaceMenu, login, uniqueName } from './helpers';
 
 // The DataMapper's Attach Schema offers the request and response bodies of the flow's Openapi spec:
 // ECHO writes the picked one into the flow as openapi-<endpoint>-<method>-<part>.schema.json. When
@@ -101,8 +101,7 @@ test('Attach Schema offers the bodies of the Openapi spec, and a spec change lis
   // request mapping, which maps customer.name, is listed.
   await page.evaluate(() => (window.location.hash = '#/'));
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
-  await page.getByRole('menuitem', { name: /^Upload/ }).click();
+  await interfaceMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'orders-api.yaml', mimeType: 'application/yaml', buffer: Buffer.from(spec(false)) });
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
   const warnings = page.getByTestId('spec-mapping-warnings');

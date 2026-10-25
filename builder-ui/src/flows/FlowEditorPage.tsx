@@ -599,7 +599,7 @@ function FlowEditor() {
           tabBarStart={
             <>
               {fileMenu}
-              <ApiSpecMenu current={showSpec} onShow={() => showView(true)} panel={specPanel} onCopy={() => setCopyingSpec(true)} />
+              <ApiSpecMenu current={showSpec} onOpen={() => setSpecOpened(true)} onShow={() => showView(true)} panel={specPanel} onCopy={() => setCopyingSpec(true)} />
             </>
           }
           tabBarMenus={runMenu}

@@ -283,7 +283,7 @@ export function UntitledFlowPage() {
           tabBarStart={
             <>
               {fileMenu}
-              <ApiSpecMenu current={showSpec} onShow={openSpec} panel={specPanel} onCopy={() => setCopyingSpec(true)} />
+              <ApiSpecMenu current={showSpec} onOpen={() => setSpecOpened(true)} onShow={openSpec} panel={specPanel} onCopy={() => setCopyingSpec(true)} />
             </>
           }
           tabBarActions={
