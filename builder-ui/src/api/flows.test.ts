@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { flowIdFor, FLOW_NAME_PATTERN, isValidDisplayName, uniqueFlowIdFor } from './flows';
+import { ApiError } from './client';
+import { flowIdFor, FLOW_NAME_PATTERN, isValidDisplayName, nameTakenOf } from './flows';
 
 describe('Flow IDs made from names', () => {
   it('turns any name into lowercase letters, digits and dashes, as the server does', () => {
@@ -13,9 +14,20 @@ describe('Flow IDs made from names', () => {
     expect(flowIdFor('word '.repeat(30)).length).toBeLessThanOrEqual(63);
   });
 
-  it('adds a number when another flow has the ID', () => {
-    expect(uniqueFlowIdFor('First Flow', [])).toBe('first-flow');
-    expect(uniqueFlowIdFor('First Flow', ['First-Flow', 'first-flow-2'])).toBe('first-flow-3');
+  it('reads which flow has a name from the server 409', () => {
+    const taken = new ApiError(409, "A flow named 'Orders' already exists.", {
+      nameTaken: true,
+      existingName: 'Orders',
+      existingFolder: 'orders',
+    });
+    expect(nameTakenOf(taken)).toEqual({
+      message: "A flow named 'Orders' already exists.",
+      existingName: 'Orders',
+      existingFlowId: undefined,
+      existingFolder: 'orders',
+    });
+    expect(nameTakenOf(new ApiError(409, 'Replace it?', { confirmOverwrite: true }))).toBeUndefined();
+    expect(nameTakenOf(new Error('x'))).toBeUndefined();
   });
 
   it('takes any name up to 100 characters', () => {

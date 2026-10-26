@@ -5,9 +5,8 @@ export async function login(page: Page) {
   await page.getByLabel('Username').fill('designer');
   await page.getByLabel('Password').fill('designer');
   await page.getByRole('button', { name: 'Log in' }).click();
-  // Logging in lands on a blank canvas with the File menu open.
-  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
-  await expect(page.getByRole('menuitem', { name: /^New Flow/ })).toBeVisible();
+  // Logging in lands on the start page: work starts on a new flow or one that exists.
+  await expect(page.getByRole('heading', { name: 'Start with a flow' })).toBeVisible();
 }
 
 export function uniqueName(prefix: string) {
@@ -15,9 +14,9 @@ export function uniqueName(prefix: string) {
 }
 
 /**
- * Creates a flow and opens it, through File > New Flow (on the blank canvas or in the editor). From
- * the Open Flow page that means opening a flow first, unless there are none yet (then the page
- * offers New flow itself).
+ * Creates a flow and opens it, through New Flow on the start page (or the Open Flow page with no
+ * flows yet) or File > New Flow in the editor. From the Open Flow page with flows that means
+ * opening a flow first.
  */
 export async function createFlow(page: Page, name: string, description = '') {
   const fileButton = page.getByRole('button', { name: 'File', exact: true });

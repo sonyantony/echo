@@ -98,7 +98,7 @@ export function rememberLastFlow(id: number) {
   try {
     localStorage.setItem(LAST_FLOW_KEY, String(id));
   } catch {
-    // Storage blocked: Cancel then falls back to the blank canvas.
+    // Storage blocked: Cancel then falls back to the start page.
   }
 }
 
@@ -173,7 +173,7 @@ export function FlowListPage() {
   };
 
   const rows = flows.data ? listRows(flows.data, published.data ?? []) : undefined;
-  /** Back to where you came from; else to the flow last worked on, if it still exists; else the blank canvas. */
+  /** Back to where you came from; else to the flow last worked on, if it still exists; else the start page. */
   const cancel = () => {
     const last = lastFlowId();
     if (cameFrom) navigate(cameFrom);
@@ -435,7 +435,7 @@ export function FlowListPage() {
           submitLabel="Save"
           initialName={renaming.displayName}
           initialDescription={renaming.description}
-          keepId={renaming.name}
+          renaming={{ id: renaming.id, name: renaming.name }}
           onClose={() => setRenaming(undefined)}
           onSubmit={async (name, description) => {
             await flowsApi.update(renaming.id, name, description);

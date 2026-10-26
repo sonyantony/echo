@@ -17,9 +17,10 @@ import {
   TextInput,
 } from '@patternfly/react-core';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
-import { isValidDisplayName, templatesApi, type FlowDetail } from '../api/flows';
-import { flowNameHint, useFlowIdPreview } from './FlowNameHint';
+import { useRef, useState, type FormEvent } from 'react';
+import { isValidDisplayName, nameTakenOf, templatesApi, type FlowDetail, type NameTaken } from '../api/flows';
+import { flowNameHint, useFlowIdPreview, useNameTaken } from './FlowNameHint';
+import { NameTakenAlert } from './NameTakenAlert';
 
 interface Props {
   onOpened(flow: FlowDetail): void;
@@ -37,17 +38,23 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
   const chosen = template || templates.data?.[0]?.name || '';
   const nameValid = isValidDisplayName(name);
   const id = useFlowIdPreview(name);
+  const [refused, setRefused] = useState<NameTaken>();
+  const seen = useNameTaken(name);
+  const taken = refused ?? seen;
+  const nameInput = useRef<HTMLInputElement>(null);
   const chosenDescription = templates.data?.find((t) => t.name === chosen)?.description;
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
-    if (!chosen || !nameValid) return;
+    if (!chosen || !nameValid || taken) return;
     setOpening(true);
     setError(undefined);
     try {
       onOpened(await templatesApi.open(chosen, name.trim(), description));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const nameTaken = nameTakenOf(e);
+      if (nameTaken) setRefused(nameTaken);
+      else setError(e instanceof Error ? e.message : String(e));
       setOpening(false);
     }
   };
@@ -89,10 +96,14 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
             <FormGroup label="New flow name" isRequired fieldId="open-template-name">
               <TextInput
                 id="open-template-name"
+                ref={nameInput}
                 value={name}
                 isRequired
-                onChange={(_e, v) => setName(v)}
-                validated={!name || nameValid ? 'default' : 'error'}
+                onChange={(_e, v) => {
+                  setName(v);
+                  setRefused(undefined);
+                }}
+                validated={(!name || nameValid) && !taken ? 'default' : 'error'}
               />
               <FormHelperText>
                 <HelperText>
@@ -102,6 +113,17 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
                 </HelperText>
               </FormHelperText>
             </FormGroup>
+            {taken && (
+              <NameTakenAlert
+                taken={taken}
+                onOpened={onClose}
+                onChooseAnother={() => {
+                  setRefused(undefined);
+                  nameInput.current?.focus();
+                  nameInput.current?.select();
+                }}
+              />
+            )}
             <FormGroup label="Description" fieldId="open-template-description">
               <TextArea
                 id="open-template-description"
@@ -119,7 +141,7 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
           type="submit"
           form="open-template-form"
           variant="primary"
-          isDisabled={!chosen || !nameValid || opening}
+          isDisabled={!chosen || !nameValid || !!taken || opening}
           isLoading={opening}
         >
           Open

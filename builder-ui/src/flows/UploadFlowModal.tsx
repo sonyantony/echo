@@ -13,8 +13,10 @@ import {
   TextArea,
   TextInput,
 } from '@patternfly/react-core';
-import { useState, type FormEvent } from 'react';
-import { flowsApi, isValidDisplayName, type FlowDetail } from '../api/flows';
+import { useRef, useState, type FormEvent } from 'react';
+import { flowsApi, isValidDisplayName, nameTakenOf, type FlowDetail, type NameTaken } from '../api/flows';
+import { useNameTaken } from './FlowNameHint';
+import { NameTakenAlert } from './NameTakenAlert';
 
 interface Props {
   onUploaded(flow: FlowDetail): void;
@@ -29,16 +31,23 @@ export function UploadFlowModal({ onUploaded, onClose }: Props) {
   const [error, setError] = useState<string>();
   const [uploading, setUploading] = useState(false);
   const nameValid = !name.trim() || isValidDisplayName(name);
+  // A typed name is checked as it is typed; the name in the file only when the server reads it.
+  const [refused, setRefused] = useState<NameTaken>();
+  const seen = useNameTaken(name);
+  const taken = refused ?? seen;
+  const nameInput = useRef<HTMLInputElement>(null);
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
-    if (!file || !nameValid) return;
+    if (!file || !nameValid || taken) return;
     setUploading(true);
     setError(undefined);
     try {
       onUploaded(await flowsApi.upload(file, name.trim(), description));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const nameTaken = nameTakenOf(e);
+      if (nameTaken) setRefused(nameTaken);
+      else setError(e instanceof Error ? e.message : String(e));
       setUploading(false);
     }
   };
@@ -58,15 +67,22 @@ export function UploadFlowModal({ onUploaded, onClose }: Props) {
               id="upload-flow-file"
               type="file"
               accept=".zip,application/zip"
-              onChange={(e) => setFile(e.target.files?.[0])}
+              onChange={(e) => {
+                setFile(e.target.files?.[0]);
+                setRefused(undefined);
+              }}
             />
           </FormGroup>
           <FormGroup label="Name" fieldId="upload-flow-name">
             <TextInput
               id="upload-flow-name"
+              ref={nameInput}
               value={name}
-              onChange={(_e, v) => setName(v)}
-              validated={nameValid ? 'default' : 'error'}
+              onChange={(_e, v) => {
+                setName(v);
+                setRefused(undefined);
+              }}
+              validated={nameValid && !taken ? 'default' : 'error'}
             />
             <FormHelperText>
               <HelperText>
@@ -76,6 +92,17 @@ export function UploadFlowModal({ onUploaded, onClose }: Props) {
               </HelperText>
             </FormHelperText>
           </FormGroup>
+          {taken && (
+            <NameTakenAlert
+              taken={taken}
+              onOpened={onClose}
+              onChooseAnother={() => {
+                setRefused(undefined);
+                nameInput.current?.focus();
+                nameInput.current?.select();
+              }}
+            />
+          )}
           <FormGroup label="Description" fieldId="upload-flow-description">
             <TextArea
               id="upload-flow-description"
@@ -91,7 +118,7 @@ export function UploadFlowModal({ onUploaded, onClose }: Props) {
           type="submit"
           form="upload-flow-form"
           variant="primary"
-          isDisabled={!file || !nameValid || uploading}
+          isDisabled={!file || !nameValid || !!taken || uploading}
           isLoading={uploading}
         >
           Upload

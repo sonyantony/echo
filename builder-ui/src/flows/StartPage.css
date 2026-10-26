@@ -1,0 +1,13 @@
+/* The start page: one card in the middle of the page. */
+.echo-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.echo-start__card {
+  margin-inline: auto;
+  width: min(520px, calc(100% - 32px));
+  background: var(--echo-surface);
+  border: 1px solid var(--echo-border);
+  border-radius: var(--pf-t--global--border--radius--medium);
+}

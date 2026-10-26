@@ -32,6 +32,36 @@ public final class FlowExceptions {
     }
 
     /**
+     * A new name another flow already has: 409 with {@code "nameTaken": true} and that flow, so the
+     * user can open it instead: its Builder draft ({@code existingFlowId}) or, if it is only
+     * published, its published folder ({@code existingFolder}).
+     */
+    static ResponseStatusException nameTaken(String name, String existingName, Long existingFlowId, String existingFolder) {
+        return taken("A flow named '%s' already exists.".formatted(existingName), existingName, existingFlowId, existingFolder);
+    }
+
+    /** As {@link #nameTaken}, for a name whose ID ({@link FlowNames#idFor}) another flow has. */
+    static ResponseStatusException idTaken(String name, String id, String existingName, Long existingFlowId,
+            String existingFolder) {
+        return taken("The name '%s' makes the ID %s, which flow '%s' already has.".formatted(name, id, existingName),
+                existingName, existingFlowId, existingFolder);
+    }
+
+    private static ResponseStatusException taken(String message, String existingName, Long existingFlowId,
+            String existingFolder) {
+        var e = new ResponseStatusException(HttpStatus.CONFLICT, message);
+        e.getBody().setProperty("nameTaken", true);
+        e.getBody().setProperty("existingName", existingName);
+        if (existingFlowId != null) {
+            e.getBody().setProperty("existingFlowId", existingFlowId);
+        }
+        if (existingFolder != null) {
+            e.getBody().setProperty("existingFolder", existingFolder);
+        }
+        return e;
+    }
+
+    /**
      * A save that would replace something: 409 with {@code "confirmOverwrite": true}, so the
      * editor asks the user and sends the request again with {@code overwrite: true}.
      */

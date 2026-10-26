@@ -53,13 +53,9 @@ class FlowNamesTest {
     }
 
     @org.junit.jupiter.api.Test
-    void idsStayWithin63CharactersAndGetANumberWhenTaken() {
+    void idsStayWithin63Characters() {
         String long_ = "word ".repeat(30);
         assertThat(FlowNames.idFor(long_)).hasSizeLessThanOrEqualTo(63).doesNotEndWith("-");
-        var taken = java.util.Set.of("first-flow", "first-flow-2");
-        assertThat(FlowNames.uniqueIdFor("First Flow", taken::contains)).isEqualTo("first-flow-3");
-        assertThat(FlowNames.uniqueIdFor(long_, id -> id.equals(FlowNames.idFor(long_))))
-                .hasSizeLessThanOrEqualTo(63).endsWith("-2");
     }
 
     @org.junit.jupiter.api.Test

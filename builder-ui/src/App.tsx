@@ -6,6 +6,7 @@ import { LoginPage } from './auth/LoginPage';
 import { RequireAuth } from './auth/RequireAuth';
 import { BrandingProvider } from './branding/BrandingContext';
 import { FlowListPage } from './flows/FlowListPage';
+import { StartPage } from './flows/StartPage';
 import { AppLayout } from './layout/AppLayout';
 
 export function createQueryClient() {
@@ -22,8 +23,8 @@ function createRouter() {
         </RequireAuth>
       ),
       children: [
-        // After login: a blank canvas with the File menu open (nothing is stored until it is saved).
-        { index: true, lazy: async () => ({ Component: (await import('./flows/UntitledFlowPage')).UntitledFlowPage }) },
+        // After login: start a new flow or open one (work always happens on a named flow).
+        { index: true, element: <StartPage /> },
         { path: 'flows', element: <FlowListPage /> },
         // Loaded on demand: the editor bundles Kaoto, which is large.
         // flows/:id/api: the same editor, with the flow's API spec open in place of Kaoto's views.
