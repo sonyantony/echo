@@ -9,9 +9,12 @@ import java.util.List;
  * @param comments how many comments were read
  * @param examples every JSON example, in the order the story has them
  * @param operations the guessed operations; empty when nothing was found
+ * @param engine the AI engine that read the story ("gpt-4.1 at acme.openai.azure.com"); null when
+ *     the operations are ECHO's own guess
+ * @param notes things the user should know, e.g. that the AI engine could not be reached
  */
 public record StoryExamples(String key, String summary, String link, int comments, List<Example> examples,
-        List<Operation> operations) {
+        List<Operation> operations, String engine, List<String> notes) {
 
     /**
      * @param id refers to it from an operation
@@ -26,7 +29,9 @@ public record StoryExamples(String key, String summary, String link, int comment
      * @param path as the story writes it, with a sample query (/accounts/{id}/payments?status=OPEN); empty when it names none
      * @param request the example picked as its request body, or null
      * @param response the example picked as its response body, or null
-     * @param examples every example found near it, newest last: the choices for request and response
+     * @param examples the examples that may belong to it, offered first as choices for request and response
+     * @param reason why the AI engine paired them so, in a sentence; null for ECHO's own guess
      */
-    public record Operation(String method, String path, Integer request, Integer response, List<Integer> examples) {}
+    public record Operation(String method, String path, Integer request, Integer response, List<Integer> examples,
+            String reason) {}
 }

@@ -109,6 +109,20 @@ echo:
     username: ${ECHO_JIRA_USERNAME:}     # Cloud: the account's email. Data Center: leave empty for a personal access token
     token: ${ECHO_JIRA_TOKEN:}           # Cloud: API token. Data Center: personal access token
     read-comments: true
+  ai:
+    # The AI engine Import From Jira asks which example in a story is which (docs/api-spec.md).
+    # none: no AI, ECHO's own guess is shown. openai-compatible: any engine that speaks the OpenAI
+    # protocol (OpenAI, Azure OpenAI and most of Azure AI Foundry, Ollama, vLLM, LiteLLM...). The
+    # story's text is sent to it: use an engine your company has approved for that.
+    provider: ${ECHO_AI_PROVIDER:none}
+    timeout-seconds: 60
+    openai-compatible:
+      base-url: ${ECHO_AI_BASE_URL:}     # without /chat/completions, e.g. https://api.openai.com/v1,
+                                         # https://<resource>.openai.azure.com/openai/v1, http://ollama:11434/v1
+      api-key: ${ECHO_AI_KEY:}           # never in Git
+      key-header: Authorization          # Authorization (sent as Bearer <key>); Azure: api-key
+      model: ${ECHO_AI_MODEL:}           # the model, or Azure's deployment name
+      api-version:                       # only for older Azure OpenAI endpoints, e.g. 2024-10-21
   validation:
     # HTTP + JSON, the DataMapper's XSLT, and rest-openapi (calls an operation of an OpenAPI spec).
     # The editor's catalog shows only these. Adding one also needs its jar in builder-backend/pom.xml,

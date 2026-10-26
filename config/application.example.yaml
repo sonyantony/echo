@@ -55,6 +55,16 @@ echo:
     username: echo-bot@acme.com            # Cloud: the account's email. Data Center: leave empty
     token: ${ECHO_JIRA_TOKEN:}             # Cloud: API token. Data Center: personal access token
 
+  ai:
+    # The AI engine Import From Jira asks which example in a story is which. The story's text is
+    # sent to it: use one your company has approved. none: ECHO's own guess, no AI.
+    provider: none                         # none | openai-compatible
+    openai-compatible:
+      base-url: https://acme.openai.azure.com/openai/v1   # OpenAI: https://api.openai.com/v1; Ollama: http://ollama:11434/v1
+      api-key: ${ECHO_AI_KEY:}
+      key-header: api-key                  # Azure: api-key; OpenAI and most others: Authorization
+      model: gpt-4.1                       # Azure: the deployment name
+
   editor:
     # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.
     autosave-seconds: 10

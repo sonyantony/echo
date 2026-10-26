@@ -741,7 +741,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
         />
       )}
       {dialog?.kind === 'jira' && (
-        <JiraImportModal currentJson={currentJson} onApply={applyImport} onUndo={undoImport} onClose={() => setDialog(undefined)} />
+        <JiraImportModal aiEngine={settings.data?.aiEngine} currentJson={currentJson} onApply={applyImport} onUndo={undoImport} onClose={() => setDialog(undefined)} />
       )}
       {dialog?.kind === 'path-clash' && (
         <Modal isOpen variant="small" onClose={() => void removePaths(dialog.clashes.map((c) => c.specPath))} aria-labelledby="path-clash-title">

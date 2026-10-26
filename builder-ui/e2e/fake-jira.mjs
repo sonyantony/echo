@@ -1,5 +1,6 @@
 // A fake Jira Cloud for the e2e tests (Import From Jira): one story, PAY-142, with its examples in
-// the description and a corrected response in a comment. Run by playwright.config.ts.
+// the description and a corrected response in a comment. It also plays the AI engine (the OpenAI
+// protocol at /v1/chat/completions), pairing PAY-142's examples. Run by playwright.config.ts.
 import { createServer } from 'node:http';
 
 const port = Number(process.env.ECHO_E2E_JIRA_PORT ?? 8199);
@@ -40,9 +41,23 @@ const answers = {
   },
 };
 
+// PAY-142's examples, numbered as ECHO finds them: 1 request, 2 response, 3 list, 4 corrected response.
+const aiAnswer = {
+  operations: [
+    { method: 'POST', path: '/accounts/{accountId}/payments', query: '', request: 1, response: 4, alternatives: [2],
+      reason: 'The comment of 14 Oct corrects the response.' },
+    { method: 'GET', path: '/accounts/{accountId}/payments', query: 'status=PENDING&limit=20', request: null, response: 3,
+      alternatives: [], reason: 'The list call is followed by its response.' },
+  ],
+};
+
 createServer((req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
   if (path === '/health') return res.end('ok');
+  if (path === '/v1/chat/completions') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: JSON.stringify(aiAnswer) } }] }));
+  }
   const body = answers[path];
   res.writeHead(body ? 200 : 404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body ?? { errorMessages: ['Issue does not exist'] }));

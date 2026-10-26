@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { createFlow, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
-// Interface > Import From Jira against the fake Jira of e2e/fake-jira.mjs: the story's examples
-// are shown for checking (a newer response in a comment is picked over the description's), added
-// to the spec with routes, and listed; Save keeps them.
+// Interface > Import From Jira against the fake Jira and AI engine of e2e/fake-jira.mjs: the story's
+// examples, paired by the engine (a newer response in a comment picked over the description's), are
+// shown for checking, added to the spec with routes, and listed; Save keeps them.
 
 const shots = process.env.ECHO_E2E_SCREENSHOTS;
 
@@ -16,16 +16,17 @@ test('Import From Jira makes paths, data types and routes from a story', async (
 
   await page.getByRole('button', { name: 'Import From Jira' }).click();
   const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText(/sent to the AI engine \(e2e-model at 127.0.0.1\)/)).toBeVisible();
   await dialog.getByLabel(/Story link/).fill('http://127.0.0.1:8199/browse/PAY-142');
   if (shots) await page.screenshot({ path: `${shots}/1-story-link.png` });
   await dialog.getByRole('button', { name: 'Read Story' }).click();
 
   await expect(dialog.getByText('PAY-142: Pay a bill from an account')).toBeVisible();
-  await expect(dialog.getByText(/Found 4 example payloads in the description and 1 comment/)).toBeVisible();
+  await expect(dialog.getByText(/Found 4 example payloads in the description and 1 comment, paired by the AI engine/)).toBeVisible();
   const post = dialog.getByRole('region', { name: 'Operation 1' });
   await expect(post.getByLabel(/^Path/)).toHaveValue('/accounts/{accountId}/payments');
   await expect(post.getByLabel('Response body JSON')).toHaveValue(/expectedBy/);
-  await expect(post.getByText(/several response examples here/)).toBeVisible();
+  await expect(post.getByText('AI: The comment of 14 Oct corrects the response.')).toBeVisible();
   const get = dialog.getByRole('region', { name: 'Operation 2' });
   await expect(get.getByLabel('Method')).toHaveValue('GET');
   await expect(get.getByLabel(/^Path/)).toHaveValue('/accounts/{accountId}/payments?status=PENDING&limit=20');

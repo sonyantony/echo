@@ -203,13 +203,20 @@ finds the example payloads, calls and query parameters written in them: JSON in 
 the text, `POST /accounts/{accountId}/payments`, `GET https://api.acme.com/v1/payments?status=OPEN`,
 "Endpoint: /cards", "Query parameters: type=DEBIT, active=true".
 
-It then shows one card per operation it found, for the user to check and correct before anything
+With an AI engine (`echo.ai`, below), the engine pairs them: it reads the story with each example
+replaced by `[Example n]`, and answers which example is the request and which the response of which
+operation, its path and query, and why, in a sentence. It only picks among the examples ECHO found;
+it never writes a payload, and its answer is checked (unknown example numbers, methods and paths are
+dropped, with a note). Without an engine, or when it cannot be reached or answers nothing usable,
+ECHO's own guess is used (and the user told why): an example belongs to the call written before it,
+and "request" or "response" just before it says which it is.
+
+It then shows one card per operation, for the user to check and correct before anything
 changes: method, path (with its sample query; the spec's Base Path is taken off), and the request
 and response bodies. Each body is picked from the story's examples ("Example 4 · Comment by Priya
-Shah, 14 Oct 2026 · called the response") and can be edited. An example belongs to the call written
-before it, and "request" or "response" just before it says which it is; when the story has several
-for the same thing (a corrected response in a later comment), the newest is picked and the card says
-so. Cards can be left out, removed or added; one whose method and path the spec has already says
+Shah, 14 Oct 2026 · called the response") and can be edited. The engine's reason is shown on the
+card. When the story has several examples for the same thing (a corrected response in a later
+comment), the card says so; ECHO's own guess picks the newest. Cards can be left out, removed or added; one whose method and path the spec has already says
 that importing replaces it (keeping its operationId, so its route stays).
 
 **Add To Spec** adds the operations and their data types to the spec on screen, unsaved, keeping
@@ -219,9 +226,9 @@ required, null ones are optional strings). New operations get a route at once, a
 another flow has is asked about, as when typed in. A last dialog lists the paths and data types it
 made and what is worth checking; **Undo** there takes it all out again. Save keeps it.
 
-Code: `builder-backend/.../jira/` (reading the story, `ExampleFinder`), `builder-ui/src/apispec/`
-`JiraImportModal.tsx` and `jiraImport.ts`. Finding the examples uses no AI yet; an AI step that
-labels them is planned (decision 0016).
+Code: `builder-backend/.../jira/` (reading the story, `ExampleFinder`, `AiExampleLabeler`),
+`builder-backend/.../ai/` (the engines), `builder-ui/src/apispec/` `JiraImportModal.tsx` and
+`jiraImport.ts`. See decision 0016.
 
 #### Setting up Jira
 
@@ -246,6 +253,36 @@ echo:
 
 Import From Jira is hidden until `base-url` and `token` are set. A link to another site is refused,
 so the token is only ever sent to the configured Jira; it is never logged or sent to the browser.
+
+#### Setting up the AI engine
+
+Optional. The story's text is sent to the engine, so use one your company has approved for that;
+the dialog says which engine it is before the story is read. Any engine that speaks the OpenAI chat
+completions protocol works, chosen by its endpoint:
+
+```yaml
+echo:
+  ai:
+    provider: openai-compatible            # none (default): ECHO's own guess, no AI
+    timeout-seconds: 60
+    openai-compatible:
+      base-url: https://acme.openai.azure.com/openai/v1   # without /chat/completions
+      api-key: ${ECHO_AI_KEY}              # never in Git
+      key-header: api-key                  # Azure: api-key; OpenAI and most others: Authorization (Bearer)
+      model: gpt-4.1                       # Azure: the deployment name
+      # api-version: 2024-10-21            # only for older Azure OpenAI endpoints
+```
+
+| Engine | `base-url` | `key-header` |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `Authorization` |
+| Azure OpenAI / Azure AI Foundry | `https://<resource>.openai.azure.com/openai/v1` | `api-key` |
+| Ollama (local, no key) | `http://ollama:11434/v1` | (leave `api-key` empty) |
+| Anthropic (Claude) | `https://api.anthropic.com/v1` | `x-api-key` |
+| LiteLLM or another gateway | its URL | as it needs |
+
+ECHO asks for a JSON answer (`response_format: json_object`) at temperature 0. Another protocol (a
+native Claude or Copilot engine) is one more class behind `ai/AiProvider`.
 
 ## How it is embedded
 
@@ -272,10 +309,8 @@ screenshot of each screen per theme (see [branding.md](branding.md#themes)).
 2. **Response validation.** Camel can check the flow's responses against the spec too
    (`clientResponseValidation`); there is no checkbox for it.
 3. **Build checks.** Validation should report an invalid spec, and Publish should refuse one.
-4. **AI for Import From Jira.** An engine that labels the examples a story has (which is the
-   request, which the response, of which call), behind a Java interface; the first one speaks the
-   OpenAI protocol, so OpenAI, Azure OpenAI, Ollama and the like work by changing its endpoint
-   (decision 0016).
+4. **More AI engines.** Import From Jira speaks the OpenAI protocol only; native Claude or GitHub
+   Copilot engines would each be one class behind `AiProvider` (decision 0016).
 
 ## A path in one flow only
 

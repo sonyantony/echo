@@ -316,6 +316,8 @@ export interface EditorSettings {
   runEnabled?: boolean;
   /** Whether Interface offers Import From Jira (echo.jira is set up). */
   jiraImport?: boolean;
+  /** The AI engine Import From Jira sends stories to ("gpt-4.1 at acme.openai.azure.com"); absent without one. */
+  aiEngine?: string | null;
 }
 
 export const editorSettings = () => api<EditorSettings>('/api/editor/settings');
