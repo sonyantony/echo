@@ -15,7 +15,12 @@
 #                      REGISTRY_USERNAME / REGISTRY_PASSWORD)
 #   --local-image      build into the local Docker daemon instead of pushing
 #   --jar-only         stop after "mvn package"
+#   --manifests-only   only check the flows and write the Kubernetes manifests (no export, jar or image)
 #   --out <dir>        working folder; each app goes in <dir>/<name> (default: build)
+#   --k8s-config <f>   settings of the Kubernetes manifests (K8S_CONFIG, default: pipeline/k8s.properties)
+#
+# Next to each image, <dir>/<app>/k8s/ gets a Deployment, a Service and an Ingress (or Gateway API
+# HTTPRoute) for only the paths the app's flows serve, made by K8sManifests.java; see k8s.properties.
 #
 # Images: bundle -> <name>:<v> (echo-flows); per-flow -> echo-flow-<flow>:<v>. Bundled flows share one
 # port, so their Base Paths (and other app-wide names) must differ: BundleCheck.java fails the build
@@ -27,7 +32,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="${ECHO_RUNTIME_TEMPLATE:-$HERE/../runtime-template}"
 
-usage() { sed -n '2,24p' "$0"; exit "${1:-0}"; }
+usage() { sed -n '2,29p' "$0"; exit "${1:-0}"; }
 
 FOLDERS=()
 BUILD_MODE="${BUILD_MODE:-bundle}"
@@ -36,6 +41,7 @@ VERSION="${FLOW_VERSION:-}"
 REGISTRY="${REGISTRY_URL:-}"
 MODE="push"
 OUT_ROOT="$PWD/build"
+K8S_CONFIG="${K8S_CONFIG:-$HERE/k8s.properties}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode) BUILD_MODE="$2"; shift 2 ;;
@@ -44,6 +50,8 @@ while [[ $# -gt 0 ]]; do
     --registry) REGISTRY="$2"; shift 2 ;;
     --local-image) MODE="local"; shift ;;
     --jar-only) MODE="jar"; shift ;;
+    --manifests-only) MODE="manifests"; shift ;;
+    --k8s-config) K8S_CONFIG="$2"; shift 2 ;;
     --out) OUT_ROOT="$2"; shift 2 ;;
     -h|--help) usage 0 ;;
     -*) echo "Unknown option $1" >&2; usage 1 ;;
@@ -167,11 +175,34 @@ build_app() { # name, version, out, image-name
   echo "Image: $image"
 }
 
+# The pipeline's Java helpers read YAML with the SnakeYAML jar inside the Camel launcher, so they need no
+# download. Sets YAML_JAR.
+yaml_jar() {
+  local check="$OUT_ROOT/.yaml" entry
+  launcher
+  entry="$(jar tf "$LAUNCHER" | grep -E '^BOOT-INF/lib/snakeyaml-[0-9.]+\.jar$' | head -1)"
+  [[ -f "$check/$entry" ]] || { mkdir -p "$check" && (cd "$check" && jar xf "$LAUNCHER" "$entry"); }
+  YAML_JAR="$check/$entry"
+}
+
+# The image reference build_app gives the app (the registry only when it pushes or is given).
+image_ref() { # image-name, version
+  if [[ -n "$REGISTRY" && "$MODE" != local ]]; then echo "${REGISTRY%/}/$1:$2"; else echo "$1:$2"; fi
+}
+
+# Kubernetes manifests for the app in <out>/k8s: Deployment, Service, and an Ingress or HTTPRoute for
+# only the paths its flows serve.
+k8s_manifests() { # image-name, version, out, [--api-docs], flow-dir...
+  local name="$1" image; image="$(image_ref "$1" "$2")"; local out="$3"; shift 3
+  java -cp "$YAML_JAR" "$HERE/K8sManifests.java" "$K8S_CONFIG" "$name" "$image" "$out" "$@"
+}
+
 flow_props() { # flow-dir
   [[ -f "$1/application.properties" ]] || return 0
   echo; echo "# --- flow $(basename "$1") ---"; cat "$1/application.properties"
 }
 
+yaml_jar
 if [[ "$BUILD_MODE" == per-flow ]]; then
   for dir in "${FLOWS[@]}"; do
     name="$(basename "$dir")"
@@ -185,7 +216,8 @@ if [[ "$BUILD_MODE" == per-flow ]]; then
     copy_flow "$dir" "$out/src-flow" ""
     # Properties: template first, flow last.
     { cat "$TEMPLATE/application.properties"; flow_props "$dir"; } > "$out/src-flow/application.properties"
-    build_app "$name" "${version:-1.0.0}" "$out" "echo-flow-$name"
+    k8s_manifests "echo-flow-$name" "${version:-1.0.0}" "$out" "$dir"
+    [[ "$MODE" == manifests ]] || build_app "$name" "${version:-1.0.0}" "$out" "echo-flow-$name"
   done
   exit 0
 fi
@@ -194,15 +226,13 @@ fi
 names=(); for dir in "${FLOWS[@]}"; do names+=("$(basename "$dir")"); done
 echo "==> Bundling ${#FLOWS[@]} flow(s) into $BUNDLE_NAME: ${names[*]}"
 out="$OUT_ROOT/$BUNDLE_NAME"
-rm -rf "$out" && mkdir -p "$out/src-flow" "$out/check"
-# BundleCheck reads the YAML with the SnakeYAML jar inside the Camel launcher, so it needs no download.
-launcher
-yaml_jar="$(jar tf "$LAUNCHER" | grep -E '^BOOT-INF/lib/snakeyaml-[0-9.]+\.jar$' | head -1)"
-(cd "$out/check" && jar xf "$LAUNCHER" "$yaml_jar")
-java -cp "$out/check/$yaml_jar" "$HERE/BundleCheck.java" "${FLOWS[@]}"
+rm -rf "$out" && mkdir -p "$out/src-flow"
+java -cp "$YAML_JAR" "$HERE/BundleCheck.java" "${FLOWS[@]}"
 { cat "$TEMPLATE/application.properties"
   for dir in "${FLOWS[@]}"; do flow_props "$dir"; done; } > "$out/src-flow/application.properties"
 for dir in "${FLOWS[@]}"; do copy_flow "$dir" "$out/src-flow" "$(basename "$dir")"; done
 # One Swagger UI page at /api-docs for all the flows: a drop-down picks the flow (A to Z, ignoring case).
-java -cp "$out/check/$yaml_jar" "$HERE/ApiDocsPage.java" "$out/src-flow/echo-api-docs.camel.yaml" "${FLOWS[@]}"
-build_app "$BUNDLE_NAME" "${VERSION:-1.0.0}" "$out" "$BUNDLE_NAME"
+java -cp "$YAML_JAR" "$HERE/ApiDocsPage.java" "$out/src-flow/echo-api-docs.camel.yaml" "${FLOWS[@]}"
+api_docs=(); [[ -f "$out/src-flow/echo-api-docs.camel.yaml" ]] && api_docs=(--api-docs)
+k8s_manifests "$BUNDLE_NAME" "${VERSION:-1.0.0}" "$out" "${api_docs[@]}" "${FLOWS[@]}"
+[[ "$MODE" == manifests ]] || build_app "$BUNDLE_NAME" "${VERSION:-1.0.0}" "$out" "$BUNDLE_NAME"

@@ -11,7 +11,13 @@
 // Only flows/ is built: templates/ (the Builder's Save As Template) is ignored. Promotion between
 // environments stays with your own release process.
 //
-// Agent needs: Java 21, Maven, curl, git. No Docker daemon needed (Jib pushes directly).
+// Each build also writes Kubernetes manifests next to each image, build/<app>/k8s/ (Deployment,
+// Service, and an Ingress for only the flows' paths; settings in pipeline/k8s.properties), and keeps
+// them as build artifacts. DEPLOY applies them with kubectl; leave it off to hand them to your own
+// release process or GitOps tool instead.
+//
+// Agent needs: Java 21, Maven, curl, git. No Docker daemon needed (Jib pushes directly). DEPLOY also
+// needs kubectl.
 pipeline {
   agent any
 
@@ -25,6 +31,10 @@ pipeline {
            description: 'Jenkins username/password credentials for the registry')
     booleanParam(name: 'BUILD_ALL', defaultValue: false,
                  description: 'Build even if no flow changed (per-flow: build every flow)')
+    booleanParam(name: 'DEPLOY', defaultValue: false,
+                 description: 'Apply the Kubernetes manifests (build/*/k8s) with kubectl after the build')
+    string(name: 'KUBECONFIG_CREDENTIALS_ID', defaultValue: 'echo-kubeconfig',
+           description: 'Jenkins secret file credentials with the kubeconfig DEPLOY uses')
   }
 
   options {
@@ -63,6 +73,8 @@ pipeline {
                                           usernameVariable: 'REGISTRY_USERNAME',
                                           passwordVariable: 'REGISTRY_PASSWORD')]) {
           script {
+            // Only this build's apps, so DEPLOY never applies the manifests of an earlier build.
+            sh 'rm -rf build'
             if (params.BUILD_MODE == 'bundle') {
               sh "pipeline/build-flow.sh flows --mode bundle --version 1.0.${env.BUILD_NUMBER} --registry '${params.REGISTRY_URL}'"
             } else {
@@ -76,11 +88,20 @@ pipeline {
         }
       }
     }
+
+    stage('Deploy to Kubernetes') {
+      when { expression { params.DEPLOY && env.FLOWS?.trim() } }
+      steps {
+        withCredentials([file(credentialsId: params.KUBECONFIG_CREDENTIALS_ID, variable: 'KUBECONFIG')]) {
+          sh 'for dir in build/*/k8s; do kubectl apply -f "$dir"; done'
+        }
+      }
+    }
   }
 
   post {
     always {
-      archiveArtifacts artifacts: 'build/*/image.txt', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'build/*/image.txt, build/*/k8s/*.yaml', allowEmptyArchive: true
     }
   }
 }
