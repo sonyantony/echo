@@ -183,6 +183,53 @@ class JiraImportTest {
     @Nested
     @SpringBootTest
     @AutoConfigureMockMvc
+    class WithAnAiEngine {
+        @DynamicPropertySource
+        static void jira(DynamicPropertyRegistry registry) {
+            registry.add("echo.jira.base-url", JIRA::url);
+            registry.add("echo.jira.username", () -> "echo-bot@acme.com");
+            registry.add("echo.jira.token", () -> "secret-token");
+            registry.add("echo.ai.provider", () -> "openai-compatible");
+            registry.add("echo.ai.openai-compatible.base-url", () -> JIRA.url() + "/v1");
+            registry.add("echo.ai.openai-compatible.api-key", () -> "sk-test");
+            registry.add("echo.ai.openai-compatible.model", () -> "gpt-test");
+        }
+
+        @Autowired
+        private MockMvc mvc;
+
+        @Test
+        void theEnginePairsTheExamples() throws Exception {
+            JIRA.answers.put("/rest/api/3/issue/PAY-150", """
+                    {"key":"PAY-150","fields":{"summary":"Refunds","description":{"type":"doc","content":[
+                      {"type":"paragraph","content":[{"type":"text","text":"Refund a payment. We get {\\"amount\\": 5} and answer {\\"refundId\\": \\"r-1\\"}"}]}]}}}""");
+            JIRA.answers.put("/rest/api/3/issue/PAY-150/comment", "{\"startAt\":0,\"maxResults\":100,\"total\":0,\"comments\":[]}");
+            JIRA.answers.put("/v1/chat/completions", """
+                    {"choices":[{"message":{"role":"assistant","content":
+                      "{\\"operations\\":[{\\"method\\":\\"POST\\",\\"path\\":\\"/payments/{id}/refunds\\",\\"request\\":1,\\"response\\":2,\\"reason\\":\\"The story says what is sent and answered.\\"}]}"}}]}""");
+
+            mvc.perform(post("/api/jira/story-examples").with(user("designer").roles("DESIGNER")).with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON).content(request("PAY-150")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.engine").value("gpt-test at 127.0.0.1"))
+                    .andExpect(jsonPath("$.operations[0].method").value("POST"))
+                    .andExpect(jsonPath("$.operations[0].path").value("/payments/{id}/refunds"))
+                    .andExpect(jsonPath("$.operations[0].request").value(1))
+                    .andExpect(jsonPath("$.operations[0].response").value(2))
+                    .andExpect(jsonPath("$.operations[0].reason").value("The story says what is sent and answered."));
+            assertThat(JIRA.authorizations.getLast()).isEqualTo("Bearer sk-test");
+        }
+
+        @Test
+        void theEditorIsToldWhichEngineStoriesGoTo() throws Exception {
+            mvc.perform(get("/api/editor/settings").with(user("designer").roles("DESIGNER")))
+                    .andExpect(jsonPath("$.aiEngine").value("gpt-test at 127.0.0.1"));
+        }
+    }
+
+    @Nested
+    @SpringBootTest
+    @AutoConfigureMockMvc
     class NotSetUp {
         @Autowired
         private MockMvc mvc;

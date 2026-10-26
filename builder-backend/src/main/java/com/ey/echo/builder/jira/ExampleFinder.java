@@ -44,12 +44,25 @@ final class ExampleFinder {
     private ExampleFinder() {}
 
     static StoryExamples find(Story story) {
+        return findAll(story).guess();
+    }
+
+    /**
+     * ECHO's own guess, and the story as text with each example replaced by "[Example n]" (each part
+     * under a "## Description" or "## Comment by ..." heading), for an AI engine to read.
+     */
+    record Found(StoryExamples guess, String transcript) {}
+
+    static Found findAll(Story story) {
         var finder = new Run();
         for (Part part : story.parts()) {
             finder.part(part);
         }
         int comments = (int) story.parts().stream().filter(p -> !p.source().equals("Description")).count();
-        return new StoryExamples(story.key(), story.summary(), story.link(), comments, finder.examples, finder.operations());
+        var guess = new StoryExamples(story.key(), story.summary(), story.link(), comments, finder.examples,
+                finder.operations(), null, List.of());
+        String transcript = "# " + story.key() + ": " + story.summary() + "\n\n" + finder.transcript;
+        return new Found(guess, transcript);
     }
 
     /** One pass over a story, in order. */
@@ -58,22 +71,29 @@ final class ExampleFinder {
         final List<Op> ops = new ArrayList<>();
         Op current;
         String pendingQuery;
+        final StringBuilder transcript = new StringBuilder();
 
         void part(Part part) {
             var before = new StringBuilder(); // the part's text since its last example, for role hints
+            transcript.append("## ").append(part.source()).append("\n\n");
             for (Block block : part.blocks()) {
                 String text = block.text();
+                var shown = new StringBuilder();
                 int at = 0;
                 for (int[] span : jsonSpans(text)) {
                     String between = text.substring(at, span[0]);
                     calls(between);
                     before.append(between);
-                    body(text.substring(span[0], span[1]), part.source(), role(before));
+                    int id = body(text.substring(span[0], span[1]), part.source(), role(before));
+                    shown.append(between).append("[Example ").append(id).append(']');
                     before.setLength(0);
                     at = span[1];
                 }
                 calls(text.substring(at));
                 before.append(text.substring(at)).append('\n');
+                shown.append(text.substring(at));
+                String piece = shown.toString().strip();
+                transcript.append(block.code() && !piece.matches("\\[Example \\d+]") ? "```\n" + piece + "\n```" : piece).append("\n\n");
             }
         }
 
@@ -156,12 +176,13 @@ final class ExampleFinder {
             }
         }
 
-        void body(String raw, String source, String role) {
+        /** Adds the example and returns its id. */
+        int body(String raw, String source, String role) {
             String pretty;
             try {
                 pretty = LENIENT.writerWithDefaultPrettyPrinter().writeValueAsString(LENIENT.readTree(raw));
             } catch (Exception e) {
-                return; // jsonSpans only returns what parses
+                throw new IllegalStateException(e); // jsonSpans only returns what parses
             }
             int id = examples.size() + 1;
             examples.add(new Example(id, pretty, source, role));
@@ -171,6 +192,7 @@ final class ExampleFinder {
                 ops.add(current);
             }
             current.examples.add(id);
+            return id;
         }
 
         List<Operation> operations() {
@@ -195,7 +217,7 @@ final class ExampleFinder {
                 }
                 String method = op.method != null ? op.method : request != null ? "POST" : "GET";
                 String path = op.path + (op.query == null || op.query.isEmpty() ? "" : "?" + op.query);
-                result.add(new Operation(method, path, request, response, List.copyOf(op.examples)));
+                result.add(new Operation(method, path, request, response, List.copyOf(op.examples), null));
             }
             return result;
         }

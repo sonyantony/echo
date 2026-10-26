@@ -18,8 +18,10 @@ export interface StoryOperation {
   path: string;
   request?: number | null;
   response?: number | null;
-  /** Every example found near it, newest last. */
+  /** The examples that may belong to it, offered first as choices. */
   examples: number[];
+  /** Why the AI engine paired them so; absent for ECHO's own guess. */
+  reason?: string | null;
 }
 
 export interface StoryExamples {
@@ -31,6 +33,10 @@ export interface StoryExamples {
   comments: number;
   examples: StoryExample[];
   operations: StoryOperation[];
+  /** The AI engine that read the story ("gpt-4.1 at acme.openai.azure.com"); absent when the operations are ECHO's own guess. */
+  engine?: string | null;
+  /** Things to tell the user, e.g. that the AI engine could not be reached. */
+  notes?: string[];
 }
 
 /** Reads the story (a link on the configured Jira site, or its key) and finds its examples. */

@@ -16,7 +16,8 @@ app and built into an image by the buyer's pipeline).
   `docs/decisions/0014-every-flow-named-first.md`.
 - A path (Base Path + spec path, `/x` and `/x/{id}` count as one, any method) is in one flow only: Interface asks to switch to
   the flow that has it, uploads with such paths are refused, saving refuses new ones: `docs/decisions/0015-a-path-in-one-flow-only.md`.
-- Interface > Import From Jira (paths and data types from a story's example payloads, one shared read-only Jira account in `echo.jira`, no AI yet):
+- Interface > Import From Jira (paths and data types from a story's example payloads, one shared read-only Jira account in `echo.jira`;
+  an optional AI engine in `echo.ai`, OpenAI protocol, pairs the examples, behind `ai/AiProvider`):
   `docs/decisions/0016-import-specs-from-jira.md`, `docs/api-spec.md`.
 - Disabling a published flow (`"disabled": true` in `echo-flow.json`, skipped by `build-flow.sh`) and a route (`autoStartup: false` answers 404, "Disabled" badge): `docs/decisions/0011-disable-flows-and-routes.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.

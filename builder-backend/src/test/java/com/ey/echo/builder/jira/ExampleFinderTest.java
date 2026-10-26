@@ -39,7 +39,7 @@ class ExampleFinderTest {
         assertThat(found.examples().get(1).role()).isEqualTo("response");
         assertThat(found.examples().get(0).json()).contains("\"amount\" : 12.5");
         assertThat(found.operations()).containsExactly(
-                new Operation("POST", "/accounts/{accountId}/payments", 1, 2, List.of(1, 2)));
+                new Operation("POST", "/accounts/{accountId}/payments", 1, 2, List.of(1, 2), null));
     }
 
     @Test
@@ -51,8 +51,8 @@ class ExampleFinderTest {
                 code("{ \"cards\": [] }")));
 
         assertThat(found.operations()).containsExactly(
-                new Operation("GET", "/v1/payments?status=OPEN&limit=20", null, 1, List.of(1)),
-                new Operation("GET", "/customers/{id}/cards?type=DEBIT&active=true", null, 2, List.of(2)));
+                new Operation("GET", "/v1/payments?status=OPEN&limit=20", null, 1, List.of(1), null),
+                new Operation("GET", "/customers/{id}/cards?type=DEBIT&active=true", null, 2, List.of(2), null));
     }
 
     @Test
@@ -65,7 +65,7 @@ class ExampleFinderTest {
 
         assertThat(found.comments()).isEqualTo(1);
         assertThat(found.examples().get(2).source()).isEqualTo("Comment by Priya Shah, 14 Oct 2026");
-        assertThat(found.operations()).containsExactly(new Operation("POST", "/orders", 1, 3, List.of(1, 2, 3)));
+        assertThat(found.operations()).containsExactly(new Operation("POST", "/orders", 1, 3, List.of(1, 2, 3), null));
     }
 
     @Test
@@ -77,7 +77,7 @@ class ExampleFinderTest {
         assertThat(found.examples()).extracting(StoryExamples.Example::role)
                 .containsExactly("request", "response", null);
         // No call named: one operation, the method guessed from having a request.
-        assertThat(found.operations()).containsExactly(new Operation("POST", "", 1, 2, List.of(1, 2, 3)));
+        assertThat(found.operations()).containsExactly(new Operation("POST", "", 1, 2, List.of(1, 2, 3), null));
     }
 
     @Test

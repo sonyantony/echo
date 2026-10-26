@@ -72,6 +72,24 @@ describe('Import From Jira dialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('says which AI engine paired the examples, why, and what went wrong', async () => {
+    const user = userEvent.setup();
+    storyExamples.mockResolvedValue({
+      ...story,
+      engine: 'gpt-4.1 at acme.openai.azure.com',
+      notes: ["Parts of the AI engine's answer were left out: example 9, which the story does not have."],
+      operations: [{ ...story.operations[0], reason: 'The comment of 14 Oct corrects the response.' }],
+    });
+    render(<JiraImportModal aiEngine="gpt-4.1 at acme.openai.azure.com" currentJson={() => spec} onApply={() => {}} onUndo={() => {}} onClose={() => {}} />);
+    expect(screen.getByText(/The story's text is sent to the AI engine \(gpt-4.1 at acme.openai.azure.com\)/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Story link/), 'PAY-142');
+    await user.click(screen.getByRole('button', { name: 'Read Story' }));
+
+    expect(await screen.findByText(/paired by the AI engine \(gpt-4.1 at acme.openai.azure.com\)/)).toBeInTheDocument();
+    expect(screen.getByText(/example 9, which the story does not have/)).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Operation 1' })).getByText('AI: The comment of 14 Oct corrects the response.')).toBeInTheDocument();
+  });
+
   it('says what Jira answered when the story cannot be read', async () => {
     const user = userEvent.setup();
     storyExamples.mockRejectedValue(new Error("PAY-9 was not found, or ECHO's Jira account cannot see it."));

@@ -1,4 +1,4 @@
-# 0016. Import From Jira reads stories with a shared read-only account and finds examples without AI first
+# 0016. Import From Jira reads stories with a shared read-only account; an optional AI engine pairs the examples
 
 Date: 2026-10-26
 Status: Accepted
@@ -18,14 +18,23 @@ data types from them (docs/api-spec.md), so nobody types them in again.
   parameter lines, and guesses which example is which from the call written before it and the word
   ("request", "response") just before it, picking the newest when there are several. The guess is
   only a starting point: a dialog shows every operation with its examples as choices, and nothing is
-  added until the user confirms. This works on any install, with no AI engine configured.
-- **AI comes next, behind an interface.** An AI step will label the same examples (it picks among
-  what the story has; payloads are never written by the AI, and every answer is checked to parse and
-  to be in the story). It sits behind one Java interface so engines can be added as one class; the
-  first speaks the OpenAI protocol with a configurable endpoint, key and model, which covers OpenAI,
-  Azure OpenAI (most of Azure AI Foundry), Ollama, vLLM and gateways. We looked at GitHub Copilot:
-  it has no API a server can send a prompt to (its Copilot SDK runs an agent per signed-in user), and
-  Microsoft 365 Copilot's Chat API is a Graph beta for signed-in users only, so neither is first.
+  added until the user confirms. This works on any install, with no AI engine configured, and is
+  what is shown when the engine fails.
+- **AI pairs the examples, behind an interface.** With `echo.ai` set, `AiExampleLabeler` sends the
+  story (each example replaced by `[Example n]`) and the numbered examples to the install's engine,
+  which answers, as a JSON object, which example is the request and which the response of which
+  operation, its path and query, and why. It picks among what the story has; payloads are never
+  written by the AI. Every answer is checked: unknown example numbers, methods and paths are dropped
+  with a note, and when the engine fails or finds nothing, ECHO's own guess is shown with the reason.
+  The user is told which engine the story goes to before it is read.
+- **One protocol first: OpenAI's.** Engines sit behind `ai/AiProvider` (one class each, chosen by
+  `echo.ai.provider`); the first, `OpenAiCompatibleProvider`, speaks the OpenAI chat completions
+  protocol with a configurable endpoint, key header, key and model (the user chose this over also
+  building a native Claude engine now). That covers OpenAI, Azure OpenAI (most of Azure AI Foundry),
+  Ollama, vLLM, gateways, and Claude through Anthropic's OpenAI-compatible endpoint. Plain HTTP, no
+  vendor SDK. We looked at GitHub Copilot: it has no API a server can send a prompt to (its Copilot
+  SDK runs an agent per signed-in user), and Microsoft 365 Copilot's Chat API is a Graph beta for
+  signed-in users only, so neither is built.
 - **Imports add to the spec**, unlike New From Samples, which replaces it: a story is usually one or
   two operations of a bigger API. An operation the spec has is replaced only when the user keeps it
   ticked, and keeps its operationId so its route stays connected.

@@ -24,6 +24,8 @@ import { addOperations, basePathOf, operationKeys, withoutBasePath, type Importe
 import { parseSample, PATH_PATTERN, SAMPLE_METHODS, splitPath } from './specFromSamples';
 
 interface Props {
+  /** The AI engine the story is sent to, if the install has one: the user is told before reading. */
+  aiEngine?: string | null;
   /** The spec on screen, as the editor's JSON. */
   currentJson(): string;
   /** Puts the spec with the operations added on screen, unsaved. */
@@ -47,6 +49,8 @@ interface Card {
   response: string;
   /** The examples found near it, offered first. */
   near: number[];
+  /** Why the AI engine paired them so. */
+  reason?: string | null;
 }
 
 type Step =
@@ -69,6 +73,7 @@ function cardsOf(story: StoryExamples, basePath: string): Card[] {
     responsePick: op.response ? String(op.response) : '',
     response: json(op.response),
     near: op.examples,
+    reason: op.reason,
   }));
 }
 
@@ -108,7 +113,7 @@ const operationName = (card: Card) => `${card.method} ${splitPath(card.path).pat
  * found in it for the user to check (and pick between, when there are several), adds them to the
  * spec on screen, and lists the paths and data types it made. Nothing is saved until Save.
  */
-export function JiraImportModal({ currentJson, onApply, onUndo, onClose }: Props) {
+export function JiraImportModal({ aiEngine, currentJson, onApply, onUndo, onClose }: Props) {
   const [step, setStep] = useState<Step>({ kind: 'link' });
   const [link, setLink] = useState('');
 
@@ -130,7 +135,7 @@ export function JiraImportModal({ currentJson, onApply, onUndo, onClose }: Props
         <ModalHeader
           title="Import From Jira"
           labelId="jira-import-title"
-          description="ECHO reads the story and its comments, finds the example payloads, calls and query parameters in them, and shows you what it found before adding anything."
+          description={`ECHO reads the story and its comments, finds the example payloads, calls and query parameters in them, and shows you what it found before adding anything.${aiEngine ? ` The story's text is sent to the AI engine (${aiEngine}) to pair the examples.` : ''}`}
         />
         <ModalBody>
           {step.kind === 'reading' ? (
@@ -215,7 +220,7 @@ function ConfirmStep({
         description={
           <>
             {found
-              ? `Found ${found} example payload${found === 1 ? '' : 's'} in ${from}. Check each operation before ECHO adds it to the spec.`
+              ? `Found ${found} example payload${found === 1 ? '' : 's'} in ${from}${story.engine ? `, paired by the AI engine (${story.engine})` : ''}. Check each operation before ECHO adds it to the spec.`
               : `No example payloads were found in ${from}.`}{' '}
             <a href={story.link} target="_blank" rel="noreferrer">
               Open {story.key} in Jira
@@ -224,6 +229,9 @@ function ConfirmStep({
         }
       />
       <ModalBody>
+        {story.notes?.map((note) => (
+          <Alert key={note} variant="warning" isInline isPlain title={note} className="echo-jira-import__note" />
+        ))}
         <div className="echo-jira-import__cards">
           {cards.map((card, i) => (
             <OperationCard
@@ -231,6 +239,7 @@ function ConfirmStep({
               index={i}
               card={card}
               examples={story.examples}
+              byAi={!!story.engine}
               exists={existing.has(operationName(card))}
               duplicate={card.include && duplicates.has(operationName(card))}
               onChange={(change) => update(card.key, change)}
@@ -258,6 +267,7 @@ function OperationCard({
   index,
   card,
   examples,
+  byAi,
   exists,
   duplicate,
   onChange,
@@ -266,6 +276,8 @@ function OperationCard({
   index: number;
   card: Card;
   examples: StoryExample[];
+  /** The AI engine paired the examples (else ECHO's own guess, which picks the newest). */
+  byAi: boolean;
   exists: boolean;
   duplicate: boolean;
   onChange(change: Partial<Card>): void;
@@ -316,7 +328,9 @@ function OperationCard({
             {issues[field] ? (
               <HelperTextItem variant="error">{issues[field]}</HelperTextItem>
             ) : several(field) ? (
-              <HelperTextItem variant="warning">The story has several {field} examples here: the newest is picked. Pick another if it is wrong.</HelperTextItem>
+              <HelperTextItem variant="warning">
+                The story has several {field} examples here{byAi ? '' : ': the newest is picked'}. Pick another if it is wrong.
+              </HelperTextItem>
             ) : null}
           </HelperText>
         </FormHelperText>
@@ -334,6 +348,7 @@ function OperationCard({
           Remove
         </Button>
       </div>
+      {card.reason && <p className="echo-jira-import__reason">AI: {card.reason}</p>}
       <div className="echo-samples-spec__route">
         <FormGroup label="Method" fieldId={`${id}-method`} className="echo-samples-spec__method">
           <FormSelect id={`${id}-method`} value={card.method} onChange={(_e, v) => onChange({ method: v })}>

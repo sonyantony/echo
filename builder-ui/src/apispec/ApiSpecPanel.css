@@ -155,3 +155,11 @@
   color: var(--echo-text-subtle);
   margin-top: var(--pf-t--global--spacer--md);
 }
+.echo-jira-import__note {
+  margin-bottom: var(--pf-t--global--spacer--md);
+}
+.echo-jira-import__reason {
+  font-size: var(--pf-t--global--font--size--sm);
+  font-style: italic;
+  color: var(--echo-text-subtle);
+}
