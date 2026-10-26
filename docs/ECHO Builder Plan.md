@@ -141,7 +141,7 @@ Each milestone is small enough for a few Claude Code sessions, ends with somethi
 
 ### M8. Sample pipeline and runtime template
 - `runtime-template/`: settings the export needs (Camel version, Spring Boot version, Actuator health, JSON logging), so every flow image is built the same way.
-- `pipeline/Jenkinsfile`: detect changed `flows/*` folders, run `camel export --runtime=spring-boot`, `mvn package`, build the image with Jib, push to a registry from parameters (`REGISTRY_URL`, credentials ID). No environment promotion; that stays with the buyer. Since 2026-10-21 a `BUILD_MODE` parameter builds all flows into one image (`bundle`, the default) or one image per changed flow (`per-flow`); see `docs/decisions/0009-bundle-flows-in-one-image.md`.
+- `pipeline/Jenkinsfile`: detect changed `flows/*` folders, run `camel export --runtime=spring-boot`, `mvn package`, build the image with Jib, push to a registry from parameters (`REGISTRY_URL`, credentials ID). No environment promotion; that stays with the buyer. Since 2026-10-21 a `BUILD_MODE` parameter builds all flows into one image (`bundle`, the default) or one image per changed flow (`per-flow`); see `docs/decisions/0009-bundle-flows-in-one-image.md`. Since 2026-10-26 each build also writes Kubernetes manifests next to the image (`build/<app>/k8s/`: Deployment, Service, Ingress for only the flows' paths; `pipeline/k8s.properties`), and an optional `DEPLOY` stage applies them; see `docs/decisions/0017-kubernetes-manifests-from-the-pipeline.md`.
 - A shell script with the same steps, for buyers without Jenkins.
 - **Done when:** running the script locally on the M1 sample flow produces an image that answers the `curl` test from `docker run`.
 

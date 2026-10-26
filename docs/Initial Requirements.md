@@ -22,6 +22,7 @@ Version 1 decisions
 - The Builder will store its own data in an H2 database running in file mode (embedded), while the flows themselves are stored in Git.
 - Expected load is low, about 10 concurrent Builder users.
 - The buyer's pipeline builds Docker images and pushes them to the buyer's container registry, such as JFrog Artifactory. By default all flows go into one image (bundle mode); one image per flow (per-flow mode) is also available, chosen in the buyer's pipeline (2026-10-21).
+- The flows must run on Kubernetes next to the buyer's existing apps without changing them: the pipeline writes a Deployment, a Service and an Ingress (or Gateway API HTTPRoute) per image that routes only the paths the flows serve (2026-10-26).
 - In Version 1, the Builder commits directly to a branch.
 - In Version 1, all flows go into one repository.
 

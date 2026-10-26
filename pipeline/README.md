@@ -6,6 +6,8 @@ where it runs and how it is promoted is up to you.
 | File | What |
 |---|---|
 | `build-flow.sh` | `camel export --runtime=spring-boot` → `mvn package` → image with Jib. Works in any CI. Adds the two dependencies export cannot see in the routes: `camel-openapi-validator` (request bodies checked against the spec when Client Request Validation is on) and the Swagger UI webjar (`<Base Path>/docs`). |
+| `K8sManifests.java` | Run by `build-flow.sh` for each app: writes its Kubernetes manifests (see below). |
+| `k8s.properties` | Your cluster's settings for those manifests (host, ingress class, TLS, namespace, ...). |
 | `BundleCheck.java` | Run by `build-flow.sh` in bundle mode: fails the build if flows clash (see below). |
 | `Jenkinsfile` | Sample Jenkins pipeline: builds `flows/*` and pushes to a registry. |
 | `smoke-test-orders.sh` | Runs the golden `orders` image (or the bundle, with `--bundle`) against a mock downstream and checks the responses. |
@@ -38,10 +40,37 @@ stops:
 
 Fix the flows, or use `per-flow`.
 
+## Kubernetes manifests
+
+Next to each image, the build writes `build/<app>/k8s/` (`<app>` is `echo-flows` in bundle mode, the
+flow name in per-flow mode):
+
+| File | What |
+|---|---|
+| `deployment.yaml` | The image on port 8080, with liveness/readiness probes. Flow settings and secrets come from an optional Secret and ConfigMap named `<app>-env` (e.g. `FULFILMENT_URL`). |
+| `service.yaml` | Port 80 to the pods. |
+| `ingress.yaml` | Only the paths the app's flows serve, so other apps on the same host keep theirs (see below). `httproute.yaml` (Gateway API) instead with `k8s.routing=httproute`. |
+
+The paths come from the flows: each operation in the flow's OpenAPI spec under its Base Path, exact,
+or a prefix up to its first `{param}` (`/orders/{id}/items` becomes prefix `/orders`); each
+`platform-http` path; the flow's Swagger UI at `<Base Path>/docs`; and the bundle's `/api-docs`. So
+an unchanged legacy app can keep serving `/` and every other path on the same host through its own
+Ingress: controllers send each request to the longest matching path.
+
+Set the host, ingress class, TLS secret, namespace, replicas and annotations in `k8s.properties` (or
+point `--k8s-config` / `K8S_CONFIG` at another file). The sample Jenkinsfile keeps the files as build
+artifacts, and with `DEPLOY` ticked it runs `kubectl apply` on them (kubeconfig from the
+`KUBECONFIG_CREDENTIALS_ID` secret file). Otherwise hand them to your own release process or GitOps
+tool. `kubectl apply` never deletes: remove a disabled or deleted flow's objects yourself.
+
+```bash
+pipeline/build-flow.sh flows --manifests-only    # just check the flows and write the manifests
+```
+
 ## Use it in your flow repository
 
 1. Copy `pipeline/` and `runtime-template/` into the root of the flow repository the Builder
-   publishes to.
+   publishes to, and set `pipeline/k8s.properties` for your cluster if you run the flows on Kubernetes.
 2. Create a pipeline job on `pipeline/Jenkinsfile` with your registry URL and credentials, or call
    the script from your own CI:
 

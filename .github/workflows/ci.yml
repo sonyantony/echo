@@ -79,6 +79,41 @@ jobs:
         run: pipeline/build-flow.sh samples/flows --mode ${{ matrix.mode }} --local-image
       - name: Smoke test the image
         run: pipeline/smoke-test-orders.sh ${{ matrix.mode == 'bundle' && '--bundle' || '' }}
+      - name: Kubernetes manifests route only the flows' paths
+        run: |
+          if [ "${{ matrix.mode }}" = bundle ]; then
+            k8s=build/echo-flows/k8s
+            grep -q "image: 'echo-flows:1.0.0'" "$k8s/deployment.yaml"
+            grep -A1 "path: '/api-docs'" "$k8s/ingress.yaml" | grep -q 'pathType: Prefix'
+          else
+            k8s=build/greetings/k8s
+            grep -q "image: 'echo-flow-greetings:1.0.0'" "$k8s/deployment.yaml"
+            k8s="$k8s build/orders/k8s"
+          fi
+          for dir in $k8s; do test -f "$dir/service.yaml"; done
+          cat build/*/k8s/ingress.yaml
+          # /greetings has GET /{name}: a prefix; orders is one platform-http path: exact.
+          grep -h -A1 "path: '/greetings'" build/*/k8s/ingress.yaml | grep -q 'pathType: Prefix'
+          grep -h -A1 "path: '/orders'" build/*/k8s/ingress.yaml | grep -q 'pathType: Exact'
+          python3 -c "import sys, yaml; [yaml.safe_load(open(f)) for f in sys.argv[1:]]" build/*/k8s/*.yaml
+      - name: Kubernetes routes follow the spec's paths, and can be a Gateway API HTTPRoute
+        if: matrix.mode == 'per-flow'
+        run: |
+          shop="$(mktemp -d)"
+          cp -r samples/flows/greetings "$shop/shop"
+          mv "$shop/shop/greetings.camel.yaml" "$shop/shop/shop.camel.yaml"
+          sed -i "s/echo-docs-greetings/echo-docs-shop/; s#/greetings/docs#/shop/docs#g" "$shop/shop/shop.camel.yaml"
+          printf 'openapi: 3.0.3\ninfo: {title: Shop, version: 1.0.0}\nservers:\n  - url: https://api.example.com/shop\npaths:\n  /shoes: {get: {responses: {"200": {description: ok}}}}\n  /orders/{id}/items: {get: {responses: {"200": {description: ok}}}}\n' > "$shop/shop/greetings-api.yaml"
+          printf 'k8s.routing=httproute\nk8s.gateway=infra/public\nk8s.host=api.example.com\n' > "$shop/k8s.properties"
+          pipeline/build-flow.sh "$shop/shop" --mode per-flow --manifests-only --k8s-config "$shop/k8s.properties" --out "$shop/build"
+          route="$shop/build/shop/k8s/httproute.yaml"
+          cat "$route"
+          test ! -f "$shop/build/shop/k8s/ingress.yaml"
+          grep -B1 "value: '/shop/shoes'" "$route" | grep -q 'type: Exact'
+          grep -B1 "value: '/shop/orders'" "$route" | grep -q 'type: PathPrefix'
+          grep -B1 "value: '/shop/docs'" "$route" | grep -q 'type: PathPrefix'
+          grep -q "namespace: 'infra'" "$route"
+          test "$(grep -c 'value:' "$route")" = 3
       - name: A bundle with two flows on one Base Path fails clearly
         if: matrix.mode == 'bundle'
         run: |
@@ -99,7 +134,7 @@ jobs:
             mkdir "$docs/$n"
             printf -- "- route:\n    id: 'echo-docs-%s-spec'\n    from:\n      uri: 'platform-http:/%s/docs/openapi'\n" "$n" "$n" > "$docs/$n/$n.camel.yaml"
           done
-          jar="$(ls build/echo-flows/check/BOOT-INF/lib/snakeyaml-*.jar)"
+          jar="$(ls build/.yaml/BOOT-INF/lib/snakeyaml-*.jar)"
           java -cp "$jar" pipeline/ApiDocsPage.java "$docs/page.camel.yaml" "$docs/Zebra" "$docs/apple" "$docs/Mango"
           grep -q "urls: \[{url: ''apple/docs/openapi'', name: ''apple''}, {url: ''Mango/docs/openapi'', name: ''Mango''}, {url: ''Zebra/docs/openapi'', name: ''Zebra''}\]" "$docs/page.camel.yaml"
           clash="$(mktemp -d)"
