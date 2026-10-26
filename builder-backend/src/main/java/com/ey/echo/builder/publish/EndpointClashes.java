@@ -19,7 +19,10 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
  * a method and an effective path: the Base Path (or Context Path) plus the spec's path, or a
  * platform-http route's path, including the Swagger UI routes ECHO adds at {@code <Base Path>/docs}.
  * Path parameters match whatever their names ({@code /cards/{id}} is {@code /cards/{cardId}}), and a
- * platform-http route without {@code httpMethodRestrict} takes every method. Drafts are not
+ * platform-http route without {@code httpMethodRestrict} takes every method. Two flows with a spec
+ * cannot share a Base Path whatever their methods: Camel's contract-first REST takes the whole Base
+ * Path for one flow, so in a bundle image the other would not start. That clash is named as the Base
+ * Path (rather than the Swagger UI page both would serve at {@code <Base Path>/docs}). Drafts are not
  * checked, and neither is the flow's own published folder. The pipeline's {@code BundleCheck}
  * catches the same clashes (and more) when it builds a bundle; this tells the user at Publish.
  */
@@ -50,7 +53,14 @@ public class EndpointClashes {
                 continue;
             }
             var theirs = Uses.of(folder.name(), folder.files());
+            boolean sameBase = mine.basePath() != null && mine.basePath().equals(theirs.basePath());
+            if (sameBase) {
+                clashes.add("Base Path %s is already used by flow %s".formatted(mine.basePath(), folder.name()));
+            }
             for (var e : mine.endpoints()) {
+                if (sameBase && e.docs()) {
+                    continue; // the Base Path clash says it
+                }
                 if (theirs.endpoints().stream().anyMatch(e::overlaps)) {
                     clashes.add("%s is already used by flow %s".formatted(e.label(), folder.name()));
                 }
@@ -70,8 +80,13 @@ public class EndpointClashes {
      * @param method upper case, or null for every method
      * @param path normalised: leading slash, no trailing slash, path parameters as {@code {}}
      * @param label how users read it, e.g. {@code GET /cards/{id}} or {@code Swagger UI at /docs}
+     * @param docs true for the Swagger UI routes ECHO adds
      */
-    record Endpoint(String method, String path, String label) {
+    record Endpoint(String method, String path, String label, boolean docs) {
+
+        Endpoint(String method, String path, String label) {
+            this(method, path, label, false);
+        }
 
         boolean overlaps(Endpoint other) {
             return path.equals(other.path)
@@ -79,14 +94,18 @@ public class EndpointClashes {
         }
     }
 
-    /** What a flow's files say it serves and which operationIds its spec has. */
-    record Uses(List<Endpoint> endpoints, Set<String> operationIds) {
+    /**
+     * What a flow's files say it serves and which operationIds its spec has.
+     *
+     * @param basePath where its spec's operations are (normalised, {@code /} for none), or null without a spec
+     */
+    record Uses(List<Endpoint> endpoints, Set<String> operationIds, String basePath) {
 
         static Uses of(String flowName, Map<String, String> files) {
             var endpoints = new ArrayList<Endpoint>();
             var operationIds = new LinkedHashSet<String>();
             if (!(yaml(files.get(FlowNames.routeFile(flowName))) instanceof List<?> entries)) {
-                return new Uses(endpoints, operationIds);
+                return new Uses(endpoints, operationIds, null);
             }
             String spec = null;
             String contextPath = null;
@@ -116,7 +135,12 @@ public class EndpointClashes {
                     }
                 }
             }
-            return new Uses(endpoints, operationIds);
+            // The Swagger UI page sits at <Base Path>/docs.
+            String basePath = specContent == null ? null : endpoints.stream()
+                    .filter(e -> e.docs() && e.path().endsWith("/docs"))
+                    .map(e -> normalise(e.path().substring(0, e.path().length() - "/docs".length())))
+                    .findFirst().orElse(null);
+            return new Uses(endpoints, operationIds, basePath);
         }
 
         /** A platform-http consumer; the Swagger UI routes are named as one thing. */
@@ -136,13 +160,13 @@ public class EndpointClashes {
             boolean docs = routeId instanceof String id && id.startsWith(RestFromSpec.DOCS_ROUTE_PREFIX);
             String shown = path.startsWith("/") ? path : "/" + path;
             if (methods == null || methods.isBlank()) {
-                endpoints.add(new Endpoint(null, normalise(path), docs ? swaggerUi(shown) : shown + " (any method)"));
+                endpoints.add(new Endpoint(null, normalise(path), docs ? swaggerUi(shown) : shown + " (any method)", docs));
                 return;
             }
             for (String m : methods.split(",")) {
                 String method = m.strip().toUpperCase(java.util.Locale.ROOT);
                 if (!method.isEmpty()) {
-                    endpoints.add(new Endpoint(method, normalise(path), docs ? swaggerUi(shown) : method + " " + shown));
+                    endpoints.add(new Endpoint(method, normalise(path), docs ? swaggerUi(shown) : method + " " + shown, docs));
                 }
             }
         }

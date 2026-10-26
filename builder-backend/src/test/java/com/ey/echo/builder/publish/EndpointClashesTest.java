@@ -44,25 +44,25 @@ class EndpointClashesTest {
         var check = published(Map.of("card-orders", flow("card-orders", spec("https://api.example.com/api", "/cards/{id}", "get", "getCard"))));
 
         assertThat(check.check("cards", null, flow("cards", spec("/api", "/cards/{cardId}", "get", "readCard"))))
-                .containsExactly("GET /api/cards/{cardId} is already used by flow card-orders",
-                        "Swagger UI at /api/docs is already used by flow card-orders");
+                .containsExactly("Base Path /api is already used by flow card-orders",
+                        "GET /api/cards/{cardId} is already used by flow card-orders");
     }
 
     @Test
-    void anotherMethodOnlyClashesOnSwaggerUiWhichEachBasePathHasOnce() {
+    void anotherMethodStillClashesOnTheBasePathWhichOneFlowTakesWhole() {
         var check = published(Map.of("card-orders", flow("card-orders", spec("/api", "/cards", "post", "createCard"))));
 
         assertThat(check.check("cards", null, flow("cards", spec("/api", "/cards", "get", "listCards"))))
-                .containsExactly("Swagger UI at /api/docs is already used by flow card-orders");
+                .containsExactly("Base Path /api is already used by flow card-orders");
         assertThat(check.check("cards", null, flow("cards", spec("/v2", "/cards", "post", "createCardV2")))).isEmpty();
     }
 
     @Test
-    void flowsWithoutABasePathShareSwaggerUiAtDocs() {
+    void flowsWithoutABasePathShareTheBasePathSlash() {
         var check = published(Map.of("a", flow("a", spec(null, "/a", "get", "getA"))));
 
         assertThat(check.check("b", null, flow("b", spec(null, "/b", "get", "getB"))))
-                .containsExactly("Swagger UI at /docs is already used by flow a");
+                .containsExactly("Base Path / is already used by flow a");
     }
 
     @Test
