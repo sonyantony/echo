@@ -47,6 +47,14 @@ echo:
     #       - TMF634 Resource Catalog Controller
     #     allowed-operations: []               # operationIds allowed whatever their tags
 
+  jira:
+    # Interface > Import From Jira reads example payloads from user stories with one shared,
+    # read-only account (see docs/api-spec.md). Leave base-url empty to hide it.
+    base-url: ""                           # e.g. https://acme.atlassian.net
+    deployment: cloud                      # cloud | data-center
+    username: echo-bot@acme.com            # Cloud: the account's email. Data Center: leave empty
+    token: ${ECHO_JIRA_TOKEN:}             # Cloud: API token. Data Center: personal access token
+
   editor:
     # How often (seconds) the flow editor saves unsaved changes to the draft. 0 turns autosave off.
     autosave-seconds: 10

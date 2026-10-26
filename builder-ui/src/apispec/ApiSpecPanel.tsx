@@ -38,9 +38,11 @@ import {
   type OperationRename,
   type RoutableOperation,
 } from './operationIds';
+import { JiraImportModal } from './JiraImportModal';
 import { SamplesSpecModal } from './SamplesSpecModal';
 import { SpecNameModal } from './SpecNameModal';
 import { specFromSamples } from './specFromSamples';
+import type { ImportResult } from './jiraImport';
 import './ApiSpecPanel.css';
 
 export interface ApiSpecPanelHandle {
@@ -126,6 +128,7 @@ type Dialog =
   | { kind: 'rename' }
   | { kind: 'discard' }
   | { kind: 'samples' }
+  | { kind: 'jira' }
   | { kind: 'replace'; fileName: string; text: string }
   | { kind: 'rename-upload'; fileName: string; text: string }
   | { kind: 'path-clash'; clashes: PathClash[] }
@@ -512,6 +515,46 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     }
   };
 
+  /** The spec as it was before Import From Jira added to it, for its Undo. */
+  const beforeImport = useRef<{ json: string; latest: string | undefined; dirty: boolean } | undefined>(undefined);
+
+  /** Puts json on screen, unsaved, in place of what is there (Import From Jira and its Undo). */
+  const showUnsaved = (json: string) => {
+    latest.current = json;
+    named.current = undefined;
+    setInitialJson(json);
+    setEditorKey((k) => k + 1);
+    setContentDirty(json !== saved.current);
+    setDialogOpen(false);
+  };
+
+  /**
+   * Import From Jira: the spec with the confirmed operations added goes on screen, unsaved. The new
+   * operations get routes, and a new path another flow has is asked about, as when typed in.
+   */
+  const applyImport = (result: ImportResult) => {
+    const before = currentJson();
+    beforeImport.current = { json: before, latest: latest.current, dirty: contentDirty };
+    void checkNewPaths(result.json, pathsOf(result.json).filter((p) => !pathsOf(before).includes(p)));
+    const { added } = operationChanges(operationsOf(before) ?? [], operationsOf(result.json) ?? []);
+    if (added.length) onOperationsChangedRef.current?.({ added, removed: [] });
+    showUnsaved(result.json);
+    const n = result.paths.length;
+    setStatus({ variant: 'success', text: `Added ${n} operation${n === 1 ? '' : 's'} from Jira: save to keep ${n === 1 ? 'it' : 'them'}.` });
+  };
+
+  const undoImport = () => {
+    const before = beforeImport.current;
+    if (before === undefined) return;
+    beforeImport.current = undefined;
+    const { removed } = operationChanges(operationsOf(currentJson()) ?? [], operationsOf(before.json) ?? []);
+    if (removed.length) onOperationsChangedRef.current?.({ added: [], removed });
+    showUnsaved(before.json);
+    latest.current = before.latest;
+    setContentDirty(before.dirty);
+    setStatus(undefined);
+  };
+
   const discard = () => {
     setDialog(undefined);
     setStatus(undefined);
@@ -583,6 +626,11 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
         <Button variant="secondary" size="sm" onClick={() => (dirty ? setDialog({ kind: 'discard' }) : discard())} isDisabled={saving}>
           Discard
         </Button>
+        {settings.data?.jiraImport && (
+          <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'jira' })} isDisabled={saving}>
+            Import From Jira
+          </Button>
+        )}
         {status && (
           <span
             className={`echo-api-spec__status echo-api-spec__status--${status.variant}`}
@@ -691,6 +739,9 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
             setStatus({ variant: 'success', text: `Made ${samples.method} ${samples.path} from the samples: save to keep it.` });
           }}
         />
+      )}
+      {dialog?.kind === 'jira' && (
+        <JiraImportModal currentJson={currentJson} onApply={applyImport} onUndo={undoImport} onClose={() => setDialog(undefined)} />
       )}
       {dialog?.kind === 'path-clash' && (
         <Modal isOpen variant="small" onClose={() => void removePaths(dialog.clashes.map((c) => c.specPath))} aria-labelledby="path-clash-title">

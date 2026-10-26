@@ -314,6 +314,8 @@ export interface EditorSettings {
   autosaveSeconds: number;
   /** Whether this install lets users run drafts inside the Builder (the Run button). */
   runEnabled?: boolean;
+  /** Whether Interface offers Import From Jira (echo.jira is set up). */
+  jiraImport?: boolean;
 }
 
 export const editorSettings = () => api<EditorSettings>('/api/editor/settings');

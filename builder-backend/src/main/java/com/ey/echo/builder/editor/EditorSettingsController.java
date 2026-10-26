@@ -1,5 +1,6 @@
 package com.ey.echo.builder.editor;
 
+import com.ey.echo.builder.jira.JiraProperties;
 import com.ey.echo.builder.run.RunProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -8,12 +9,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class EditorSettingsController {
 
-    public record EditorSettings(int autosaveSeconds, boolean runEnabled) {}
+    /** @param jiraImport whether Interface offers Import From Jira (echo.jira is set up) */
+    public record EditorSettings(int autosaveSeconds, boolean runEnabled, boolean jiraImport) {}
 
     private final EditorSettings settings;
 
-    public EditorSettingsController(EditorProperties properties, RunProperties run) {
-        this.settings = new EditorSettings(properties.autosaveSeconds(), run.enabled());
+    public EditorSettingsController(EditorProperties properties, RunProperties run, JiraProperties jira) {
+        this.settings = new EditorSettings(properties.autosaveSeconds(), run.enabled(), jira.active());
     }
 
     @GetMapping("/api/editor/settings")

@@ -3,6 +3,8 @@
  * sample request and one sample response. What the samples cannot say (formats, enums, which
  * fields are optional) is left for the user to tweak in the editor afterwards.
  */
+import { operationIdFor } from './operationIds';
+
 export const SAMPLE_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 export type SampleMethod = (typeof SAMPLE_METHODS)[number];
 
@@ -86,8 +88,13 @@ type Schema = Record<string, unknown>;
  * (Apicurio shows nested inline objects as "No Type"), named after its parent and field, with a
  * number added when the name is taken.
  */
-class SchemaBuilder {
+export class SchemaBuilder {
   readonly schemas: Record<string, Schema> = {};
+  /** Fields whose sample value was null (Schema.field), so they are optional strings: worth a look. */
+  readonly nullFields: string[] = [];
+
+  /** @param taken schema names the spec already has, which new schemas must not reuse */
+  constructor(private readonly taken: Iterable<string> = []) {}
 
   /** Adds the schema for an object sample under name (or a free variant of it) and returns a $ref to it. */
   object(name: string, sample: Record<string, unknown>): Schema {
@@ -98,6 +105,7 @@ class SchemaBuilder {
     for (const [field, value] of Object.entries(sample)) {
       properties[field] = this.of(free + capitalize(field.replace(/[^A-Za-z0-9]+(.)?/g, (_m, c: string) => (c ?? '').toUpperCase())), value);
       if (value !== null) required.push(field);
+      else this.nullFields.push(`${free}.${field}`);
     }
     this.schemas[free] = { type: 'object', ...(required.length ? { required } : {}), properties };
     return { $ref: `#/components/schemas/${free}` };
@@ -125,8 +133,9 @@ class SchemaBuilder {
   }
 
   private freeName(name: string): string {
+    const taken = new Set(this.taken);
     let free = name;
-    for (let n = 2; free in this.schemas; n++) free = `${name}${n}`;
+    for (let n = 2; free in this.schemas || taken.has(free); n++) free = `${name}${n}`;
     return free;
   }
 }
@@ -168,10 +177,40 @@ export interface SamplesInput {
 
 /** The complete spec, as the editor's JSON. */
 export function specFromSamples(input: SamplesInput): string {
-  const { method, operationId, request, response } = input;
-  const path = normalizePath(input.path);
-  const base = operationId.charAt(0).toUpperCase() + operationId.slice(1);
   const builder = new SchemaBuilder();
+  const path = normalizePath(input.path);
+  const operation = operationFromSamples(builder, { ...input, path });
+
+  const kept = keptFrom(input.current);
+  const spec = {
+    openapi: '3.0.3',
+    info: kept.info ?? { title: input.flowName, version: '1.0.0', ...(input.flowDescription ? { description: input.flowDescription } : {}) },
+    ...(kept.servers ? { servers: kept.servers } : {}),
+    paths: { [path]: { [input.method.toLowerCase()]: operation } },
+    components: { schemas: builder.schemas },
+  };
+  return JSON.stringify(spec, null, 2);
+}
+
+export interface OperationSamples {
+  method: string;
+  /** Normalized, without the query. */
+  path: string;
+  query?: string;
+  /** Left out, the operation gets none (ECHO names it from method and path, operationIds.ts). */
+  operationId?: string;
+  request?: unknown;
+  /** Left out, the 200 response has no body. */
+  response?: unknown;
+}
+
+/**
+ * One operation made from samples: its path and query parameters, and request and response bodies
+ * whose schemas builder adds, named after the method and path (PostCardsRequest).
+ */
+export function operationFromSamples(builder: SchemaBuilder, input: OperationSamples): Record<string, unknown> {
+  const { method, path, operationId, request, response } = input;
+  const base = capitalize(operationId ?? operationIdFor(method, path));
 
   const body = (sample: unknown, name: string) => ({
     content: { 'application/json': { schema: builder.of(name, sample), example: sample } },
@@ -181,22 +220,12 @@ export function specFromSamples(input: SamplesInput): string {
     ...pathParameters(path).map((name) => ({ name, in: 'path', required: true, schema: { type: 'string' } })),
     ...queryParameters(input.query ?? ''),
   ];
-  const operation: Record<string, unknown> = {
-    operationId,
+  return {
+    ...(operationId ? { operationId } : {}),
     ...(params.length ? { parameters: params } : {}),
     ...(request !== undefined ? { requestBody: { required: true, ...body(request, `${base}Request`) } } : {}),
     responses: { '200': { description: 'OK', ...(response !== undefined ? body(response, `${base}Response`) : {}) } },
   };
-
-  const kept = keptFrom(input.current);
-  const spec = {
-    openapi: '3.0.3',
-    info: kept.info ?? { title: input.flowName, version: '1.0.0', ...(input.flowDescription ? { description: input.flowDescription } : {}) },
-    ...(kept.servers ? { servers: kept.servers } : {}),
-    paths: { [path]: { [method.toLowerCase()]: operation } },
-    components: { schemas: builder.schemas },
-  };
-  return JSON.stringify(spec, null, 2);
 }
 
 function keptFrom(current: string | undefined): { info?: unknown; servers?: unknown } {
