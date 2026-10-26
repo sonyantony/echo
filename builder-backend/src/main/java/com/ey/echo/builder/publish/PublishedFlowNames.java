@@ -22,17 +22,23 @@ class PublishedFlowNames implements PublishedNames {
 
     @Override
     public List<PublishedName> list() {
+        return flows().stream().map(f -> new PublishedName(f.name(), f.displayName())).toList();
+    }
+
+    @Override
+    public List<PublishedFlow> flows() {
         var primary = targets.primary();
         if (primary.isEmpty()) {
             return List.of();
         }
         try {
             return primary.get().list().stream()
-                    .map(folder -> new PublishedName(folder.name(), displayName(folder.files().get(PublishService.METADATA_FILE))))
+                    .map(folder -> new PublishedFlow(folder.name(), displayName(folder.files().get(PublishService.METADATA_FILE)),
+                            folder.files()))
                     .toList();
         } catch (RuntimeException e) {
             // Git out of reach: the Builder's own flows are still checked, and Publish says what is wrong.
-            log.warn("Could not list the published flows to check a flow name", e);
+            log.warn("Could not list the published flows to check a flow's name or paths", e);
             return List.of();
         }
     }

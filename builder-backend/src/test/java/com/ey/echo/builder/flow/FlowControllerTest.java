@@ -340,6 +340,8 @@ class FlowControllerTest {
         assertThat(published).contains("specification: 'customer-api.yaml'", "missingOperation: ignore",
                 "id: 'echo-missing-listCustomers'");
 
+        // A path is in one flow only, so the original goes before its copy comes in.
+        mvc.perform(as(delete("/api/flows/{id}", id))).andExpect(status().is2xxSuccessful());
         var body = mvc.perform(as(multipart("/api/flows/upload").file(zipFile(zip)).param("name", "customers-copy")))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();

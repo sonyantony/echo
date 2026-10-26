@@ -642,6 +642,13 @@ function FlowEditor() {
                 onStored={() => void reviewMappings(true)}
                 onOperationIdsRenamed={renameRoutes}
                 onOperationsChanged={operationRoutes.onOperationsChanged}
+                onSwitchToFlow={async (otherId) => {
+                  await operationRoutes.idle();
+                  if (!(await save())) return;
+                  leavingAfterSaveAs.current = true;
+                  await queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
+                  navigate(`/flows/${otherId}`);
+                }}
                 visible={showSpec}
               />
             )

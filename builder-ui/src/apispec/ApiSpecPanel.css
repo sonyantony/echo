@@ -91,3 +91,9 @@
   font-family: var(--pf-t--global--font--family--mono);
   font-size: var(--pf-t--global--font--size--sm);
 }
+
+/* Paths another flow has, listed in the path-clash dialogs. */
+.echo-api-spec__clashes {
+  margin: 0.5rem 0 0.75rem 1.25rem;
+  list-style: disc;
+}

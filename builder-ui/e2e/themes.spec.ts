@@ -108,14 +108,15 @@ for (const theme of THEMES) {
     await page.getByTestId('custom-node__route.from').click();
     await check(page, testInfo, theme, 'step-form');
 
-    // Openapi: Apicurio's overview, a path with its operation, and a full-page dialog.
+    // Openapi: Apicurio's overview, a path with its operation, and a full-page dialog. Each theme's
+    // flow has a Base Path of its own (a path is in one flow only).
     const status = await page.evaluate(
       async ([id, spec]) => {
         const token = decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '');
         const headers = { 'content-type': 'text/plain', 'X-XSRF-TOKEN': token };
         return (await fetch(`/api/flows/${id}/api-spec/orders-api.yaml`, { method: 'PUT', body: spec, headers })).status;
       },
-      [flowId, SPEC],
+      [flowId, SPEC.replace('/orders/v1', `/${uniqueName(theme)}/v1`)],
     );
     expect(status).toBe(200);
     await page.goto(`/flows/${flowId}/api`);

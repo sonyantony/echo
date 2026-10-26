@@ -125,6 +125,8 @@ test('an uploaded spec keeps its name and text; it downloads as YAML or JSON; Di
   const chooser = page.waitForEvent('filechooser');
   await interfaceMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'Customer_API.v2.yml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
+  // The editor opens again once the file is checked and stored.
+  await expect(page.getByText('Saved Customer_API.v2.yml.')).toBeVisible();
   await interfaceItem(page, 'Paths');
   await expect(editorOf(page).getByText('/customers/{id}')).toBeVisible();
   // Stored exactly as uploaded, comment included.
@@ -393,6 +395,7 @@ test("an uploaded spec keeps its own operationIds and comments; only missing ids
     '# Orders, as the partner sent it',
     'openapi: 3.0.3',
     'info: { title: Partner Orders, version: 3.0.0 }',
+    `servers: [{ url: /${uniqueName('partner')} }]`,
     'paths:',
     '  /orders:',
     '    # every order',
@@ -406,13 +409,15 @@ test("an uploaded spec keeps its own operationIds and comments; only missing ids
   const chooser = page.waitForEvent('filechooser');
   await interfaceMenu(page, /^Upload/);
   await (await chooser).setFiles({ name: 'partner-orders.yaml', mimeType: 'application/yaml', buffer: Buffer.from(yaml) });
+  // The editor opens again once the file is checked and stored.
+  await expect(page.getByText('Saved partner-orders.yaml.')).toBeVisible();
   await interfaceItem(page, 'Paths');
   await expect(editorOf(page).getByText('/orders')).toBeVisible();
   const file = () => page.request.get(`/api/flows/${flowId}/files/partner-orders.yaml`).then((r) => r.text());
   // Only the operation without an id got one; everything else is as uploaded.
   await expect.poll(file).toContain('operationId: postOrders');
   let stored = await file();
-  expect(stored).toContain('# Orders, as the partner sent it\nopenapi: 3.0.3\ninfo: { title: Partner Orders, version: 3.0.0 }\n');
+  expect(stored).toContain('# Orders, as the partner sent it\nopenapi: 3.0.3\ninfo: { title: Partner Orders, version: 3.0.0 }\nservers:');
   expect(stored).toContain('    # every order\n    get:\n      operationId: listOrders\n');
 
   // An edit in the editor, saved: the comments and ids stay.

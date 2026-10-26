@@ -11,7 +11,7 @@ import {
 } from '@patternfly/react-core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { editorSettings, flowsApi } from '../api/flows';
+import { editorSettings, flowsApi, publishedFlowsApi, type PathClash } from '../api/flows';
 import { FLOWS_KEY } from '../flows/FlowListPage';
 import { useAutosave } from '../flows/useAutosave';
 import { ApicurioEditorHost, type ApicurioEditorHandle } from './ApicurioEditorHost';
@@ -20,11 +20,13 @@ import {
   formatOf,
   newApiSpec,
   parseSpec,
+  pathsOf,
   serialize,
   SPEC_NAME_PATTERN,
   stripExtension,
   toEditorJson,
   withFormat,
+  withoutPaths,
   type SpecFormat,
 } from './apiSpec';
 import {
@@ -101,6 +103,12 @@ interface Props {
    * or Discard replace the whole spec.
    */
   onOperationsChanged?(changes: { added: RoutableOperation[]; removed: RoutableOperation[] }): void;
+  /**
+   * Switch to the flow that has a path the user just added here (a path is in one flow only): the
+   * path is already taken out of this flow's spec, which is saved. Opens that flow, the flow editor
+   * saving this one first.
+   */
+  onSwitchToFlow?(flowId: number): Promise<void>;
   /** False while a Kaoto view covers the panel; left out, it counts as shown. */
   visible?: boolean;
 }
@@ -119,7 +127,9 @@ type Dialog =
   | { kind: 'discard' }
   | { kind: 'samples' }
   | { kind: 'replace'; fileName: string; text: string }
-  | { kind: 'rename-upload'; fileName: string; text: string };
+  | { kind: 'rename-upload'; fileName: string; text: string }
+  | { kind: 'path-clash'; clashes: PathClash[] }
+  | { kind: 'upload-clash'; fileName: string; clashes: PathClash[] };
 
 /** The operations of the editor's JSON; undefined when there is none or it cannot be read. */
 function operationsOf(json: string | undefined) {
@@ -136,7 +146,7 @@ function operationsOf(json: string | undefined) {
  * folder, under the name it was uploaded or saved with, in YAML or JSON (the format buttons).
  */
 export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSpecPanel(
-  { flowId: id, flowName, flowTitle = flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored, onOperationIdsRenamed, onOperationsChanged, visible = true },
+  { flowId: id, flowName, flowTitle = flowName, flowDescription, onDirtyChange, onNameChange, onFormatChange, onSaveFlow, onStored, onOperationIdsRenamed, onOperationsChanged, onSwitchToFlow, visible = true },
   ref,
 ) {
   const queryClient = useQueryClient();
@@ -236,14 +246,41 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
    * routes start from the new id already, old id to new.
    */
   const renamedSince = useRef(new Map<string, string>());
+  /** The paths the editor showed at its last change, to tell a path just added (see checkNewPaths). */
+  const paths = useRef<string[]>([]);
   useEffect(() => {
     operations.current = operationsOf(initialJson);
     renamedSince.current = new Map();
+    paths.current = pathsOf(initialJson);
   }, [editorKey, initialJson]);
+
+  /**
+   * A path belongs to one flow: when one just added (typed in, or made from samples) is a path
+   * another flow has, the user is told which, and asked to switch to that flow or take it out here.
+   */
+  const idRef = useRef(id);
+  idRef.current = id;
+  const checkNewPaths = useCallback(async (json: string, added: string[]) => {
+    const flowId = idRef.current;
+    if (flowId === undefined || !added.length) return;
+    try {
+      const clashes = await flowsApi.pathClashes(flowId, json, added);
+      // Only while those paths are still there (an undo may have taken them out already).
+      const now = pathsOf(latest.current ?? json);
+      const still = clashes.filter((c) => now.includes(c.specPath));
+      if (still.length) setDialog({ kind: 'path-clash', clashes: still });
+    } catch {
+      // Not told now: saving the spec refuses the path and says which flow has it.
+    }
+  }, []);
 
   const onChange = useCallback((content: string) => {
     latest.current = content;
     setContentDirty(content !== saved.current);
+    const nowPaths = pathsOf(content);
+    const addedPaths = nowPaths.filter((p) => !paths.current.includes(p));
+    paths.current = nowPaths;
+    void checkNewPaths(content, addedPaths);
     const now = operationsOf(content);
     if (!now) return;
     const before = operations.current;
@@ -253,7 +290,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     if (!added.length && !removed.length) return;
     const current = (op: RoutableOperation) => ({ ...op, operationId: renamedSince.current.get(op.operationId) ?? op.operationId });
     onOperationsChangedRef.current?.({ added, removed: removed.map(current) });
-  }, []);
+  }, [checkNewPaths]);
 
   /** What is on screen, as the editor's JSON. */
   const currentJson = () => latest.current ?? saved.current ?? initialJson ?? newApiSpec(flowTitle, flowDescription);
@@ -419,6 +456,12 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     const text = await file.text();
     try {
       parseSpec(text);
+      // A path belongs to one flow: a file with paths other flows have is not taken.
+      const clashes = id === undefined ? [] : await flowsApi.pathClashes(id, text);
+      if (clashes.length) {
+        setDialog({ kind: 'upload-clash', fileName: file.name, clashes });
+        return;
+      }
     } catch (e) {
       setStatus({ variant: 'danger', text: `Could not upload ${file.name}: ${(e as Error).message}` });
       return;
@@ -429,6 +472,43 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
       setDialog({ kind: 'replace', fileName: file.name, text });
     } else {
       await storeUpload(file.name, text);
+    }
+  };
+
+  /**
+   * Takes paths just added out of the spec again (and the routes made for their operations, as when
+   * they are deleted), and saves the spec when it has a name, so it never keeps them.
+   */
+  const removePaths = async (specPaths: string[]) => {
+    setDialog(undefined);
+    const json = withoutPaths(currentJson(), specPaths);
+    const current = (op: RoutableOperation) => ({ ...op, operationId: renamedSince.current.get(op.operationId) ?? op.operationId });
+    const { removed } = operationChanges(operationsOf(currentJson()) ?? [], operationsOf(json) ?? []);
+    if (removed.length) onOperationsChangedRef.current?.({ added: [], removed: removed.map(current) });
+    const result = name ? await store(withFormat(name, format), json) : undefined;
+    if (result !== undefined) {
+      saved.current = result;
+      latest.current = undefined;
+    } else {
+      latest.current = json;
+    }
+    named.current = undefined;
+    setInitialJson(result ?? json);
+    setEditorKey((k) => k + 1);
+    setContentDirty(result === undefined && json !== saved.current);
+    setDialogOpen(false);
+    return result !== undefined || !name;
+  };
+
+  /** Switch: the flow is saved without the paths, then the other flow opens (a published one as a new draft). */
+  const switchTo = async (clash: PathClash) => {
+    const specPaths = dialog?.kind === 'path-clash' ? dialog.clashes.map((c) => c.specPath) : [clash.specPath];
+    if (!(await removePaths([...new Set(specPaths)]))) return;
+    try {
+      const flowId = clash.flowId ?? (await publishedFlowsApi.createDraft(clash.folder!)).id;
+      await onSwitchToFlow?.(flowId);
+    } catch (e) {
+      setStatus({ variant: 'danger', text: `Could not open ${clash.flowName}: ${(e as Error).message}` });
     }
   };
 
@@ -600,7 +680,9 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           onClose={() => setDialog(undefined)}
           onGenerate={(samples) => {
             setDialog(undefined);
+            const before = pathsOf(currentJson());
             const json = specFromSamples({ ...samples, current: currentJson(), flowName: flowTitle, flowDescription });
+            void checkNewPaths(json, pathsOf(json).filter((p) => !before.includes(p)));
             latest.current = json;
             setInitialJson(json);
             setEditorKey((k) => k + 1);
@@ -609,6 +691,54 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
             setStatus({ variant: 'success', text: `Made ${samples.method} ${samples.path} from the samples: save to keep it.` });
           }}
         />
+      )}
+      {dialog?.kind === 'path-clash' && (
+        <Modal isOpen variant="small" onClose={() => void removePaths(dialog.clashes.map((c) => c.specPath))} aria-labelledby="path-clash-title">
+          <ModalHeader title="This path is in another flow" titleIconVariant="warning" labelId="path-clash-title" />
+          <ModalBody>
+            <ul className="echo-api-spec__clashes">
+              {dialog.clashes.map((c) => (
+                <li key={`${c.specPath}|${c.flowName}`}>
+                  <strong>{c.path}</strong> is already in flow <strong>{c.flowName}</strong>
+                  {c.otherPath !== c.path ? <> (as {c.otherPath})</> : null}.
+                </li>
+              ))}
+            </ul>
+            A path can be in one flow only. Switch to that flow to work on it there? This flow is saved without the path.
+          </ModalBody>
+          <ModalFooter>
+            {[...new Map(dialog.clashes.map((c) => [c.flowName, c])).values()].map((c, i) => (
+              <Button key={c.flowName} variant={i === 0 ? 'primary' : 'secondary'} onClick={() => void switchTo(c)}>
+                Switch to {c.flowName}
+              </Button>
+            ))}
+            <Button variant="link" onClick={() => void removePaths(dialog.clashes.map((c) => c.specPath))}>
+              Remove the path here
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
+      {dialog?.kind === 'upload-clash' && (
+        <Modal isOpen variant="small" onClose={() => setDialog(undefined)} aria-labelledby="upload-clash-title">
+          <ModalHeader title={`${dialog.fileName} cannot be uploaded`} titleIconVariant="danger" labelId="upload-clash-title" />
+          <ModalBody>
+            It has paths that other flows have:
+            <ul className="echo-api-spec__clashes">
+              {dialog.clashes.map((c) => (
+                <li key={`${c.path}|${c.flowName}|${c.otherPath}`}>
+                  <strong>{c.path}</strong> is in flow <strong>{c.flowName}</strong>
+                  {c.otherPath !== c.path ? <> (as {c.otherPath})</> : null}
+                </li>
+              ))}
+            </ul>
+            A path can be in one flow only. Nothing was uploaded.
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="primary" onClick={() => setDialog(undefined)}>
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
       )}
       {dialog?.kind === 'discard' && (
         <Modal isOpen variant="small" onClose={() => setDialog(undefined)} aria-labelledby="spec-discard-title">

@@ -183,6 +183,7 @@ describe('Openapi panel', () => {
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
       'GET /api/flows/1': { status: 200, body: flow('cards.yaml') },
       'PUT /api/flows/1/api-spec/cards-v2.yaml': { status: 200, body: flow('cards-v2.yaml') },
+      'POST /api/flows/1/path-clashes': { status: 200, body: [] },
     });
     const yaml = 'openapi: 3.0.3\ninfo: { title: Cards, version: 1.0.0 }\npaths:\n  /old:\n    get: { operationId: getOld }\n  /cards:\n    get: { operationId: listCards }\n';
     const stub = fetch as unknown as ReturnType<typeof vi.fn>;
@@ -206,6 +207,71 @@ describe('Openapi panel', () => {
     const { added, removed } = onOperationsChanged.mock.calls.at(-1)![0];
     expect(added.map((op: { operationId: string }) => op.operationId)).toEqual(['listCards', 'postCards']);
     expect(removed.map((op: { operationId: string }) => op.operationId)).toEqual(['getOld']);
+  });
+
+  it('refuses an uploaded spec with paths other flows have', async () => {
+    const { calls } = mockFetch({
+      'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
+      'GET /api/flows/1': { status: 200, body: flow(null) },
+      'POST /api/flows/1/path-clashes': {
+        status: 200,
+        body: [{ path: '/shop/shoes/{id}', specPath: '/shoes/{id}', otherPath: '/shop/shoes', flowName: 'Shoe Shop', flowId: 2 }],
+      },
+    });
+    renderPanel();
+    await screen.findByTitle('OpenAPI editor');
+
+    const uploaded = 'openapi: 3.0.3\ninfo: { title: Shoes, version: 1.0.0 }\npaths:\n  /shoes/{id}:\n    get: {}\n';
+    await userEvent.upload(screen.getByTestId('spec-upload-input'), new File([uploaded], 'shoes.yaml', { type: 'application/yaml' }));
+    const dialog = await screen.findByRole('dialog', { name: /shoes.yaml cannot be uploaded/ });
+    expect(dialog).toHaveTextContent('/shop/shoes/{id} is in flow Shoe Shop (as /shop/shoes)');
+    expect(dialog).toHaveTextContent('Nothing was uploaded.');
+    expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(0);
+  });
+
+  it('offers to switch to the flow that has a path just added, saving this one without it', async () => {
+    const yaml = 'openapi: 3.0.3\ninfo: { title: Cards, version: 1.0.0 }\npaths:\n  /cards:\n    get: { operationId: getCards }\n';
+    const { calls } = mockFetch({
+      'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
+      'GET /api/flows/1': { status: 200, body: flow('cards.yaml') },
+      'PUT /api/flows/1/api-spec/cards.yaml': { status: 200, body: flow('cards.yaml') },
+      'POST /api/flows/1/path-clashes': {
+        status: 200,
+        body: [{ path: '/shoes', specPath: '/shoes', otherPath: '/shoes/{id}', flowName: 'Shoe Shop', flowId: 2 }],
+      },
+    });
+    const stub = fetch as unknown as ReturnType<typeof vi.fn>;
+    const json = stub.getMockImplementation()!;
+    stub.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input) === '/api/flows/1/files/cards.yaml' ? new Response(yaml, { status: 200 }) : json(input, init),
+    );
+    const onSwitchToFlow = vi.fn(async () => {});
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <ApiSpecPanel flowId={1} flowName="cards" onSwitchToFlow={onSwitchToFlow} />
+      </QueryClientProvider>,
+    );
+    await screen.findByTitle('OpenAPI editor');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled());
+
+    const added = {
+      openapi: '3.0.3',
+      info: { title: 'Cards', version: '1.0.0' },
+      paths: { '/cards': { get: { operationId: 'getCards' } }, '/shoes': {} },
+    };
+    await waitFor(() => {
+      edit(screen.getByTitle('OpenAPI editor') as HTMLIFrameElement, added);
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    });
+    const dialog = await screen.findByRole('dialog', { name: /This path is in another flow/ });
+    expect(dialog).toHaveTextContent('/shoes is already in flow Shoe Shop');
+    expect(calls.find((c) => c.url === '/api/flows/1/path-clashes')!.body).toEqual({ spec: expect.any(String), paths: ['/shoes'] });
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Switch to Shoe Shop' }));
+    await waitFor(() => expect(onSwitchToFlow).toHaveBeenCalledWith(2));
+    const put = calls.filter((c) => c.method === 'PUT').at(-1)!.body as string;
+    expect(put).toContain('/cards');
+    expect(put).not.toContain('/shoes');
   });
 
   it('asks before Discard throws away unsaved edits, then starts from a blank spec', async () => {

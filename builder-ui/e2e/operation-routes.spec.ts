@@ -47,6 +47,7 @@ test('an uploaded spec gets a route per operation under its own ids; Add Route F
 
   // An uploaded spec keeps the operationIds it has; only the operation without one gets ECHO's.
   await upload(page, spec('/cards', 'listCards'));
+  await expect(page.getByText('Saved cards-api.yaml.')).toBeVisible();
   const editor = editorOf(page);
   await interfaceItem(page, 'Paths');
   await expect(editor.getByText('/cards/{id}')).toBeVisible();

@@ -392,6 +392,30 @@ public final class RestFromSpec {
         return scalar(route, "autoStartup").map(String::strip).filter("false"::equalsIgnoreCase).isPresent();
     }
 
+    /** The Context Path a route file's REST configuration sets, if any (used where the spec has no Base Path). */
+    public static Optional<String> contextPath(String routeYaml) {
+        var root = routeYaml == null ? null : compose(routeYaml);
+        return root == null ? Optional.empty() : restConfiguration(root).flatMap(conf -> scalar(conf, "contextPath"));
+    }
+
+    /** The spec file a route file's contract-first REST service (as {@link #apply} adds it) reads, if any. */
+    public static Optional<String> specificationOf(String routeYaml) {
+        var root = routeYaml == null ? null : compose(routeYaml);
+        if (root == null) {
+            return Optional.empty();
+        }
+        for (var entry : root.getValue()) {
+            if (entry instanceof MappingNode map && map.getValue().size() == 1 && key(map.getValue().getFirst()).equals("rest")
+                    && map.getValue().getFirst().getValueNode() instanceof MappingNode rest) {
+                var spec = scalar(rest, "openApi", "specification");
+                if (spec.isPresent()) {
+                    return spec.map(s -> s.strip().replaceFirst("^classpath:", ""));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
     private static Optional<MappingNode> restConfiguration(SequenceNode root) {
         return root.getValue().stream()
                 .filter(MappingNode.class::isInstance).map(MappingNode.class::cast)
@@ -431,8 +455,11 @@ public final class RestFromSpec {
     public record Operation(String method, String path, String operationId) {
     }
 
-    /** What ECHO needs from the spec: its operations and its Base Path (the path of its server URL). */
-    record Spec(List<Operation> operations, String basePath, String title) {
+    /**
+     * What ECHO needs from the spec: its operations, its paths (with or without operations) and its
+     * Base Path (the path of its server URL).
+     */
+    record Spec(List<Operation> operations, List<String> paths, String basePath, String title) {
 
         boolean hasBasePath() {
             return !basePath.isEmpty();
@@ -447,14 +474,16 @@ public final class RestFromSpec {
             try {
                 doc = new Yaml(new SafeConstructor(new LoaderOptions())).load(content);
             } catch (RuntimeException e) {
-                return new Spec(List.of(), "", null); // Camel reports a broken spec when the flow starts
+                return new Spec(List.of(), List.of(), "", null); // Camel reports a broken spec when the flow starts
             }
             if (!(doc instanceof Map<?, ?> map)) {
-                return new Spec(List.of(), "", null);
+                return new Spec(List.of(), List.of(), "", null);
             }
             var operations = new ArrayList<Operation>();
+            var pathNames = new ArrayList<String>();
             if (map.get("paths") instanceof Map<?, ?> paths) {
                 paths.forEach((path, item) -> {
+                    pathNames.add(String.valueOf(path));
                     if (item instanceof Map<?, ?> verbs) {
                         verbs.forEach((verb, op) -> {
                             String method = String.valueOf(verb).toLowerCase();
@@ -467,7 +496,7 @@ public final class RestFromSpec {
                 });
             }
             String title = map.get("info") instanceof Map<?, ?> info && info.get("title") instanceof String t ? t.strip() : null;
-            return new Spec(List.copyOf(operations), basePath(map), title);
+            return new Spec(List.copyOf(operations), List.copyOf(pathNames), basePath(map), title);
         }
 
         /** Like Camel's RestOpenApiHelper: the path of the (last) server URL, without a trailing slash. */

@@ -14,11 +14,13 @@ from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI e
   flow as it is: same file name, same text, comments and operationIds; only operations without an
   operationId get one added (docs/decisions/0013). A name with characters a flow file cannot
   have (spaces, for example) is asked for again. If the flow already has a spec, or there are
-  unsaved edits, it asks before replacing them.
+  unsaved edits, it asks before replacing them. A file with a path another flow has is refused
+  (docs/decisions/0015).
 - **Copy From Another Flow**: lists every other flow's spec; the picked one is copied into this
   flow under the same name (`POST /api/flows/{id}/api-spec/copy-from/{sourceId}`) and is this
   flow's own from then on. A flow has one spec, so it says first that it replaces the one the flow
-  has (and any unsaved edits).
+  has (and any unsaved edits). Its paths are the other flow's, so it is refused unless that
+  flow's paths are gone or changed (a path is in one flow only, decision 0015).
 - **Download Openapi File As Yaml** / **As Json**: the spec on screen, unsaved edits included,
   named after the spec (or the flow while the spec has no name).
 
@@ -218,3 +220,11 @@ screenshot of each screen per theme (see [branding.md](branding.md#themes)).
 2. **Response validation.** Camel can check the flow's responses against the spec too
    (`clientResponseValidation`); there is no checkbox for it.
 3. **Build checks.** Validation should report an invalid spec, and Publish should refuse one.
+
+## A path in one flow only
+
+A path added in the editor is checked against every other flow, in the Builder and published
+(`/x` and `/x/{id}` count as one path, whatever the methods). If another flow has it, "This path is
+in another flow" offers **Switch to <flow>** (the path is taken out, this flow is saved and the
+other one opens) or **Remove the path here**. Upload refuses such files, and Save refuses a spec
+with a new path another flow has. See docs/decisions/0015-a-path-in-one-flow-only.md.

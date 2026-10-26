@@ -54,7 +54,8 @@ set, so an unset variable never blanks a value in `application.yaml`. After chan
   image the other would fail to start ("Multiple consumers for the same endpoint"). Publish names
   that clash as the Base Path ("Base Path /shop is already used by flow order-reader"); put GET and
   POST of one path in the same flow. The pipeline's `BundleCheck.java` catches the same clashes
-  when it builds a bundle.
+  when it builds a bundle. Interface checks paths much earlier, as they are added or uploaded
+  (decision 0015).
 - **Delete** tries every enabled target. If one fails, the Builder keeps the draft and shows the
   error; deleting again finishes the job.
 - **Disable / Enable** (Open Flow page, a published row's menu) keeps the flow in every target

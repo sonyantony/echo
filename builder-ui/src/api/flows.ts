@@ -23,6 +23,21 @@ export interface FlowDetail extends FlowSummary {
   createdAt: string;
 }
 
+/** A path of a spec that another flow has (the server's ApiPaths.PathClash). */
+export interface PathClash {
+  /** The path as this spec serves it (Base Path included). */
+  path: string;
+  /** The path as this spec has it (without Base Path). */
+  specPath: string;
+  /** The path as the other flow serves it. */
+  otherPath: string;
+  flowName: string;
+  /** The other flow's Builder id; absent when it is only published. */
+  flowId?: number;
+  /** The other flow's published folder, when it is only published. */
+  folder?: string;
+}
+
 /** A flow's OpenAPI spec file. */
 export interface ApiSpecRef {
   flowId: number;
@@ -83,6 +98,12 @@ export const flowsApi = {
     api<void>(filePath(id, path), { method: 'PUT', body: content, headers: { 'Content-Type': 'text/plain' } }),
   deleteFile: (id: number, path: string) => api<void>(filePath(id, path), { method: 'DELETE' }),
   /** Saves the flow's OpenAPI spec as name (JSON or YAML, by its extension), replacing a spec saved under another name. */
+  /**
+   * The paths of spec (all, or those in paths: the spec's own, without Base Path) that other flows
+   * have. A path belongs to one flow (/shop/shoes and /shop/shoes/{id} are the same path).
+   */
+  pathClashes: (id: number, spec: string, paths?: string[]) =>
+    api<PathClash[]>(`/api/flows/${id}/path-clashes`, { method: 'POST', json: { spec, paths } }),
   saveApiSpec: (id: number, name: string, content: string) =>
     api<FlowDetail>(`/api/flows/${id}/api-spec/${encodeURIComponent(name)}`, {
       method: 'PUT',

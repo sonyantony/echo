@@ -14,6 +14,8 @@ app and built into an image by the buyer's pipeline).
 - Every flow is named before any work on it: login lands on a start page (New Flow, Open Flow, Open Template, Upload Flow),
   and a name (or the ID it makes) another Builder or published flow has is refused with an offer to open that flow:
   `docs/decisions/0014-every-flow-named-first.md`.
+- A path (Base Path + spec path, `/x` and `/x/{id}` count as one, any method) is in one flow only: Interface asks to switch to
+  the flow that has it, uploads with such paths are refused, saving refuses new ones: `docs/decisions/0015-a-path-in-one-flow-only.md`.
 - Disabling a published flow (`"disabled": true` in `echo-flow.json`, skipped by `build-flow.sh`) and a route (`autoStartup: false` answers 404, "Disabled" badge): `docs/decisions/0011-disable-flows-and-routes.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
   Themes: colours only in `builder-ui/src/theme/themes.css`; Kaoto and Apicurio map onto its tokens

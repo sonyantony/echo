@@ -1,6 +1,7 @@
 package com.ey.echo.builder.flow;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * The flows already published (in the primary publish target, as the Flows page lists them), so a
@@ -14,5 +15,11 @@ public interface PublishedNames {
      */
     record PublishedName(String name, String displayName) {}
 
+    /** As {@link PublishedName}, with the flow's published files (path to content). */
+    record PublishedFlow(String name, String displayName, Map<String, String> files) {}
+
     List<PublishedName> list();
+
+    /** The published flows with their files, to check what they serve. */
+    List<PublishedFlow> flows();
 }
