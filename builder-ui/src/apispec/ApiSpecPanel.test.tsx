@@ -209,6 +209,55 @@ describe('Openapi panel', () => {
     expect(removed.map((op: { operationId: string }) => op.operationId)).toEqual(['getOld']);
   });
 
+  it('Import From Jira adds operations with routes, unsaved, and Undo takes them out again', async () => {
+    mockFetch({
+      'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0, jiraImport: true } },
+      'GET /api/flows/1': { status: 200, body: flow(null) },
+      'POST /api/flows/1/path-clashes': { status: 200, body: [] },
+      'POST /api/jira/story-examples': {
+        status: 200,
+        body: {
+          key: 'PAY-142',
+          summary: 'Pay a bill',
+          link: 'https://acme.atlassian.net/browse/PAY-142',
+          comments: 0,
+          examples: [{ id: 1, json: '{"paymentId": "p-1"}', source: 'Description', role: 'response' }],
+          operations: [{ method: 'GET', path: '/payments?status=OPEN', request: null, response: 1, examples: [1] }],
+        },
+      },
+    });
+    const onOperationsChanged = vi.fn();
+    const onDirtyChange = vi.fn();
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <ApiSpecPanel flowId={1} flowName="payments" onOperationsChanged={onOperationsChanged} onDirtyChange={onDirtyChange} />
+      </QueryClientProvider>,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Import From Jira' }));
+    await userEvent.type(screen.getByLabelText(/Story link/), 'PAY-142');
+    await userEvent.click(screen.getByRole('button', { name: 'Read Story' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add To Spec' }));
+
+    expect(await screen.findByText('Check what was added')).toBeInTheDocument();
+    expect(onOperationsChanged).toHaveBeenLastCalledWith({ added: [expect.objectContaining({ method: 'GET', path: '/payments', operationId: 'getPayments' })], removed: [] });
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(onOperationsChanged).toHaveBeenLastCalledWith({ added: [], removed: [expect.objectContaining({ operationId: 'getPayments' })] });
+    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false));
+  });
+
+  it('offers Import From Jira only when Jira is set up', async () => {
+    mockFetch({
+      'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
+      'GET /api/flows/1': { status: 200, body: flow(null) },
+    });
+    renderPanel();
+    await screen.findByTitle('OpenAPI editor');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Import From Jira' })).not.toBeInTheDocument();
+  });
+
   it('refuses an uploaded spec with paths other flows have', async () => {
     const { calls } = mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },

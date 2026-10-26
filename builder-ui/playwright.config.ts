@@ -16,8 +16,17 @@ process.env.ECHO_E2E_GIT_REPO = e2eGitRepo; // shared with the test workers
 // ECHO_E2E_BUNDLED=1: the jar already serves the built UI (mvn -Pwith-ui), so test it on :8080
 // without the Vite dev server. CI does this; locally the default uses Vite for quick iteration.
 const bundled = !!process.env.ECHO_E2E_BUNDLED;
+// A fake Jira Cloud with one story (e2e/fake-jira.mjs) for Import From Jira.
+const jiraPort = process.env.ECHO_E2E_JIRA_PORT ?? '8199';
+const fakeJira = {
+  command: `node e2e/fake-jira.mjs`,
+  url: `http://127.0.0.1:${jiraPort}/health`,
+  reuseExistingServer: !process.env.CI,
+  timeout: 30_000,
+};
+const jira = `--echo.jira.base-url=http://127.0.0.1:${jiraPort} --echo.jira.username=e2e@example.com --echo.jira.token=e2e-token`;
 const backend = {
-  command: `java -jar ${backendJar} --server.port=8080 --echo.data-dir=${dataDir} --echo.git.url=file://${e2eGitRepo} --echo.editor.autosave-seconds=0`,
+  command: `java -jar ${backendJar} --server.port=8080 --echo.data-dir=${dataDir} --echo.git.url=file://${e2eGitRepo} --echo.editor.autosave-seconds=0 ${jira}`,
   url: 'http://localhost:8080/actuator/health',
   reuseExistingServer: !process.env.CI,
   timeout: 120_000,
@@ -42,5 +51,5 @@ export default defineConfig({
     viewport: { width: 1400, height: 900 },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 } } }],
-  webServer: bundled ? [backend] : [backend, vite],
+  webServer: bundled ? [fakeJira, backend] : [fakeJira, backend, vite],
 });

@@ -97,3 +97,61 @@
   margin: 0.5rem 0 0.75rem 1.25rem;
   list-style: disc;
 }
+
+/* Interface > Import From Jira (JiraImportModal). */
+.echo-jira-import__reading {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+.echo-jira-import__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+}
+.echo-jira-import__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--sm);
+  padding: var(--pf-t--global--spacer--md);
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--small);
+}
+.echo-jira-import__card--off {
+  opacity: 0.6;
+}
+.echo-jira-import__card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+.echo-jira-import__remove {
+  margin-left: auto;
+}
+.echo-jira-import__bodies {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pf-t--global--spacer--md);
+}
+.echo-jira-import__bodies > * {
+  min-width: 0;
+}
+.echo-jira-import__add {
+  margin-top: var(--pf-t--global--spacer--md);
+}
+.echo-jira-import__heading {
+  font-size: var(--pf-t--global--font--size--md);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  margin: var(--pf-t--global--spacer--md) 0 var(--pf-t--global--spacer--xs);
+}
+.echo-jira-import__heading:first-child {
+  margin-top: 0;
+}
+.echo-jira-import__list {
+  margin: 0 0 0 1.25rem;
+  list-style: disc;
+}
+.echo-jira-import__muted {
+  color: var(--echo-text-subtle);
+  margin-top: var(--pf-t--global--spacer--md);
+}

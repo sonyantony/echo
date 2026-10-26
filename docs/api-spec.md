@@ -195,6 +195,58 @@ schema." A renamed field shows as missing under its old name. The list is checke
 DataMapper changes the mapping, and clears once nothing is left to review
 (`datamapper/specMappings.ts`, `mappingCheck.ts`).
 
+### Import From Jira
+
+When the install has a Jira (`echo.jira`, below), the Interface bar has **Import From Jira**. It
+asks for a story's link (or its key, `PAY-142`), reads the story's description and comments, and
+finds the example payloads, calls and query parameters written in them: JSON in code blocks or in
+the text, `POST /accounts/{accountId}/payments`, `GET https://api.acme.com/v1/payments?status=OPEN`,
+"Endpoint: /cards", "Query parameters: type=DEBIT, active=true".
+
+It then shows one card per operation it found, for the user to check and correct before anything
+changes: method, path (with its sample query; the spec's Base Path is taken off), and the request
+and response bodies. Each body is picked from the story's examples ("Example 4 · Comment by Priya
+Shah, 14 Oct 2026 · called the response") and can be edited. An example belongs to the call written
+before it, and "request" or "response" just before it says which it is; when the story has several
+for the same thing (a corrected response in a later comment), the newest is picked and the card says
+so. Cards can be left out, removed or added; one whose method and path the spec has already says
+that importing replaces it (keeping its operationId, so its route stays).
+
+**Add To Spec** adds the operations and their data types to the spec on screen, unsaved, keeping
+everything it has. Schemas are made as New From Samples makes them (named after method and path,
+`PostAccountsAccountIdPaymentsRequest`, numbered when the spec has the name; fields with a value are
+required, null ones are optional strings). New operations get a route at once, and a new path
+another flow has is asked about, as when typed in. A last dialog lists the paths and data types it
+made and what is worth checking; **Undo** there takes it all out again. Save keeps it.
+
+Code: `builder-backend/.../jira/` (reading the story, `ExampleFinder`), `builder-ui/src/apispec/`
+`JiraImportModal.tsx` and `jiraImport.ts`. Finding the examples uses no AI yet; an AI step that
+labels them is planned (decision 0016).
+
+#### Setting up Jira
+
+ECHO reads stories with one shared, read-only Jira account. In `config/application.yaml` (or the
+environment):
+
+```yaml
+echo:
+  jira:
+    base-url: https://acme.atlassian.net   # ECHO_JIRA_URL; only links on this site are read
+    deployment: cloud                      # cloud | data-center (Jira Server too)
+    username: echo-bot@acme.com            # ECHO_JIRA_USERNAME; Cloud only
+    token: ${ECHO_JIRA_TOKEN}              # never in Git
+    read-comments: true
+```
+
+- **Jira Cloud:** sign in as the account and create an API token at id.atlassian.com (Security >
+  API tokens). ECHO sends the email and token as Basic auth (REST API 3).
+- **Jira Data Center / Server:** create a personal access token in the account's profile and leave
+  `username` empty: ECHO sends it as a Bearer token (REST API 2). With a username, the token is sent
+  as its password with Basic auth instead.
+
+Import From Jira is hidden until `base-url` and `token` are set. A link to another site is refused,
+so the token is only ever sent to the configured Jira; it is never logged or sent to the browser.
+
 ## How it is embedded
 
 Apicurio's editor is an Angular app, so it cannot render inside the Builder's React tree. The
@@ -220,6 +272,10 @@ screenshot of each screen per theme (see [branding.md](branding.md#themes)).
 2. **Response validation.** Camel can check the flow's responses against the spec too
    (`clientResponseValidation`); there is no checkbox for it.
 3. **Build checks.** Validation should report an invalid spec, and Publish should refuse one.
+4. **AI for Import From Jira.** An engine that labels the examples a story has (which is the
+   request, which the response, of which call), behind a Java interface; the first one speaks the
+   OpenAI protocol, so OpenAI, Azure OpenAI, Ollama and the like work by changing its endpoint
+   (decision 0016).
 
 ## A path in one flow only
 

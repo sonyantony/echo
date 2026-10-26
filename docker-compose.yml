@@ -14,6 +14,7 @@ services:
       - ECHO_GIT_TOKEN
       - ECHO_S3_ACCESS_KEY
       - ECHO_S3_SECRET_KEY
+      - ECHO_JIRA_TOKEN
     volumes:
       - echo-data:/data          # H2 database and the Git working copy
       - ./config:/config:ro      # application.yaml with users and the flow repository

@@ -100,6 +100,15 @@ echo:
     # steps, set per install (docs/apis.md). only: true also rejects plain http/https steps.
     only: false
     specs: []
+  jira:
+    # Interface > Import From Jira reads example payloads from user stories with one shared,
+    # read-only Jira account. Off until base-url and token are set. Put the token in
+    # config/application.yaml or .env (ECHO_JIRA_TOKEN), never in Git.
+    base-url: ${ECHO_JIRA_URL:}          # e.g. https://acme.atlassian.net; only its links are read
+    deployment: cloud                    # cloud | data-center (Jira Server too)
+    username: ${ECHO_JIRA_USERNAME:}     # Cloud: the account's email. Data Center: leave empty for a personal access token
+    token: ${ECHO_JIRA_TOKEN:}           # Cloud: API token. Data Center: personal access token
+    read-comments: true
   validation:
     # HTTP + JSON, the DataMapper's XSLT, and rest-openapi (calls an operation of an OpenAPI spec).
     # The editor's catalog shows only these. Adding one also needs its jar in builder-backend/pom.xml,
