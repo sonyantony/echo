@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-// M3: log in with the demo user from application.yaml and land on a blank canvas.
-test('logs in and lands on a blank canvas', async ({ page }) => {
+// M3: log in with the demo user from application.yaml and land on the start page.
+test('logs in and lands on the start page', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
   // Default branding from application.yaml.
@@ -15,34 +15,27 @@ test('logs in and lands on a blank canvas', async ({ page }) => {
 
   await page.getByLabel('Password').fill('designer');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
-  await expect(page.getByRole('menuitem', { name: /^New Flow/ })).toBeVisible(); // File menu open
-  // Our own message replaces Kaoto's "There are no routes defined" on the blank canvas.
-  await expect(page.getByRole('heading', { name: 'No flow is open' })).toBeVisible();
-  await expect(page.getByText('There are no routes defined')).toBeHidden();
-  await expect(page.locator('.echo-untitled__empty').getByRole('button')).toHaveCount(0);
-  // Greyed out until there is a saved flow (the image: until there is something on the canvas).
-  for (const item of [/^Save As(?! Template)/, /^Save As Template/]) {
-    await expect(page.getByRole('menuitem', { name: item })).toBeDisabled();
+  // No canvas to work on: every flow is named before any work on it.
+  await expect(page.getByRole('heading', { name: 'Start with a flow' })).toBeVisible();
+  for (const name of ['New Flow', 'Open Flow', 'Open Template', 'Upload Flow']) {
+    await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   }
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'Download Flow', exact: true })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Download Flow As Image', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: 'Flow', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: /^Download Untitled flow(?! As)/ })).toBeDisabled();
-  await expect(page.getByRole('menuitem', { name: /^Download Untitled flow As Image/ })).toBeDisabled();
-  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
-  // History needs a named, saved flow.
-  await expect(page.getByRole('menuitem', { name: /^History/ })).toBeDisabled();
-  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('flow-name-tag')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'File', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('current-user')).toHaveText('designer');
   await expect(page.getByRole('banner')).toContainText('User: designer');
   await expect(page.getByRole('banner').getByAltText('Company logo')).toBeVisible();
   await expect(page.getByRole('banner')).toContainText('EY ECHO Builder');
 
+  // Open Flow and back.
+  await page.getByRole('button', { name: 'Open Flow', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Start with a flow' })).toBeVisible();
+
   // The session survives a reload; logging out returns to the login page.
   await page.reload();
-  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
+  await expect(page.getByRole('heading', { name: 'Start with a flow' })).toBeVisible();
   await page.getByRole('button', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
 });

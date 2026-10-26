@@ -3,8 +3,6 @@ import { App, createQueryClient } from '../App';
 import { mockFetch } from '../test/fetchMock';
 import { applyBranding } from './applyBranding';
 
-// The blank canvas pulls in Kaoto, which does not load under jsdom.
-vi.mock('../flows/UntitledFlowPage', () => ({ UntitledFlowPage: () => <p>Untitled canvas</p> }));
 
 afterEach(() => {
   vi.unstubAllGlobals();

@@ -12,9 +12,10 @@ import {
   ModalHeader,
   TextInput,
 } from '@patternfly/react-core';
-import { useState, type FormEvent } from 'react';
-import { flowIdFor, isValidDisplayName, needsOverwriteConfirmation } from '../api/flows';
+import { useRef, useState, type FormEvent } from 'react';
+import { flowIdFor, isValidDisplayName, nameTakenOf, needsOverwriteConfirmation, type NameTaken } from '../api/flows';
 import { flowNameHint, useFlowIdPreview } from './FlowNameHint';
+import { NameTakenAlert } from './NameTakenAlert';
 
 interface Props {
   title: string;
@@ -27,12 +28,18 @@ interface Props {
   onClose(): void;
 }
 
-/** Asks for a name for Save As and Save As Template, and for confirmation before replacing anything. */
+/**
+ * Asks for a name for Save As and Save As Template, and for confirmation before replacing anything.
+ * Save As replaces only a Builder flow of that name: a name a published flow has, or that makes
+ * another flow's ID, is refused with an offer to open that flow.
+ */
 export function SaveAsModal({ title, description, initialName, kind = 'flow', onSave, onClose }: Props) {
   const [name, setName] = useState(initialName);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const [taken, setTaken] = useState<NameTaken>();
+  const nameInput = useRef<HTMLInputElement>(null);
   const nameValid = isValidDisplayName(name);
   const flowId = useFlowIdPreview(name);
   // A template's folder is made from its name; saving to a folder that exists asks before replacing it.
@@ -46,6 +53,9 @@ export function SaveAsModal({ title, description, initialName, kind = 'flow', on
     } catch (e) {
       if (!overwrite && needsOverwriteConfirmation(e)) {
         setConfirm((e as Error).message);
+      } else if (nameTakenOf(e)) {
+        setTaken(nameTakenOf(e));
+        setConfirm(undefined);
       } else {
         setError(e instanceof Error ? e.message : String(e));
         setConfirm(undefined);
@@ -56,7 +66,7 @@ export function SaveAsModal({ title, description, initialName, kind = 'flow', on
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
-    if (nameValid && !confirm) void save(false);
+    if (nameValid && !confirm && !taken) void save(false);
   };
 
   return (
@@ -73,13 +83,15 @@ export function SaveAsModal({ title, description, initialName, kind = 'flow', on
           <FormGroup label="Name" isRequired fieldId="save-as-name">
             <TextInput
               id="save-as-name"
+              ref={nameInput}
               value={name}
               isRequired
               onChange={(_e, v) => {
                 setName(v);
                 setConfirm(undefined);
+                setTaken(undefined);
               }}
-              validated={!name || nameValid ? 'default' : 'error'}
+              validated={(!name || nameValid) && !taken ? 'default' : 'error'}
             />
             <FormHelperText>
               <HelperText>
@@ -89,6 +101,17 @@ export function SaveAsModal({ title, description, initialName, kind = 'flow', on
               </HelperText>
             </FormHelperText>
           </FormGroup>
+          {taken && (
+            <NameTakenAlert
+              taken={taken}
+              onOpened={onClose}
+              onChooseAnother={() => {
+                setTaken(undefined);
+                nameInput.current?.focus();
+                nameInput.current?.select();
+              }}
+            />
+          )}
         </Form>
       </ModalBody>
       <ModalFooter>
@@ -101,7 +124,7 @@ export function SaveAsModal({ title, description, initialName, kind = 'flow', on
             type="submit"
             form="save-as-form"
             variant="primary"
-            isDisabled={!nameValid || saving}
+            isDisabled={!nameValid || !!taken || saving}
             isLoading={saving}
           >
             Save

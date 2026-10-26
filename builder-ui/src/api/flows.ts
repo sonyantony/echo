@@ -57,15 +57,6 @@ export function flowIdFor(displayName: string): string {
   return trimId(id, MAX_FLOW_ID_LENGTH);
 }
 
-/** flowIdFor, with -2, -3... added while another flow has that identifier (as the server does for a new flow). */
-export function uniqueFlowIdFor(displayName: string, taken: Iterable<string>): string {
-  const used = new Set(Array.from(taken, (t) => t.toLowerCase()));
-  const base = flowIdFor(displayName);
-  let id = base;
-  for (let n = 2; used.has(id); n++) id = `${trimId(base, MAX_FLOW_ID_LENGTH - String(n).length - 1)}-${n}`;
-  return id;
-}
-
 function trimId(id: string, max: number): string {
   return id.length <= max ? id : id.slice(0, max).replace(/-+$/, '');
 }
@@ -173,6 +164,32 @@ export interface PublishedFlowSummary {
   target?: string | null;
   /** The pipeline leaves the flow out of images until it is enabled again. */
   disabled?: boolean;
+}
+
+/**
+ * The flow that already has a name (or the ID it makes), as the server reports it with a 409
+ * (nameTaken): its Builder draft (existingFlowId), else its published folder (existingFolder).
+ */
+export interface NameTaken {
+  message: string;
+  existingName: string;
+  existingFlowId?: number;
+  existingFolder?: string;
+}
+
+/** The NameTaken an error is, if it is the server refusing a name another flow has. */
+export function nameTakenOf(e: unknown): NameTaken | undefined {
+  if (!(e instanceof ApiError) || e.status !== 409) return undefined;
+  const d = e.details as
+    | { nameTaken?: boolean; existingName?: string; existingFlowId?: number; existingFolder?: string }
+    | undefined;
+  if (!d?.nameTaken || !d.existingName) return undefined;
+  return {
+    message: e.message,
+    existingName: d.existingName,
+    existingFlowId: d.existingFlowId ?? undefined,
+    existingFolder: d.existingFolder ?? undefined,
+  };
 }
 
 const publishedPath = (name: string) => `/api/published-flows/${encodeURIComponent(name)}`;

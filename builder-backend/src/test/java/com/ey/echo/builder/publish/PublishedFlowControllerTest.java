@@ -130,6 +130,36 @@ class PublishedFlowControllerTest {
     }
 
     @Test
+    void aNewFlowCannotTakeTheNameOrIdOfAFlowThatIsOnlyInGit() throws Exception {
+        publisher.publish("customer-refunds", null, java.util.Map.of(
+                "customer-refunds.camel.yaml", "- route: {}\n",
+                "echo-flow.json", "{\"name\":\"customer-refunds\",\"displayName\":\"Customer Refunds\"}"),
+                "someone", "Added in Git");
+
+        mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"customer refunds\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("A flow named 'Customer Refunds' already exists."))
+                .andExpect(jsonPath("$.nameTaken").value(true))
+                .andExpect(jsonPath("$.existingFolder").value("customer-refunds"))
+                .andExpect(jsonPath("$.existingFlowId").doesNotExist());
+        mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Customer: Refunds\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.existingFolder").value("customer-refunds"));
+
+        // Renaming another flow to it is refused too; the published flow's own draft keeps its name.
+        long other = createAndPublish("orders");
+        mvc.perform(as(put("/api/flows/{id}", other)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Customer Refunds\"}"))
+                .andExpect(status().isConflict());
+        var body = mvc.perform(as(post("/api/published-flows/customer-refunds/draft")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long own = ((Number) JsonPath.read(body, "$.id")).longValue();
+        mvc.perform(as(put("/api/flows/{id}", own)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"customer-refunds\",\"description\":\"Mine\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void opensAGitOnlyFlowAsANewDraft() throws Exception {
         publisher.publish("legacy", null, java.util.Map.of("legacy.camel.yaml", "- route: {}\n",
                 "echo-flow.json", "{\"description\":\"Old one\"}"), "someone", "Added in Git");

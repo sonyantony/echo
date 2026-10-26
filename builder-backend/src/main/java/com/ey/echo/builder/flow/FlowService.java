@@ -18,11 +18,13 @@ public class FlowService {
     private final FlowRepository flows;
     private final Clock clock;
     private final ApiSpecFiles apiSpecs;
+    private final PublishedNames published;
 
-    public FlowService(FlowRepository flows, Clock clock, ApiSpecFiles apiSpecs) {
+    public FlowService(FlowRepository flows, Clock clock, ApiSpecFiles apiSpecs, PublishedNames published) {
         this.flows = flows;
         this.clock = clock;
         this.apiSpecs = apiSpecs;
+        this.published = published;
     }
 
     @Transactional(readOnly = true)
@@ -156,6 +158,9 @@ public class FlowService {
         if (existing.isPresent() && !overwrite) {
             throw FlowExceptions.confirmOverwrite(
                     "A flow named '%s' already exists. Replace it?".formatted(existing.get().getDisplayName()));
+        }
+        if (existing.isEmpty()) {
+            checkNewDisplayName(display, null); // a published flow, or a flow with the same ID, is not replaced
         }
         var target = existing.orElseGet(() -> new Flow(newId(display), display, source.getDescription(), user, now()));
         target.setDisplayName(display);
@@ -300,24 +305,45 @@ public class FlowService {
     }
 
     /**
-     * The display name, stripped, if it is allowed and no other flow (than {@code self}) is called
-     * that or has it as identifier.
+     * The display name, stripped, if it is allowed and no other flow (than {@code self}) has it: no
+     * Builder flow and no published flow is called that, or has the ID it makes ({@link FlowNames#idFor}),
+     * all ignoring case. Otherwise a 409 that says which flow has it, so the user can open that one.
      */
     private String checkNewDisplayName(String displayName, Flow self) {
         if (!FlowNames.isValidDisplayName(displayName)) {
             throw FlowExceptions.invalidDisplayName();
         }
         String display = displayName.strip();
-        var other = findByDisplayName(display);
-        if (other.isPresent() && (self == null || !other.get().getId().equals(self.getId()))) {
-            throw duplicateName(display);
+        String id = FlowNames.idFor(display);
+        for (var other : list()) {
+            if (self != null && other.getId().equals(self.getId())) {
+                continue;
+            }
+            if (other.getDisplayName().equalsIgnoreCase(display) || other.getName().equalsIgnoreCase(display)) {
+                throw FlowExceptions.nameTaken(display, other.getDisplayName(), other.getId(), null);
+            }
+            if (other.getName().equalsIgnoreCase(id)) {
+                throw FlowExceptions.idTaken(display, id, other.getDisplayName(), other.getId(), null);
+            }
+        }
+        for (var other : published.list()) {
+            if (self != null && other.name().equals(self.getName())) {
+                continue; // its own published folder
+            }
+            String shown = other.displayName() == null ? other.name() : other.displayName();
+            if (shown.equalsIgnoreCase(display) || other.name().equalsIgnoreCase(display)) {
+                throw FlowExceptions.nameTaken(display, shown, null, other.name());
+            }
+            if (other.name().equalsIgnoreCase(id)) {
+                throw FlowExceptions.idTaken(display, id, shown, null, other.name());
+            }
         }
         return display;
     }
 
-    /** A new flow's identifier: made from its display name, with -2, -3... if another flow has it. */
-    private String newId(String displayName) {
-        return FlowNames.uniqueIdFor(displayName, flows::existsByNameIgnoreCase);
+    /** A new flow's identifier, made from its display name ({@link #checkNewDisplayName} made sure it is free). */
+    private static String newId(String displayName) {
+        return FlowNames.idFor(displayName);
     }
 
     private static void checkName(String name) {

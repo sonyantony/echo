@@ -179,44 +179,18 @@ test('downloads the flow diagram as a PNG', async ({ page }, testInfo) => {
   await expect(page.getByTestId('unsaved')).toBeVisible(); // nothing was saved
 });
 
-// The blank canvas after login stores nothing until Save, which names it and opens the new draft.
-test('saves the blank canvas as a new flow', async ({ page }) => {
-  const created: string[] = [];
-  page.on('request', (r) => {
-    if (r.method() === 'POST' && new URL(r.url()).pathname === '/api/flows') created.push(r.url());
-  });
-  await login(page);
-  await page.getByRole('button', { name: 'File', exact: true }).click(); // close the menu
-  await page.getByRole('button', { name: 'New', exact: true }).first().click();
-  await page.getByRole('menuitem', { name: /^Route/ }).click();
-  await expect(page.getByTestId(/^custom-node__route/).first()).toBeVisible();
-  expect(created).toHaveLength(0);
-  // With something on the canvas, its picture can be downloaded; the .zip needs a saved flow.
-  await expect(page.getByRole('button', { name: 'Download Flow As Image', exact: true })).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Download Flow', exact: true })).toBeDisabled();
-
-  const name = uniqueName('canvas');
-  await fileMenu(page, /^Save(?! As)/);
-  await page.getByRole('dialog').getByLabel(/Name/).fill(name);
-  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
-  await expect(page).toHaveURL(/\/flows\/\d+$/);
-  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
-  await expect(page.getByTestId(/^custom-node__route/).first()).toBeVisible();
-  expect(created).toHaveLength(1);
-});
-
 // Cancel on Open Flow goes back to where you were; with no history, to the flow last worked on, or
-// to the canvas if there is none.
+// to the start page if there is none.
 test('Cancel on Open Flow goes back', async ({ page }) => {
   await login(page);
-  await fileMenu(page, /^Open Flow/);
+  await page.getByRole('button', { name: 'Open Flow', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
+  await expect(page.getByRole('heading', { name: 'Start with a flow' })).toBeVisible();
 
   await page.goto('/flows');
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByTestId('flow-name-tag')).toHaveText('Flow: Untitled flow');
+  await expect(page.getByRole('heading', { name: 'Start with a flow' })).toBeVisible();
 
   const name = uniqueName('last');
   await createFlow(page, name);
@@ -239,4 +213,30 @@ test('names a flow with capitals and spaces and shows the ID made from it', asyn
   const row = page.getByRole('row').filter({ hasText: name });
   await expect(row.getByRole('link', { name })).toBeVisible();
   await expect(row).toContainText(`ID: ${id}`);
+});
+
+// Every flow has a name of its own: a name another flow has (or the ID it makes) is refused, with
+// an offer to open that flow instead.
+test('New Flow refuses a name another flow has and offers to open that flow', async ({ page }) => {
+  await login(page);
+  const stamp = Date.now().toString(36);
+  const name = `Taken ${stamp}`;
+  await createFlow(page, name);
+  const existing = page.url();
+
+  await fileMenu(page, /^New Flow/);
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/Name/).fill(`taken-${stamp}`);
+  await expect(dialog.getByTestId('name-taken')).toContainText(`A flow named '${name}' already exists.`);
+  await expect(dialog.getByRole('button', { name: 'Create' })).toBeDisabled();
+  await dialog.getByLabel(/Name/).fill(`${name}!`);
+  await expect(dialog.getByTestId('name-taken')).toContainText(`makes the ID taken-${stamp}, which flow '${name}' already has.`);
+
+  await dialog.getByRole('button', { name: 'Choose another name' }).click();
+  await expect(dialog.getByLabel(/Name/)).toBeFocused();
+  await dialog.getByLabel(/Name/).fill(name);
+  await dialog.getByRole('button', { name: `Open ${name}` }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(existing);
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
 });

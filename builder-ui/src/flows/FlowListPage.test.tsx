@@ -5,7 +5,6 @@ import { mockFetch } from '../test/fetchMock';
 
 // The editor pulls in Kaoto, which does not load under jsdom; these tests only check navigation.
 vi.mock('./FlowEditorPage', () => ({ FlowEditorPage: () => <p>Flow editor</p> }));
-vi.mock('./UntitledFlowPage', () => ({ UntitledFlowPage: () => <p>Untitled canvas</p> }));
 
 const flow = (id: number, name: string, status = 'DRAFT', displayName = name) => ({
   id,
@@ -186,7 +185,7 @@ describe('Flow list', () => {
     expect(screen.getByText('No flows match')).toBeInTheDocument();
   });
 
-  it('is titled Open Flow, with no create buttons once there are flows, and Cancel goes back (or to the last flow, or the canvas)', async () => {
+  it('is titled Open Flow, with no create buttons once there are flows, and Cancel goes back (or to the last flow, or the start page)', async () => {
     mockFetch({ ...loggedIn, 'GET /api/flows': { status: 200, body: [flow(1, 'orders'), flow(2, 'refunds')] } });
     render(<App queryClient={createQueryClient()} />);
     expect(await screen.findByRole('heading', { name: 'Open Flow' })).toBeInTheDocument();
@@ -195,17 +194,17 @@ describe('Flow list', () => {
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
     }
 
-    // With no previous screen and no flow worked on, Cancel goes to the blank canvas.
+    // With no previous screen and no flow worked on, Cancel goes to the start page.
     localStorage.clear();
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(await screen.findByText('Untitled canvas')).toBeInTheDocument();
+    expect(await screen.findByText('Start with a flow')).toBeInTheDocument();
 
-    // A flow worked on earlier (remembered by the editor) that has since been deleted: the canvas too.
+    // A flow worked on earlier (remembered by the editor) that has since been deleted: the start page too.
     localStorage.setItem('echo.lastFlowId', '99');
     window.history.pushState({}, '', '/flows');
     window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
     await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
-    expect(await screen.findByText('Untitled canvas')).toBeInTheDocument();
+    expect(await screen.findByText('Start with a flow')).toBeInTheDocument();
 
     // ...and one that still exists: back to it.
     localStorage.setItem('echo.lastFlowId', '1');

@@ -11,6 +11,9 @@ app and built into an image by the buyer's pipeline).
 - operationIds are made by ECHO from method + path where missing (uploaded specs keep theirs and their comments; Interface hides them, renames move the routes,
   Flow > Add Route For Operation, methods added in Interface or uploaded get a route at once and deleted ones ask about theirs, Publish warns about operations without a route):
   `docs/decisions/0013-operation-ids-from-method-and-path.md`.
+- Every flow is named before any work on it: login lands on a start page (New Flow, Open Flow, Open Template, Upload Flow),
+  and a name (or the ID it makes) another Builder or published flow has is refused with an offer to open that flow:
+  `docs/decisions/0014-every-flow-named-first.md`.
 - Disabling a published flow (`"disabled": true` in `echo-flow.json`, skipped by `build-flow.sh`) and a route (`autoStartup: false` answers 404, "Disabled" badge): `docs/decisions/0011-disable-flows-and-routes.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
   Themes: colours only in `builder-ui/src/theme/themes.css`; Kaoto and Apicurio map onto its tokens

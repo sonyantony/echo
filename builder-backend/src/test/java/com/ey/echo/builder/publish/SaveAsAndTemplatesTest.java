@@ -183,11 +183,12 @@ class SaveAsAndTemplatesTest {
                         .content("{\"name\":\"orders copy\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("A flow named 'Orders Copy' already exists. Replace it?"));
-        // Another name that makes the same ID gets a numbered ID.
+        // Another name that makes the same ID is refused (only a flow of the same name is replaced).
         mvc.perform(as(post("/api/flows/%d/save-as".formatted(id))).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Orders, copy\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("orders-copy-2"));
+                        .content("{\"name\":\"Orders, copy\",\"overwrite\":true}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.nameTaken").value(true))
+                .andExpect(jsonPath("$.existingName").value("Orders Copy"));
     }
 
     @Test

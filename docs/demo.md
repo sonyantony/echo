@@ -32,7 +32,7 @@ java -jar target/echo-builder-backend-*.jar --echo.git.url=file:///tmp/echo-flow
 
 ## 2. Create the flow
 
-1. After logging in you land on a blank canvas with the File menu open. Choose **New Flow**, name it `orders` and add a description.
+1. After logging in you land on the start page. Choose **New Flow**, name it `orders` and add a description.
 2. The editor opens with a starter route (`platform-http` → `log`). Build the route on the
    canvas: a `platform-http` consumer on `/orders`, a **Kaoto DataMapper** step, an `http`
    call to `{{fulfilment.url}}`, and a second DataMapper step for the response.

@@ -22,8 +22,8 @@ route.
   without opening it again, so ECHO fills in the operation's own (hidden) Operation ID field the
   way a user would: it types the name and presses the field's Save
   (`builder-ui/src/apispec/operationIdFiller.ts`). That is an ordinary edit, which Undo takes back.
-  A spec opened without ids is shown with them filled in. Saving (Save, autosave, Upload, Rename,
-  the untitled flow's first Save; `operationIds.ts`) names anything still missing.
+  A spec opened without ids is shown with them filled in. Saving (Save, autosave, Upload, Rename;
+  `operationIds.ts`) names anything still missing.
 - **Renamed together with its routes.** When a path is renamed (or a method changed) in Openapi,
   the operation keeps its old id until the save, so ECHO knows exactly which operation it was:
   the id is renamed to the new natural name, and every `direct:` endpoint in the flow with the old
@@ -88,7 +88,7 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   removed this session comes back as it was if its operation does (Undo in Interface). One that
   came back while the dialog was open keeps its route.
 - **Like any canvas edit.** The routes change in the editor on screen (unsaved canvas work stays)
-  and are saved with the next Save or autosave. This works on the untitled flow too.
+  and are saved with the next Save or autosave.
 - **Upload gives every operation a route** (added 2026-10-25), under the operationId the file
   has (ECHO's only where it has none): one that has a route already keeps it. Operations of the
   spec before that the uploaded file lacks are handled as deleted (quietly when untouched, else
@@ -115,7 +115,7 @@ ECHO's name only for operations that have none, and that no comment in the file 
   model), so in YAML the comments, layout and quoting stay wherever the spec did not change, and a
   file whose spec did not change is left byte for byte. A comment goes with what it is on when
   that is deleted. Upload adds just the missing ids to the file as it came. This covers Save,
-  autosave, Rename, Upload, the untitled flow's first Save and Download. JSON has no comments.
+  autosave, Rename, Upload and Download. JSON has no comments.
   The backend still fills in missing ids when a flow leaves the editor (`OperationIds.fill`), which
   writes the file afresh; a spec saved in Interface has none missing.
 - We chose this over always using ECHO's names (earlier in this decision): the worry was stale

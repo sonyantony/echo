@@ -118,17 +118,21 @@ class FlowControllerTest {
     }
 
     @Test
-    void aNameWhoseIdIsTakenGetsANumberedId() throws Exception {
-        create("first-flow");
+    void aNameWhoseIdIsTakenIsRefusedAndNamesTheFlowThatHasIt() throws Exception {
+        long id = create("first-flow");
         mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"First Flow!\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("first-flow-2"))
-                .andExpect(jsonPath("$.displayName").value("First Flow!"));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("The name 'First Flow!' makes the ID first-flow, which flow 'first-flow' already has."))
+                .andExpect(jsonPath("$.nameTaken").value(true))
+                .andExpect(jsonPath("$.existingName").value("first-flow"))
+                .andExpect(jsonPath("$.existingFlowId").value(id))
+                .andExpect(jsonPath("$.existingFolder").doesNotExist());
         mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"first flow\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("first-flow-3"));
+                        .content("{\"name\":\"FIRST-FLOW\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("A flow named 'first-flow' already exists."))
+                .andExpect(jsonPath("$.existingFlowId").value(id));
     }
 
     @Test

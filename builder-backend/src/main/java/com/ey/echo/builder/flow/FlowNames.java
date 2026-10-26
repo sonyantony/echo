@@ -2,7 +2,6 @@ package com.ey.echo.builder.flow;
 
 import java.text.Normalizer;
 import java.util.Locale;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 /**
@@ -49,20 +48,6 @@ public final class FlowNames {
             plain = "flow-" + plain;
         }
         return trim(plain, MAX_NAME_LENGTH);
-    }
-
-    /**
-     * {@link #idFor} the display name, with -2, -3... added when that identifier is already taken
-     * (compared ignoring case).
-     */
-    public static String uniqueIdFor(String displayName, Predicate<String> taken) {
-        String base = idFor(displayName);
-        String id = base;
-        for (int n = 2; taken.test(id); n++) {
-            String suffix = "-" + n;
-            id = trim(base, MAX_NAME_LENGTH - suffix.length()) + suffix;
-        }
-        return id;
     }
 
     private static String trim(String id, int max) {

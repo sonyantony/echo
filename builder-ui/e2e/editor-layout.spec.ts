@@ -121,16 +121,6 @@ test('the About tab shows EY ECHO and its developer', async ({ page }) => {
   await expect(page.getByAltText('Kaoto about page logo')).toHaveCount(0);
 });
 
-test('About opens on the blank canvas after login', async ({ page }) => {
-  await login(page);
-  await expect(page.getByRole('menuitem', { name: /New Flow/ })).toBeVisible();
-  await page.getByRole('tab', { name: /About/ }).click();
-  await expect(page.getByText('EY ECHO (V2.0).', { exact: true })).toBeVisible();
-  await expect(page.getByText('No flow is open')).toBeHidden();
-  await designMenu(page, /^Design/);
-  await expect(page.getByText('No flow is open')).toBeVisible();
-});
-
 test('Advanced > Java Beans opens the Beans view, before About; Flow takes the Design tab\'s place', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('advanced'));

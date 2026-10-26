@@ -96,7 +96,7 @@ for (const theme of THEMES) {
     });
     await login(page);
     await expect(page.locator('html')).toHaveAttribute('data-echo-theme', theme);
-    await check(page, testInfo, theme, 'blank-canvas');
+    await check(page, testInfo, theme, 'start-page');
 
     await createFlow(page, uniqueName(theme));
     const flowId = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
