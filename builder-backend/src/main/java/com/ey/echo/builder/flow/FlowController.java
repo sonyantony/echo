@@ -57,7 +57,7 @@ public class FlowController {
         try (var in = file.getInputStream()) {
             archive = FlowArchive.read(in);
         }
-        var flow = service.importArchive(archive, name, description, user.getName());
+        var flow = service.upload(archive, name, description, user.getName());
         return ResponseEntity.created(URI.create("/api/flows/" + flow.getId())).body(service.detail(flow.getId()));
     }
 
@@ -120,6 +120,18 @@ public class FlowController {
             Principal user) {
         service.saveApiSpec(id, name, content == null ? "" : content, user.getName());
         return service.detail(id);
+    }
+
+    /** A spec to check, and which of its paths (all when left out). */
+    public record PathCheck(String spec, java.util.Set<String> paths) {}
+
+    /**
+     * The paths of a spec for this flow that other flows (in the Builder or published) have, with
+     * the flow that has each: Interface asks before keeping a new path, and before an upload.
+     */
+    @PostMapping("/{id}/path-clashes")
+    public List<ApiPaths.PathClash> pathClashes(@PathVariable long id, @RequestBody PathCheck check) {
+        return service.pathClashes(id, check.spec() == null ? "" : check.spec(), check.paths());
     }
 
     /** Every flow's OpenAPI spec (flow and file name), for picking one to copy into a flow. */

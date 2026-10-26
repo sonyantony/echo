@@ -145,5 +145,8 @@ export function useOperationRoutes(
     </Modal>
   );
 
-  return { onOperationsChanged, dialog };
+  /** Resolves once the canvas has every route change asked for so far. */
+  const idle = useCallback(() => queue.current, []);
+
+  return { onOperationsChanged, idle, dialog };
 }

@@ -49,9 +49,13 @@ set, so an unset variable never blanks a value in `application.yaml`. After chan
   the same method on the same effective path (Base Path + path, or a platform-http route's path),
   or use an operationId another flow uses. Path parameters match whatever their names
   (`/cards/{id}` is `/cards/{cardId}`), and a platform-http route without `httpMethodRestrict`
-  takes every method. Swagger UI at `<Base Path>/docs` counts too, so two flows cannot share a
-  Base Path (or both have none). The pipeline's `BundleCheck.java` catches the same clashes when
-  it builds a bundle.
+  takes every method. Two flows with a spec cannot share a Base Path (or both have none), whatever
+  their methods: Camel's contract-first REST takes the whole Base Path for one flow, so in a bundle
+  image the other would fail to start ("Multiple consumers for the same endpoint"). Publish names
+  that clash as the Base Path ("Base Path /shop is already used by flow order-reader"); put GET and
+  POST of one path in the same flow. The pipeline's `BundleCheck.java` catches the same clashes
+  when it builds a bundle. Interface checks paths much earlier, as they are added or uploaded
+  (decision 0015).
 - **Delete** tries every enabled target. If one fails, the Builder keeps the draft and shows the
   error; deleting again finishes the job.
 - **Disable / Enable** (Open Flow page, a published row's menu) keeps the flow in every target

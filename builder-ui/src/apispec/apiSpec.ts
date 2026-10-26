@@ -165,3 +165,21 @@ export function descriptionOf(editorJson: string): string | undefined {
   const info = (JSON.parse(editorJson) as { info?: { description?: unknown } }).info;
   return typeof info?.description === 'string' ? info.description : undefined;
 }
+
+/** The spec's paths (the keys of its paths object), as the editor's JSON has them; none if it cannot be read. */
+export function pathsOf(editorJson: string | undefined): string[] {
+  try {
+    const paths = editorJson === undefined ? undefined : (JSON.parse(editorJson) as { paths?: unknown }).paths;
+    return paths && typeof paths === 'object' ? Object.keys(paths) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The editor's JSON without these paths (and their operations). */
+export function withoutPaths(editorJson: string, paths: string[]): string {
+  const spec = JSON.parse(editorJson) as { paths?: Record<string, unknown> };
+  if (!spec.paths) return editorJson;
+  for (const path of paths) delete spec.paths[path];
+  return JSON.stringify(spec);
+}

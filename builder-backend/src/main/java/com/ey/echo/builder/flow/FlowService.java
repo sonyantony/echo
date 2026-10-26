@@ -19,12 +19,14 @@ public class FlowService {
     private final Clock clock;
     private final ApiSpecFiles apiSpecs;
     private final PublishedNames published;
+    private final ApiPaths apiPaths;
 
-    public FlowService(FlowRepository flows, Clock clock, ApiSpecFiles apiSpecs, PublishedNames published) {
+    public FlowService(FlowRepository flows, Clock clock, ApiSpecFiles apiSpecs, PublishedNames published, ApiPaths apiPaths) {
         this.flows = flows;
         this.clock = clock;
         this.apiSpecs = apiSpecs;
         this.published = published;
+        this.apiPaths = apiPaths;
     }
 
     @Transactional(readOnly = true)
@@ -92,6 +94,35 @@ public class FlowService {
         String display = checkNewDisplayName(
                 displayName == null || displayName.isBlank() ? archive.name() : displayName, null);
         return importArchive(archive, newId(display), display, description, user);
+    }
+
+    /**
+     * Upload Flow: as {@link #importArchive(FlowArchive.Contents, String, String, String)}, refused
+     * (and nothing kept) when its spec has a path another flow has ({@link ApiPaths}).
+     */
+    public Flow upload(FlowArchive.Contents archive, String displayName, String description, String user) {
+        var flow = importArchive(archive, displayName, description, user);
+        var spec = apiSpecs.find(flow).flatMap(flow::file).map(FlowFile::getContent);
+        if (spec.isPresent()) {
+            String route = flow.file(FlowNames.routeFile(flow.getName())).map(FlowFile::getContent).orElse(null);
+            var clashes = apiPaths.clashes(flow.getId(), flow.getName(), spec.get(),
+                    RestFromSpec.contextPath(route).orElse(null), null);
+            if (!clashes.isEmpty()) {
+                throw ApiPaths.conflict("This flow cannot be uploaded: its spec has paths other flows have:", clashes);
+            }
+        }
+        return flow;
+    }
+
+    /**
+     * The paths of a spec for this flow that other flows have (all, or those of specPaths, the spec's
+     * own paths), so the editor can say which flow has each.
+     */
+    @Transactional(readOnly = true)
+    public List<ApiPaths.PathClash> pathClashes(long id, String specContent, java.util.Set<String> specPaths) {
+        var flow = get(id);
+        String route = flow.file(FlowNames.routeFile(flow.getName())).map(FlowFile::getContent).orElse(null);
+        return apiPaths.clashes(id, flow.getName(), specContent, RestFromSpec.contextPath(route).orElse(null), specPaths);
     }
 
     /**
@@ -252,6 +283,11 @@ public class FlowService {
         apiSpecs.checkName(flow, name);
         apiSpecs.checkContent(content);
         var previous = apiSpecs.find(flow);
+        // A path another flow has cannot be added (paths the flow had already stay as they are).
+        var clashes = apiPaths.newClashes(flow, previous.flatMap(flow::file).map(FlowFile::getContent).orElse(null), content);
+        if (!clashes.isEmpty()) {
+            throw ApiPaths.conflict("The spec cannot be saved: it has paths other flows have:", clashes);
+        }
         boolean renamed = previous.isPresent() && !previous.get().equals(name);
         if (renamed) {
             flow.removeFile(previous.get());
