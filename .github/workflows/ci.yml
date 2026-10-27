@@ -114,6 +114,27 @@ jobs:
           grep -B1 "value: '/shop/docs'" "$route" | grep -q 'type: PathPrefix'
           grep -q "namespace: 'infra'" "$route"
           test "$(grep -c 'value:' "$route")" = 3
+      - name: The flows' placeholders become a ConfigMap, and sensitive ones a Secret example without values
+        if: matrix.mode == 'per-flow'
+        run: |
+          env="$(mktemp -d)"
+          cp -r samples/flows/orders "$env/orders"
+          sed -i 's#uri: "{{fulfilment.url}}"#uri: "{{fulfilment.url}}?token={{fulfilment.api-token}}\&r={{stock.region}}\&h={{env:HOME}}"#' "$env/orders/orders.camel.yaml"
+          printf 'fulfilment.url=https://fulfilment.prod.example.com\nfulfilment.api-token=do-not-write\n' > "$env/prod.properties"
+          pipeline/build-flow.sh "$env/orders" --mode per-flow --manifests-only --env-values "$env/prod.properties" --out "$env/build" 2> "$env/log.txt"
+          cat "$env/log.txt"
+          k8s="$env/build/orders/k8s"
+          cat "$k8s/configmap.yaml" "$k8s/secret.yaml.example"
+          grep -q "^  FULFILMENT_URL: 'https://fulfilment.prod.example.com'" "$k8s/configmap.yaml"
+          grep -q "^  # STOCK_REGION: ''" "$k8s/configmap.yaml"
+          grep -q "no value for STOCK_REGION" "$env/log.txt"
+          grep -q "^  FULFILMENT_API_TOKEN: ''" "$k8s/secret.yaml.example"
+          ! grep -rq "do-not-write\|TOKEN\|HOME" "$k8s/configmap.yaml"
+          ! grep -rq "do-not-write" "$k8s" "$env/log.txt"
+          python3 -c "import sys, yaml; d = yaml.safe_load(open(sys.argv[1]))['data']; assert d == {'FULFILMENT_URL': 'https://fulfilment.prod.example.com'}, d" "$k8s/configmap.yaml"
+          # Without a values file, the flow's own value.
+          pipeline/build-flow.sh samples/flows/orders --mode per-flow --manifests-only --out "$env/plain" 2> /dev/null
+          grep -q "^  FULFILMENT_URL: 'http://localhost:9090/fulfilment'" "$env/plain/orders/k8s/configmap.yaml"
       - name: A bundle with two flows on one Base Path fails clearly
         if: matrix.mode == 'bundle'
         run: |

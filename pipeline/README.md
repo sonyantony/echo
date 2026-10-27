@@ -47,7 +47,9 @@ flow name in per-flow mode):
 
 | File | What |
 |---|---|
-| `deployment.yaml` | The image on port 8080, with liveness/readiness probes. Flow settings and secrets come from an optional Secret and ConfigMap named `<app>-env` (e.g. `FULFILMENT_URL`). |
+| `deployment.yaml` | The image on port 8080, with liveness/readiness probes. Flow settings and secrets come from an optional ConfigMap and Secret named `<app>-env` (e.g. `FULFILMENT_URL`). |
+| `configmap.yaml` | The flows' `{{placeholders}}` as environment variables, with values for this environment (see below). |
+| `secret.yaml.example` | The sensitive placeholders, with empty values: the Secret you create yourself. `kubectl apply` skips it. |
 | `service.yaml` | Port 80 to the pods. |
 | `ingress.yaml` | Only the paths the app's flows serve, so other apps on the same host keep theirs (see below). `httproute.yaml` (Gateway API) instead with `k8s.routing=httproute`. |
 
@@ -66,6 +68,39 @@ tool. `kubectl apply` never deletes: remove a disabled or deleted flow's objects
 ```bash
 pipeline/build-flow.sh flows --manifests-only    # just check the flows and write the manifests
 ```
+
+### Flow settings and secrets
+
+The build finds every `{{placeholder}}` the app's flows use and turns it into the environment
+variable Spring reads as that property: dots and dashes become underscores, upper case
+(`inventory.host` -> `INVENTORY_HOST`). Give each environment its own values in a `.properties` file
+that you keep outside the flow repository, and pass it to the build:
+
+```properties
+# /etc/echo/prod.properties
+inventory.host=https://inventory.prod.example.com
+fulfilment.url=https://fulfilment.prod.example.com/api
+```
+
+```bash
+pipeline/build-flow.sh flows --registry ... --env-values /etc/echo/prod.properties   # or ENV_VALUES=...
+```
+
+`configmap.yaml` (ConfigMap `<app>-env`) gets each placeholder's value from that file, or else from
+the flow's own `application.properties`. A placeholder with no value is left as a comment and named
+in the build log, because an empty variable would replace the value in the image with nothing.
+
+Names that match `k8s.secret-names` in `k8s.properties` (by default `*password*`, `*token*`, `*key*`,
+`*secret*`, ...) are sensitive. The build never writes their values. It lists them in
+`secret.yaml.example`, ignores them in the values file, and tells you to create the Secret once per
+cluster:
+
+```bash
+kubectl create secret generic echo-flows-env --from-literal=BLUEPLANET_TOKEN=...
+```
+
+You can also create it from your vault (External Secrets, Sealed Secrets, ...). The pods read the
+ConfigMap and then the Secret, so the Secret wins if a name is in both.
 
 ## Use it in your flow repository
 

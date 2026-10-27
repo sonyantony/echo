@@ -38,6 +38,7 @@ other path must still reach the app that serves it today.
   artifacts, and its `DEPLOY` parameter (off by default) runs `kubectl apply` with a kubeconfig from
   Jenkins credentials. `kubectl apply` does not delete: a flow that is disabled or deleted keeps its
   objects until the buyer removes them. The pods read flow settings and secrets (`{{placeholders}}`)
-  from an optional Secret and ConfigMap named `<app>-env`.
+  from an optional Secret and ConfigMap named `<app>-env`; the build writes the ConfigMap and an
+  example of the Secret from the placeholders the flows use (decision 0018).
 - `build-flow.sh --manifests-only` checks the flows and writes only the manifests (no export, jar or
   image), which CI uses to test the rules.

@@ -14,7 +14,9 @@
 // Each build also writes Kubernetes manifests next to each image, build/<app>/k8s/ (Deployment,
 // Service, and an Ingress for only the flows' paths; settings in pipeline/k8s.properties), and keeps
 // them as build artifacts. DEPLOY applies them with kubectl; leave it off to hand them to your own
-// release process or GitOps tool instead.
+// release process or GitOps tool instead. The flows' {{placeholders}} go in a ConfigMap valued from
+// ENV_VALUES (a .properties file per environment); sensitive ones are listed in secret.yaml.example
+// for you to create the Secret <app>-env once per cluster, as the build never writes secret values.
 //
 // Agent needs: Java 21, Maven, curl, git. No Docker daemon needed (Jib pushes directly). DEPLOY also
 // needs kubectl.
@@ -33,6 +35,8 @@ pipeline {
                  description: 'Build even if no flow changed (per-flow: build every flow)')
     booleanParam(name: 'DEPLOY', defaultValue: false,
                  description: 'Apply the Kubernetes manifests (build/*/k8s) with kubectl after the build')
+    string(name: 'ENV_VALUES', defaultValue: '',
+           description: 'Values of the flows\' {{placeholders}} for this environment: a .properties file on the agent, e.g. /etc/echo/prod.properties (empty: the flows\' own values)')
     string(name: 'KUBECONFIG_CREDENTIALS_ID', defaultValue: 'echo-kubeconfig',
            description: 'Jenkins secret file credentials with the kubeconfig DEPLOY uses')
   }
@@ -101,7 +105,7 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: 'build/*/image.txt, build/*/k8s/*.yaml', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'build/*/image.txt, build/*/k8s/*.yaml, build/*/k8s/*.example', allowEmptyArchive: true
     }
   }
 }
