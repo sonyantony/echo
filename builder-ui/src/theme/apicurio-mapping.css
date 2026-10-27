@@ -388,6 +388,13 @@
   background-color: var(--echo-ink-faint);
   color: var(--echo-text);
 }
+:root[data-echo-theme] .detail-label > .echo-back {
+  border-radius: 3px;
+  cursor: pointer;
+}
+:root[data-echo-theme] .detail-label > .echo-back:is(:hover, :focus-visible) {
+  background-color: var(--echo-ink-faint);
+}
 :root[data-echo-theme] .editor-outline .selected,
 :root[data-echo-theme] .editor-master .editor-main.selected {
   background-color: var(--echo-brand-subtle) !important;

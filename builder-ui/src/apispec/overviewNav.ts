@@ -9,6 +9,7 @@
  *    which is hidden on the left and laid over the right pane instead. Picking an entry in it opens the
  *    entry as before, and the pane goes back to none. Data Types and Responses entries get a Delete button
  *    on the right, which deletes through Apicurio's own right-click Delete.
+ * An opened data type or response shows its kind's icon before its name; clicking it goes back to its list.
  * Apicurio draws its list again now and then, so the items are added back whenever they are missing.
  */
 export type OverviewPane = 'none' | 'info' | 'tags' | 'paths' | 'definitions' | 'responses' | 'source';
@@ -32,6 +33,13 @@ const DELETABLE: { entry: string; menu: string }[] = [
   { entry: '.response-section .api-response', menu: 'response-context-menu' },
 ];
 const DELETE_CLASS = 'echo-entry-delete';
+/** The icon before an opened entry's name, and the list it goes back to. */
+const BACK: { icon: string; pane: OverviewPane; label: string }[] = [
+  { icon: 'definition-form .detail-label > .fa-code', pane: 'definitions', label: 'Back to Data Types' },
+  { icon: 'response-form .detail-label > .fa-reply-all', pane: 'responses', label: 'Back to Responses' },
+];
+const BACK_CLASS = 'echo-back';
+const backTo = (target: Element | null) => BACK.find(({ icon }) => target?.closest?.(icon))?.pane;
 
 /**
  * Deletes `entry` as its right-click menu's Delete does: the menu is opened where the button is and
@@ -130,6 +138,15 @@ export function addOverviewNav(doc: Document) {
         row.append(button);
       }
     }
+    for (const { icon, label } of BACK) {
+      const el = doc.querySelector<HTMLElement>(icon);
+      if (!el || el.classList.contains(BACK_CLASS)) continue;
+      el.classList.add(BACK_CLASS);
+      el.tabIndex = 0;
+      el.title = label;
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', label);
+    }
     // Something else picked (a new path, say, after Add): the right pane is Apicurio's again.
     const pane = root?.dataset.echoPane;
     if (pane && pane !== 'none' && doc.querySelector('.editor-detail') && !doc.querySelector('.editor-detail main-form')) {
@@ -139,6 +156,11 @@ export function addOverviewNav(doc: Document) {
 
   const onClick = (event: Event) => {
     const target = event.target as Element | null;
+    const back = backTo(target);
+    if (back) {
+      showPane(doc, back);
+      return;
+    }
     if (!target?.closest?.('.editor-outline')) return;
     const remove = target.closest<HTMLElement>(`.${DELETE_CLASS}`);
     if (remove) {
@@ -158,10 +180,12 @@ export function addOverviewNav(doc: Document) {
     }
   };
   const onKey = (event: KeyboardEvent) => {
-    const picked = (event.target as Element | null)?.closest?.<HTMLElement>(`.${ITEM_CLASS}`);
-    if (!picked || (event.key !== 'Enter' && event.key !== ' ')) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const target = event.target as Element | null;
+    const pane = target?.closest?.<HTMLElement>(`.${ITEM_CLASS}`)?.dataset.pane ?? backTo(target);
+    if (!pane) return;
     event.preventDefault();
-    showPane(doc, picked.dataset.pane as OverviewPane);
+    showPane(doc, pane as OverviewPane);
   };
   const onResize = () => placeLists(doc);
 
