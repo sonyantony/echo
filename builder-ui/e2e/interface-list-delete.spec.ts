@@ -3,7 +3,7 @@ import { createFlow, interfaceItem, interfaceMenu, login, uniqueName } from './h
 
 // Data Types and Responses in the Interface's right pane have a Delete button on each entry, so an
 // entry can be deleted without opening it. It deletes as the entry's right-click Delete does.
-// An opened entry's icon (before its name) goes back to its list.
+// An opened entry has a left arrow before its name that goes back to its list.
 
 const shots = process.env.ECHO_SCREENSHOTS;
 
@@ -63,7 +63,7 @@ test('data types and responses are deleted from their list without opening them'
   await expect(page.getByTestId('unsaved')).toBeVisible();
 });
 
-test("an opened data type's or response's icon goes back to its list", async ({ page }) => {
+test("an opened data type's or response's left arrow goes back to its list", async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('back-icon'));
   await interfaceMenu(page, /^Design/);
@@ -75,6 +75,8 @@ test("an opened data type's or response's icon goes back to its list", async ({ 
   await editor.getByRole('button', { name: 'Save' }).first().click();
   await expect(editor.locator('response-form')).toBeVisible();
   if (shots) await page.screenshot({ path: `${shots}/4-response-opened.png` });
+  await editor.locator('response-form .echo-back').hover();
+  if (shots) await page.screenshot({ path: `${shots}/4b-arrow-hover.png` });
   await editor.getByRole('button', { name: 'Back to Responses' }).click();
   await expect(editor.locator('.response-section .api-response')).toHaveText(['GetNodeResponse']);
   await expect(editor.locator('.response-section')).toBeVisible();

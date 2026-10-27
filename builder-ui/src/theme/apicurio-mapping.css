@@ -389,7 +389,14 @@
   color: var(--echo-text);
 }
 :root[data-echo-theme] .detail-label > .echo-back {
+  margin-right: 8px;
+  padding: 2px 6px;
+  border: 0;
   border-radius: 3px;
+  background: none;
+  color: var(--echo-text);
+  font-size: 0.8em;
+  vertical-align: middle;
   cursor: pointer;
 }
 :root[data-echo-theme] .detail-label > .echo-back:is(:hover, :focus-visible) {
