@@ -3,7 +3,8 @@ import { createFlow, fileMenu, interfaceItem, interfaceMenu, login, uniqueName }
 
 // New From Samples (and Import From Jira, which builds bodies the same way) keeps each sample
 // payload as the named example of its body, so Apicurio lists it instead of "No examples
-// defined", and Swagger UI shows it. Request validation is not affected by it.
+// defined", and Swagger UI shows it. Request validation is not affected by it. The operation it
+// makes gets its route at once, as one added in the editor does.
 
 const shots = process.env.ECHO_E2E_SCREENSHOTS;
 const flowIdOf = (page: Page) => page.url().replace(/.*\/flows\/(\d+).*/, '$1');
@@ -12,7 +13,8 @@ const csrf = async (page: Page) => (await page.context().cookies()).find((c) => 
 test('the sample request and response are kept as the examples of their bodies', async ({ page }) => {
   await login(page);
   const name = uniqueName('samples');
-  await createFlow(page, name);
+  // A new flow has no routes (as a user's flow starts).
+  await createFlow(page, name, '', { route: false });
   const flowId = flowIdOf(page);
   // A path of its own (a path is in one flow only, and other tests use /cards).
   const path = `/${name.replace(/-/g, '')}`;
@@ -24,6 +26,7 @@ test('the sample request and response are kept as the examples of their bodies',
   await dialog.getByLabel('Sample response (JSON)').fill('{"cardId":"c-42","active":true}');
   await dialog.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByText(`Made POST ${path} from the samples: save to keep it.`)).toBeVisible();
+  await expect(page.getByText(`Added a route for POST ${path}.`)).toBeVisible();
 
   // Apicurio lists the example of the request body and of the 200 response.
   const editor = page.frameLocator('iframe[title="OpenAPI editor"]');
@@ -41,10 +44,14 @@ test('the sample request and response are kept as the examples of their bodies',
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   const save = page.getByRole('dialog');
   if (await save.isVisible().catch(() => false)) await save.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/^Saved .*-api\.yaml\.$/)).toBeVisible();
+  // The flow keeps the route it got.
+  await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const flow = await (await page.request.get(`/api/flows/${flowId}`)).json();
   const stored = await (await page.request.get(`/api/flows/${flowId}/files/${flow.apiSpec}`)).text();
   expect(stored).toMatch(/examples:\n\s+sample:\n\s+summary: The sample\n\s+value:\n\s+holder: Ann/);
+  const operationId = stored.match(/operationId: (\S+)/)![1];
 
   // The spec still validates requests and serves Swagger UI with the sample as its example.
   await page.getByRole('button', { name: 'Flow', exact: true }).click();
@@ -54,18 +61,20 @@ test('the sample request and response are kept as the examples of their bodies',
   await expect(validation).toBeChecked();
   await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toBeHidden();
+  const route = await (await page.request.get(`/api/flows/${flowId}/files/${name}.camel.yaml`)).text();
+  expect(route).toMatch(new RegExp(`uri: direct\\n\\s+parameters:\\n\\s+name: ${operationId}\\n`));
   await page.getByRole('button', { name: 'Run', exact: true }).click();
   await page.getByRole('menuitem', { name: new RegExp(`^Run ${name}`) }).click();
-  await expect(page.getByText(new RegExp(`${path}$`)).first()).toBeVisible();
+  // The Run panel's URL (the canvas shows "POST <path>" on the route already).
+  await expect(page.getByText(new RegExp(`^http.*${path}$`)).first()).toBeVisible();
   const call = async (method: string, at: string, body?: string) =>
     (await page.request.post(`/api/flows/${flowId}/run/request`, {
       data: { method, path: at, contentType: 'application/json', body },
       headers: { 'X-XSRF-TOKEN': await csrf(page) },
     })).json();
-  // A body like the sample passes validation (and meets the operation's missing route); one that is not, does not.
+  // A body like the sample passes validation and reaches the operation's route; one that is not, does not.
   const ok = await call('POST', path, '{"holder":"Ann","limit":2500}');
-  expect(ok.status).toBe(404);
-  expect(ok.body).toContain('does not implement the operation');
+  expect(ok.status).toBe(200);
   const bad = await call('POST', path, '{"holder":"Ann","limit":"lots"}');
   expect(bad.status).toBe(400);
   expect(bad.body).toContain("[Path '/limit']");
@@ -113,6 +122,9 @@ test('a response under Responses set to a data type made from a sample gets the 
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   const save = page.getByRole('dialog');
   if (await save.isVisible().catch(() => false)) await save.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/^Saved .*-api\.yaml\.$/)).toBeVisible();
+  // The flow keeps the route it got.
+  await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const flow = await (await page.request.get(`/api/flows/${flowIdOf(page)}`)).json();
   const stored = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/${flow.apiSpec}`)).text();

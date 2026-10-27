@@ -89,8 +89,9 @@ itself keeps only what is designed, so the service always follows the spec's cur
   it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user
   picks **Remove Route** in the dialog that asks, and Undo in Interface brings it back as it was.
   Upload gives each operation of the file a route under its own operationId (one with a route
-  keeps it) and treats the old spec's operations it lacks as deleted. Copy From Another Flow, New
-  From Samples and Discard replace the whole spec and leave the routes alone.
+  keeps it) and treats the old spec's operations it lacks as deleted. New From Samples and Copy
+  From Another Flow do the same with the spec they bring. Discard treats every operation on screen
+  as deleted, so no route made for them is left behind (one somebody worked on is asked about).
 - **Samples are kept as examples.** New From Samples (and Import From Jira) saves each sample as
   the named example (`examples.sample`) of its body, which Apicurio lists (it does not list a bare
   `example`), and keeps it as the `example` of the data type it makes. On Save, a body or response
