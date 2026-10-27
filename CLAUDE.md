@@ -22,6 +22,9 @@ app and built into an image by the buyer's pipeline).
 - Kubernetes manifests (Deployment, Service, and an Ingress or HTTPRoute for only the flows' paths, so legacy apps
   on the same host keep theirs) are made by the pipeline next to each image, `build/<app>/k8s/`, from `pipeline/k8s.properties`
   (`K8sManifests.java`); never by Publish: `docs/decisions/0017-kubernetes-manifests-from-the-pipeline.md`.
+  The flows' `{{placeholders}}` become `configmap.yaml` (values from `--env-values` / `ENV_VALUES` or the flow's
+  `application.properties`); names matching `k8s.secret-names` only go in `secret.yaml.example`, empty, as the build
+  never writes secret values: `docs/decisions/0018-flow-settings-as-configmap.md`.
 - Disabling a published flow (`"disabled": true` in `echo-flow.json`, skipped by `build-flow.sh`) and a route (`autoStartup: false` answers 404, "Disabled" badge): `docs/decisions/0011-disable-flows-and-routes.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
   Themes: colours only in `builder-ui/src/theme/themes.css`; Kaoto and Apicurio map onto its tokens

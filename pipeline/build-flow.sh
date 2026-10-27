@@ -18,9 +18,14 @@
 #   --manifests-only   only check the flows and write the Kubernetes manifests (no export, jar or image)
 #   --out <dir>        working folder; each app goes in <dir>/<name> (default: build)
 #   --k8s-config <f>   settings of the Kubernetes manifests (K8S_CONFIG, default: pipeline/k8s.properties)
+#   --env-values <f>   values of the flows' {{placeholders}} for one environment, a .properties file kept
+#                      outside the flow repository (ENV_VALUES; e.g. inventory.host=inventory.prod.local)
 #
 # Next to each image, <dir>/<app>/k8s/ gets a Deployment, a Service and an Ingress (or Gateway API
 # HTTPRoute) for only the paths the app's flows serve, made by K8sManifests.java; see k8s.properties.
+# The {{placeholders}} the flows use go in configmap.yaml (ConfigMap <app>-env, values from --env-values
+# or the flow's application.properties); sensitive ones (k8s.secret-names) are listed in
+# secret.yaml.example for you to create the Secret <app>-env: the build never writes secret values.
 #
 # Images: bundle -> <name>:<v> (echo-flows); per-flow -> echo-flow-<flow>:<v>. Bundled flows share one
 # port, so their Base Paths (and other app-wide names) must differ: BundleCheck.java fails the build
@@ -32,7 +37,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="${ECHO_RUNTIME_TEMPLATE:-$HERE/../runtime-template}"
 
-usage() { sed -n '2,29p' "$0"; exit "${1:-0}"; }
+usage() { sed -n '2,34p' "$0"; exit "${1:-0}"; }
 
 FOLDERS=()
 BUILD_MODE="${BUILD_MODE:-bundle}"
@@ -42,6 +47,7 @@ REGISTRY="${REGISTRY_URL:-}"
 MODE="push"
 OUT_ROOT="$PWD/build"
 K8S_CONFIG="${K8S_CONFIG:-$HERE/k8s.properties}"
+ENV_VALUES="${ENV_VALUES:-}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode) BUILD_MODE="$2"; shift 2 ;;
@@ -52,6 +58,7 @@ while [[ $# -gt 0 ]]; do
     --jar-only) MODE="jar"; shift ;;
     --manifests-only) MODE="manifests"; shift ;;
     --k8s-config) K8S_CONFIG="$2"; shift 2 ;;
+    --env-values) ENV_VALUES="$2"; shift 2 ;;
     --out) OUT_ROOT="$2"; shift 2 ;;
     -h|--help) usage 0 ;;
     -*) echo "Unknown option $1" >&2; usage 1 ;;
@@ -62,6 +69,10 @@ done
 [[ ${#FOLDERS[@]} -gt 0 ]] || { echo "No flow folder given" >&2; usage 1; }
 if [[ "$MODE" == "push" && -z "$REGISTRY" ]]; then
   echo "No registry given: use --registry, --local-image or --jar-only" >&2; exit 1
+fi
+if [[ -n "$ENV_VALUES" ]]; then
+  [[ -f "$ENV_VALUES" ]] || { echo "Values file not found: $ENV_VALUES" >&2; exit 1; }
+  ENV_VALUES="$(cd "$(dirname "$ENV_VALUES")" && pwd)/$(basename "$ENV_VALUES")"
 fi
 mkdir -p "$OUT_ROOT" && OUT_ROOT="$(cd "$OUT_ROOT" && pwd)"
 
@@ -190,11 +201,12 @@ image_ref() { # image-name, version
   if [[ -n "$REGISTRY" && "$MODE" != local ]]; then echo "${REGISTRY%/}/$1:$2"; else echo "$1:$2"; fi
 }
 
-# Kubernetes manifests for the app in <out>/k8s: Deployment, Service, and an Ingress or HTTPRoute for
-# only the paths its flows serve.
+# Kubernetes manifests for the app in <out>/k8s: Deployment, Service, an Ingress or HTTPRoute for
+# only the paths its flows serve, and the ConfigMap (and Secret example) of its {{placeholders}}.
 k8s_manifests() { # image-name, version, out, [--api-docs], flow-dir...
   local name="$1" image; image="$(image_ref "$1" "$2")"; local out="$3"; shift 3
-  java -cp "$YAML_JAR" "$HERE/K8sManifests.java" "$K8S_CONFIG" "$name" "$image" "$out" "$@"
+  local values=(); [[ -n "$ENV_VALUES" ]] && values=(--values "$ENV_VALUES")
+  java -cp "$YAML_JAR" "$HERE/K8sManifests.java" "$K8S_CONFIG" "$name" "$image" "$out" "${values[@]}" "$@"
 }
 
 flow_props() { # flow-dir
