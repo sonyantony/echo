@@ -26,6 +26,17 @@ test('creates, renames and deletes a flow', async ({ page }) => {
   await expect(page.getByRole('link', { name: renamed })).toHaveCount(0);
 });
 
+// A new flow starts with no routes: they come from its Interface (a route per operation) or the
+// canvas's New. A ready-made POST /<name> route would take the calls of a spec path with that name.
+test('a new flow starts with no routes', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('empty');
+  await createFlow(page, name, '', { route: false });
+  await expect(page.getByText('There are no routes defined')).toBeVisible();
+  const id = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
+  expect(await (await page.request.get(`/api/flows/${id}/files/${name}.camel.yaml`)).text()).toBe('[]\n');
+});
+
 // M5: edit on the Kaoto canvas, save, reload and see the change.
 test('adds a step on the canvas and keeps it after saving', async ({ page }) => {
   await login(page);

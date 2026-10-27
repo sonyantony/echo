@@ -1,24 +1,18 @@
 package com.ey.echo.builder.flow;
 
-/** Starting content for a new flow: an HTTP endpoint ready to receive JSON. */
+/**
+ * Starting content for a new flow. The route file starts with no routes: they come from the flow's
+ * Interface (each operation gets a {@code direct:<operationId>} route) or are added on the canvas.
+ * A ready-made HTTP route used to be added here, but it listened on {@code /<flow name>} and took
+ * the calls of a spec operation with the same path, before the REST service made from the spec.
+ */
 final class FlowTemplates {
 
     private FlowTemplates() {}
 
-    static String route(String name) {
-        return """
-                - route:
-                    id: %1$s
-                    from:
-                      id: from-%1$s
-                      uri: platform-http:/%1$s
-                      parameters:
-                        httpMethodRestrict: POST
-                      steps:
-                        - log:
-                            id: log-request
-                            message: "Received: ${body}"
-                """.formatted(name);
+    /** An empty route list (YAML), which Kaoto opens as a canvas with no routes. */
+    static String route() {
+        return "[]\n";
     }
 
     static String applicationProperties(String name) {

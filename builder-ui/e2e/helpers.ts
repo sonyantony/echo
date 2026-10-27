@@ -16,9 +16,10 @@ export function uniqueName(prefix: string) {
 /**
  * Creates a flow and opens it, through New Flow on the start page (or the Open Flow page with no
  * flows yet) or File > New Flow in the editor. From the Open Flow page with flows that means
- * opening a flow first.
+ * opening a flow first. A new flow has no routes; unless route is false, the test gives it one
+ * (POST /<flow id> to a log step) to work on, as tests about other things need a route.
  */
-export async function createFlow(page: Page, name: string, description = '') {
+export async function createFlow(page: Page, name: string, description = '', { route = true }: { route?: boolean } = {}) {
   const fileButton = page.getByRole('button', { name: 'File', exact: true });
   const newButton = page.getByRole('button', { name: 'New flow' });
   const firstFlow = page.getByRole('row').getByRole('link').first();
@@ -36,6 +37,36 @@ export async function createFlow(page: Page, name: string, description = '') {
   await dialog.getByRole('button', { name: 'Create' }).click();
   // From another flow's editor the address already looks like a flow's: wait for the new one.
   await expect(page).toHaveURL((url) => /\/flows\/\d+$/.test(url.pathname) && url.href !== before);
+  // A new flow has no routes: they come from the Interface or the canvas's New.
+  await expect(page.getByText('There are no routes defined')).toBeVisible();
+  if (route) await putStarterRoute(page);
+}
+
+/** Gives the open flow one route, POST /<flow id> to a log step, and reloads it. */
+export async function putStarterRoute(page: Page) {
+  const id = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
+  const flow = await (await page.request.get(`/api/flows/${id}`)).json();
+  const xsrf = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
+  const name = flow.routeFile.replace(/\.camel\.yaml$/, '');
+  const put = await page.request.put(`/api/flows/${id}/files/${flow.routeFile}`, {
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf },
+    data: [
+      '- route:',
+      `    id: ${name}`,
+      '    from:',
+      `      id: from-${name}`,
+      `      uri: platform-http:/${name}`,
+      '      parameters:',
+      '        httpMethodRestrict: POST',
+      '      steps:',
+      '        - log:',
+      '            id: log-request',
+      '            message: "Received: ${body}"',
+      '',
+    ].join('\n'),
+  });
+  expect(put.ok()).toBe(true);
+  await page.reload();
   await expect(page.getByTestId('custom-node__route.from')).toBeVisible();
 }
 

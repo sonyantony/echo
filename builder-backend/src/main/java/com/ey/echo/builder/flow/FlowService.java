@@ -81,7 +81,7 @@ public class FlowService {
         String display = checkNewDisplayName(displayName, null);
         String name = newId(display);
         var flow = new Flow(name, display, blankToNull(description), user, now());
-        flow.putFile(FlowNames.routeFile(name), FlowTemplates.route(name));
+        flow.putFile(FlowNames.routeFile(name), FlowTemplates.route());
         flow.putFile("application.properties", FlowTemplates.applicationProperties(name));
         return flows.save(flow);
     }

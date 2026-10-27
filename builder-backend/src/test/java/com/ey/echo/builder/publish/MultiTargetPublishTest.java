@@ -8,6 +8,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -84,7 +85,13 @@ class MultiTargetPublishTest {
         var body = mvc.perform(as(post("/api/flows")).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"%s\",\"description\":\"Demo\"}".formatted(name)))
                 .andReturn().getResponse().getContentAsString();
-        return ((Number) JsonPath.read(body, "$.id")).longValue();
+        long id = ((Number) JsonPath.read(body, "$.id")).longValue();
+        // A new flow has no routes: give it one serving POST /<name>.
+        mvc.perform(as(put("/api/flows/{id}/files/{file}", id, name + ".camel.yaml")).contentType(MediaType.TEXT_PLAIN)
+                .content("- route:\n    from:\n      uri: platform-http:/%s\n      parameters:\n".formatted(name)
+                        + "        httpMethodRestrict: POST\n      steps:\n        - log:\n            message: hi\n"))
+                .andExpect(status().isNoContent());
+        return id;
     }
 
     @Test
