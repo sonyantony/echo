@@ -92,6 +92,8 @@ export function parseSample(text: string): unknown {
 
 type Schema = Record<string, unknown>;
 
+const SCHEMA_REF = '#/components/schemas/';
+
 /**
  * Turns samples into schemas under components.schemas. Every object gets its own named schema
  * (Apicurio shows nested inline objects as "No Type"), named after its parent and field, with a
@@ -221,9 +223,13 @@ export function operationFromSamples(builder: SchemaBuilder, input: OperationSam
   const { method, path, operationId, request, response } = input;
   const base = capitalize(operationId ?? operationIdFor(method, path));
 
-  const body = (sample: unknown, name: string) => ({
-    content: { 'application/json': { schema: builder.of(name, sample), ...sampleExample(sample) } },
-  });
+  const body = (sample: unknown, name: string) => {
+    const schema = builder.of(name, sample);
+    // The data type keeps the sample too, so a body or response later set to it gets it (sampleExamples).
+    const ref = typeof schema.$ref === 'string' ? schema.$ref.replace(SCHEMA_REF, '') : undefined;
+    if (ref && builder.schemas[ref]) builder.schemas[ref].example = sample;
+    return { content: { 'application/json': { schema, ...sampleExample(sample) } } };
+  };
 
   const params = [
     ...pathParameters(path).map((name) => ({ name, in: 'path', required: true, schema: { type: 'string' } })),
@@ -248,3 +254,46 @@ function keptFrom(current: string | undefined): { info?: unknown; servers?: unkn
 }
 
 const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+
+/**
+ * The spec (editor JSON) with the sample of a data type (its example, which New From Samples keeps
+ * on the types it makes) as the example of each body and response whose type it is and which has
+ * no example of its own: a response under Responses, or one set to that type afterwards. Apicurio
+ * lists only a body's own examples, not its type's. Returns the same string when nothing changed.
+ */
+export function sampleExamples(json: string): string {
+  let doc: unknown;
+  try {
+    doc = JSON.parse(json);
+  } catch {
+    return json;
+  }
+  const components = asObject(asObject(doc).components);
+  const schemas = asObject(components.schemas);
+  let changed = false;
+  const fill = (holder: unknown) => {
+    for (const value of Object.values(asObject(asObject(holder).content))) {
+      const media = asObject(value);
+      if (media !== value || media.example !== undefined || media.examples !== undefined) continue;
+      const ref = asObject(media.schema).$ref;
+      const type = typeof ref === 'string' && ref.startsWith(SCHEMA_REF) ? asObject(schemas[ref.slice(SCHEMA_REF.length)]) : {};
+      if (type.example === undefined) continue;
+      Object.assign(media, sampleExample(type.example));
+      changed = true;
+    }
+  };
+  for (const item of Object.values(asObject(asObject(doc).paths))) {
+    for (const op of Object.values(asObject(item))) {
+      fill(asObject(op).requestBody);
+      Object.values(asObject(asObject(op).responses)).forEach(fill);
+    }
+  }
+  Object.values(asObject(components.responses)).forEach(fill);
+  Object.values(asObject(components.requestBodies)).forEach(fill);
+  return changed ? JSON.stringify(doc, null, 2) : json;
+}
+
+/** value when it is a JSON object, else an empty one. */
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}

@@ -91,6 +91,11 @@ itself keeps only what is designed, so the service always follows the spec's cur
   Upload gives each operation of the file a route under its own operationId (one with a route
   keeps it) and treats the old spec's operations it lacks as deleted. Copy From Another Flow, New
   From Samples and Discard replace the whole spec and leave the routes alone.
+- **Samples are kept as examples.** New From Samples (and Import From Jira) saves each sample as
+  the named example (`examples.sample`) of its body, which Apicurio lists (it does not list a bare
+  `example`), and keeps it as the `example` of the data type it makes. On Save, a body or response
+  set to such a data type without an example of its own, e.g. one under Responses, gets the
+  sample as its example too; the editor shows it the next time it opens. Upload is kept as it is.
 - **An operation without a route** answers **404** with a JSON message naming the operation. The
   service has `missingOperation: ignore` (so the flow starts), and ECHO adds a small
   `echo-missing-<operationId>` route for each such operation; add a route for it and it takes

@@ -82,3 +82,48 @@ test('the sample request and response are kept as the examples of their bodies',
   if (shots) await swagger.screenshot({ path: `${shots}/3-swagger.png`, fullPage: true });
   await page.request.delete(`/api/flows/${flowId}/run`, { headers: { 'X-XSRF-TOKEN': await csrf(page) } });
 });
+
+test('a response under Responses set to a data type made from a sample gets the sample as its example on Save', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('nodes');
+  await createFlow(page, name);
+  await interfaceMenu(page, /^New From Samples/);
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Method').selectOption('GET');
+  await dialog.getByLabel('Path').fill(`/${name.replace(/-/g, '')}`);
+  await dialog.getByLabel('Sample response (JSON)').fill('{"name":"n1","rack":null}');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(dialog).toBeHidden();
+
+  // A reusable response, set by hand to the data type New From Samples made.
+  const editor = page.frameLocator('iframe[title="OpenAPI editor"]');
+  const form = editor.locator('response-form');
+  await interfaceItem(page, 'Responses');
+  await editor.locator('button[title="Create Response"]').click();
+  await editor.getByRole('textbox', { name: 'Name*' }).fill('GetNodeSuccess');
+  await editor.getByRole('button', { name: 'Save' }).first().click();
+  await form.getByText('Add a media type').click();
+  await editor.getByRole('dialog').getByRole('button', { name: 'Add' }).click();
+  await form.locator('.media-type .type').click();
+  await form.getByRole('button', { name: /Choose Type/ }).click();
+  await form.getByText(/Response$/).last().click();
+  await expect(form.locator('.media-type .type')).toContainText('Response');
+  await expect(form.getByText('No examples defined.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const save = page.getByRole('dialog');
+  if (await save.isVisible().catch(() => false)) await save.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByTestId('unsaved')).toBeHidden();
+  const flow = await (await page.request.get(`/api/flows/${flowIdOf(page)}`)).json();
+  const stored = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/${flow.apiSpec}`)).text();
+  expect(stored).toMatch(/GetNodeSuccess:[^]*examples:\n\s+sample:\n\s+summary: The sample\n\s+value:\n\s+name: n1/);
+
+  // The editor shows it once it opens again.
+  await page.getByRole('button', { name: 'Flow', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^Design/ }).click();
+  await interfaceMenu(page, /^Design/);
+  await interfaceItem(page, 'Responses');
+  await editor.locator('.response-section .api-response', { hasText: 'GetNodeSuccess' }).click();
+  await expect(form.getByText('1 example(s) defined.')).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/4-response-component-example.png` });
+});
