@@ -70,11 +70,13 @@ class FlowControllerTest {
     }
 
     @Test
-    void newRouteStartsWithPlatformHttp() throws Exception {
+    void newRouteFileHasNoRoutes() throws Exception {
+        // Routes come from the Interface (one per operation) or the canvas; a ready-made
+        // platform-http:/<name> route would take the calls of a spec path with the same name.
         long id = create("orders");
         mvc.perform(as(get("/api/flows/{id}/files/orders.camel.yaml", id)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("uri: platform-http:/orders")));
+                .andExpect(content().string("[]\n"));
     }
 
     @Test
