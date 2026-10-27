@@ -20,7 +20,10 @@ describe('New From Samples', () => {
     expect(op.operationId).toBe('postCardsCardIdActivate');
     expect(op.parameters).toEqual([{ name: 'cardId', in: 'path', required: true, schema: { type: 'string' } }]);
     expect(op.requestBody.content['application/json'].schema).toEqual({ $ref: '#/components/schemas/PostCardsCardIdActivateRequest' });
-    expect(op.responses['200'].content['application/json'].example.cardId).toBe('c-42');
+    // The samples are kept as named examples, which Apicurio lists (a bare example shows "No examples defined").
+    expect(op.requestBody.content['application/json'].examples.sample.value.owner).toEqual({ name: 'Ann', since: '2024-01-31' });
+    expect(op.responses['200'].content['application/json'].examples.sample.value.cardId).toBe('c-42');
+    expect(op.responses['200'].content['application/json'].example).toBeUndefined();
 
     const s = spec.components.schemas;
     // Fields with a value are required; a null one is optional and nullable.
@@ -67,12 +70,12 @@ describe('New From Samples', () => {
     expect(splitPath('cards/{cardId}?expand=owner')).toEqual({ path: '/cards/{cardId}', query: 'expand=owner' });
     expect(splitPath('/cards')).toEqual({ path: '/cards', query: '' });
     expect(queryParameters('status=ACTIVE&limit=10&rate=2.5&open=true&expand=owner&expand=limits&q=a%20b&empty=')).toEqual([
-      { name: 'status', in: 'query', required: false, schema: { type: 'string' }, example: 'ACTIVE' },
-      { name: 'limit', in: 'query', required: false, schema: { type: 'integer' }, example: 10 },
-      { name: 'rate', in: 'query', required: false, schema: { type: 'number' }, example: 2.5 },
-      { name: 'open', in: 'query', required: false, schema: { type: 'boolean' }, example: true },
-      { name: 'expand', in: 'query', required: false, schema: { type: 'array', items: { type: 'string' } }, example: ['owner', 'limits'] },
-      { name: 'q', in: 'query', required: false, schema: { type: 'string' }, example: 'a b' },
+      { name: 'status', in: 'query', required: false, schema: { type: 'string' }, examples: { sample: { summary: 'The sample', value: 'ACTIVE' } } },
+      { name: 'limit', in: 'query', required: false, schema: { type: 'integer' }, examples: { sample: { summary: 'The sample', value: 10 } } },
+      { name: 'rate', in: 'query', required: false, schema: { type: 'number' }, examples: { sample: { summary: 'The sample', value: 2.5 } } },
+      { name: 'open', in: 'query', required: false, schema: { type: 'boolean' }, examples: { sample: { summary: 'The sample', value: true } } },
+      { name: 'expand', in: 'query', required: false, schema: { type: 'array', items: { type: 'string' } }, examples: { sample: { summary: 'The sample', value: ['owner', 'limits'] } } },
+      { name: 'q', in: 'query', required: false, schema: { type: 'string' }, examples: { sample: { summary: 'The sample', value: 'a b' } } },
       { name: 'empty', in: 'query', required: false, schema: { type: 'string' } },
     ]);
 

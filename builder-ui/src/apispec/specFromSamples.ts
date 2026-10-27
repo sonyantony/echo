@@ -30,8 +30,8 @@ export function splitPath(typed: string): { path: string; query: string } {
 
 /**
  * The query parameters of a sample query string. Each is optional (a sample does not show what a
- * caller must send), typed from its value, with the value as example; a key given more than once
- * is an array.
+ * caller must send), typed from its value, with the value as its sample example; a key given more
+ * than once is an array.
  */
 export function queryParameters(query: string): Record<string, unknown>[] {
   const values = new Map<string, string[]>();
@@ -46,9 +46,18 @@ export function queryParameters(query: string): Record<string, unknown>[] {
       in: 'query',
       required: false,
       schema: vals.length > 1 ? { type: 'array', items: item } : item,
-      ...(vals.some((v) => v !== '') ? { example: vals.length > 1 ? typed : typed[0] } : {}),
+      ...(vals.some((v) => v !== '') ? sampleExample(vals.length > 1 ? typed : typed[0]) : {}),
     };
   });
+}
+
+/**
+ * A sample kept as a named example (examples.sample) rather than as a bare example: Apicurio lists
+ * only named examples, and shows "No examples defined" for a bare one. The two are equal in OpenAPI
+ * 3.0, and Swagger UI shows either.
+ */
+export function sampleExample(value: unknown): { examples: Record<string, { summary: string; value: unknown }> } {
+  return { examples: { sample: { summary: 'The sample', value } } };
 }
 
 /** The narrowest type every value fits: integer, number, boolean, else string. */
@@ -213,7 +222,7 @@ export function operationFromSamples(builder: SchemaBuilder, input: OperationSam
   const base = capitalize(operationId ?? operationIdFor(method, path));
 
   const body = (sample: unknown, name: string) => ({
-    content: { 'application/json': { schema: builder.of(name, sample), example: sample } },
+    content: { 'application/json': { schema: builder.of(name, sample), ...sampleExample(sample) } },
   });
 
   const params = [
