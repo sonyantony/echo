@@ -41,7 +41,7 @@ import {
 import { JiraImportModal } from './JiraImportModal';
 import { SamplesSpecModal } from './SamplesSpecModal';
 import { SpecNameModal } from './SpecNameModal';
-import { specFromSamples } from './specFromSamples';
+import { sampleExamples, specFromSamples } from './specFromSamples';
 import type { ImportResult } from './jiraImport';
 import './ApiSpecPanel.css';
 
@@ -330,12 +330,15 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
    * it was not stored.
    *
    * @param base the file this replaces and its editor JSON; for an upload, the uploaded file and no JSON
+   * @param samples give bodies and responses set to a data type made from a sample that sample as
+   *        their example (sampleExamples); not for an upload, which is kept as it is
    */
   const store = useCallback(async (
     fileName: string,
     json: string,
     auto = false,
     base: { text: string; json?: string } | undefined = stored.current,
+    samples = true,
   ): Promise<string | undefined> => {
     if (id === undefined) {
       // Nowhere to store it yet: it stays on screen, unsaved, under fileName until the flow's first Save.
@@ -350,7 +353,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     if (!auto) setStatus(undefined);
     try {
       // Ids a save renamed while the editor still shows the old ones are compared under their new ones.
-      const naming = naturalOperationIds(renameOperationIds(json, renamedSince.current), base?.json);
+      const filled = samples ? sampleExamples(json) : json;
+      const naming = naturalOperationIds(renameOperationIds(filled, renamedSince.current), base?.json);
       const text = serialize(naming.json, formatOf(fileName) ?? 'yaml', base?.text);
       await flowsApi.saveApiSpec(id, fileName, text);
       stored.current = { text, json: naming.json };
@@ -435,7 +439,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     const json = toEditorJson(text);
     latest.current = undefined;
     renamedSince.current = new Map();
-    const result = await store(fileName, json, false, { text });
+    const result = await store(fileName, json, false, { text }, false);
     if (result !== undefined) {
       if (id !== undefined) saved.current = result;
       else unsavedText.current = text;

@@ -1,4 +1,4 @@
-import { pathParameters, queryParameters, specFromSamples, splitPath } from './specFromSamples';
+import { pathParameters, queryParameters, sampleExamples, specFromSamples, splitPath } from './specFromSamples';
 
 describe('New From Samples', () => {
   it('finds the path parameters', () => {
@@ -35,6 +35,8 @@ describe('New From Samples', () => {
         pin: { type: 'string', nullable: true },
         owner: { $ref: '#/components/schemas/PostCardsCardIdActivateRequestOwner' },
       },
+      // The data type keeps the sample, for bodies and responses set to it later (sampleExamples).
+      example: { code: '123456', pin: null, owner: { name: 'Ann', since: '2024-01-31' } },
     });
     expect(s.PostCardsCardIdActivateRequestOwner.properties.since).toEqual({ type: 'string', format: 'date' });
     expect(s.PostCardsCardIdActivateResponse.properties).toMatchObject({
@@ -87,5 +89,51 @@ describe('New From Samples', () => {
       'path:cardId',
       'query:limit',
     ]);
+  });
+});
+
+describe('sampleExamples', () => {
+  const spec = (extra: Record<string, unknown>) =>
+    JSON.stringify({
+      openapi: '3.0.3',
+      paths: {
+        '/nodes': {
+          get: { responses: { '200': { $ref: '#/components/responses/GetNodeSuccess' } } },
+          post: {
+            requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Node' } } } },
+            responses: { '200': { description: 'OK', content: { 'application/json': { schema: { $ref: '#/components/schemas/Node' }, example: { name: 'own' } } } } },
+          },
+        },
+      },
+      components: {
+        schemas: { Node: { type: 'object', properties: { name: { type: 'string' } }, example: { name: 'n1' } }, Plain: { type: 'object' } },
+        responses: { GetNodeSuccess: { description: 'OK', content: { 'application/json': { schema: { $ref: '#/components/schemas/Node' } } } } },
+        ...extra,
+      },
+    });
+
+  it('gives bodies and responses set to a data type with a sample that sample as their example', () => {
+    const doc = JSON.parse(sampleExamples(spec({})));
+    const sample = { sample: { summary: 'The sample', value: { name: 'n1' } } };
+    expect(doc.components.responses.GetNodeSuccess.content['application/json'].examples).toEqual(sample);
+    expect(doc.paths['/nodes'].post.requestBody.content['application/json'].examples).toEqual(sample);
+    // A body with an example of its own keeps it.
+    expect(doc.paths['/nodes'].post.responses['200'].content['application/json']).toEqual({ schema: { $ref: '#/components/schemas/Node' }, example: { name: 'own' } });
+  });
+
+  it('leaves the spec as it is when there is nothing to add', () => {
+    const plain = JSON.stringify({ openapi: '3.0.3', paths: {}, components: { schemas: { Plain: { type: 'object' } } } });
+    expect(sampleExamples(plain)).toBe(plain);
+    expect(sampleExamples('not json')).toBe('not json');
+  });
+
+  it('New From Samples keeps the sample on the data types it makes', () => {
+    const made = JSON.parse(
+      specFromSamples({ method: 'GET', path: '/nodes', operationId: 'getNodes', response: { name: 'n1' }, flowName: 'nodes' }),
+    );
+    expect(made.components.schemas.GetNodesResponse.example).toEqual({ name: 'n1' });
+    // Already filled: a second pass changes nothing.
+    const json = JSON.stringify(made, null, 2);
+    expect(sampleExamples(json)).toBe(json);
   });
 });
