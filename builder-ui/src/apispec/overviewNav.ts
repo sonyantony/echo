@@ -9,6 +9,7 @@
  *    which is hidden on the left and laid over the right pane instead. Picking an entry in it opens the
  *    entry as before, and the pane goes back to none. Data Types and Responses entries get a Delete button
  *    on the right, which deletes through Apicurio's own right-click Delete.
+ * An opened data type or response gets a left arrow before its name, which goes back to its list.
  * Apicurio draws its list again now and then, so the items are added back whenever they are missing.
  */
 export type OverviewPane = 'none' | 'info' | 'tags' | 'paths' | 'definitions' | 'responses' | 'source';
@@ -32,6 +33,12 @@ const DELETABLE: { entry: string; menu: string }[] = [
   { entry: '.response-section .api-response', menu: 'response-context-menu' },
 ];
 const DELETE_CLASS = 'echo-entry-delete';
+/** The forms of an opened data type and response, and the list their back arrow goes to. */
+const BACK: { form: string; pane: OverviewPane; label: string }[] = [
+  { form: 'definition-form', pane: 'definitions', label: 'Back to Data Types' },
+  { form: 'response-form', pane: 'responses', label: 'Back to Responses' },
+];
+const BACK_CLASS = 'echo-back';
 
 /**
  * Deletes `entry` as its right-click menu's Delete does: the menu is opened where the button is and
@@ -130,6 +137,18 @@ export function addOverviewNav(doc: Document) {
         row.append(button);
       }
     }
+    for (const { form, pane, label } of BACK) {
+      const name = doc.querySelector<HTMLElement>(`${form} .detail-title .detail-label`);
+      if (!name || name.querySelector(`:scope > .${BACK_CLASS}`)) continue;
+      const button = doc.createElement('button');
+      button.type = 'button';
+      button.className = BACK_CLASS;
+      button.dataset.pane = pane;
+      button.title = label;
+      button.setAttribute('aria-label', label);
+      button.innerHTML = '<span class="fa fa-arrow-left"></span>';
+      name.prepend(button);
+    }
     // Something else picked (a new path, say, after Add): the right pane is Apicurio's again.
     const pane = root?.dataset.echoPane;
     if (pane && pane !== 'none' && doc.querySelector('.editor-detail') && !doc.querySelector('.editor-detail main-form')) {
@@ -139,6 +158,11 @@ export function addOverviewNav(doc: Document) {
 
   const onClick = (event: Event) => {
     const target = event.target as Element | null;
+    const back = target?.closest?.<HTMLElement>(`.${BACK_CLASS}`);
+    if (back) {
+      showPane(doc, back.dataset.pane as OverviewPane);
+      return;
+    }
     if (!target?.closest?.('.editor-outline')) return;
     const remove = target.closest<HTMLElement>(`.${DELETE_CLASS}`);
     if (remove) {

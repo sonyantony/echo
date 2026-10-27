@@ -99,4 +99,33 @@ describe("Apicurio's list on the left as plain items", () => {
     expect(pane()).toBe('none');
     stop();
   });
+
+  it('give an opened data type or response a left arrow that goes back to its list', () => {
+    document.documentElement.removeAttribute('data-echo-pane');
+    document.body.innerHTML =
+      `<div class="editor-title-bar"><h1></h1></div>${outline}` +
+      '<div class="editor-detail"><response-form><div class="detail-title"><div class="detail-label">' +
+      '<span class="fa fa-fw fa-reply-all"></span><span>Missing</span></div></div></response-form></div>';
+    const title = vi.fn();
+    document.querySelector('h1')!.addEventListener('click', title);
+    const stop = addOverviewNav(document);
+
+    const back = document.querySelector<HTMLElement>('response-form .detail-label > .echo-back')!;
+    expect(back.getAttribute('aria-label')).toBe('Back to Responses');
+    expect(back.nextElementSibling!.classList.contains('fa-reply-all')).toBe(true);
+    back.click();
+    expect(pane()).toBe('responses');
+    expect(title).toHaveBeenCalledOnce();
+    stop();
+
+    document.documentElement.dataset.echoPane = 'none';
+    document.querySelector('.editor-detail')!.innerHTML =
+      '<definition-form><div class="detail-title"><div class="detail-label"><span class="fa fa-fw fa-code"></span>Customer</div></div></definition-form>';
+    const again = addOverviewNav(document);
+    document.querySelector<HTMLElement>('definition-form .echo-back')!.click();
+    expect(pane()).toBe('definitions');
+    // The type icon itself stays as Apicurio has it.
+    expect(document.querySelector('.fa-code')!.getAttribute('role')).toBeNull();
+    again();
+  });
 });

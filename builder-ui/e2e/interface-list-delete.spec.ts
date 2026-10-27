@@ -3,6 +3,7 @@ import { createFlow, interfaceItem, interfaceMenu, login, uniqueName } from './h
 
 // Data Types and Responses in the Interface's right pane have a Delete button on each entry, so an
 // entry can be deleted without opening it. It deletes as the entry's right-click Delete does.
+// An opened entry has a left arrow before its name that goes back to its list.
 
 const shots = process.env.ECHO_SCREENSHOTS;
 
@@ -60,4 +61,34 @@ test('data types and responses are deleted from their list without opening them'
   await expect(editor.locator('response-form')).toBeHidden();
   if (shots) await page.screenshot({ path: `${shots}/3-response-deleted.png` });
   await expect(page.getByTestId('unsaved')).toBeVisible();
+});
+
+test("an opened data type's or response's left arrow goes back to its list", async ({ page }) => {
+  await login(page);
+  await createFlow(page, uniqueName('back-icon'));
+  await interfaceMenu(page, /^Design/);
+  const editor = page.frameLocator('iframe[title="OpenAPI editor"]');
+
+  await interfaceItem(page, 'Responses');
+  await editor.locator('button[title="Create Response"]').click();
+  await editor.getByRole('textbox', { name: 'Name*' }).fill('GetNodeResponse');
+  await editor.getByRole('button', { name: 'Save' }).first().click();
+  await expect(editor.locator('response-form')).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/4-response-opened.png` });
+  await editor.locator('response-form .echo-back').hover();
+  if (shots) await page.screenshot({ path: `${shots}/4b-arrow-hover.png` });
+  await editor.getByRole('button', { name: 'Back to Responses' }).click();
+  await expect(editor.locator('.response-section .api-response')).toHaveText(['GetNodeResponse']);
+  await expect(editor.locator('.response-section')).toBeVisible();
+  await expect(editor.locator('response-form')).toBeHidden();
+  if (shots) await page.screenshot({ path: `${shots}/5-back-to-responses.png` });
+
+  await interfaceItem(page, 'Data Types');
+  await editor.locator('button[title="Create Data Type"]').click();
+  await editor.getByPlaceholder('Enter a unique data type name.').fill('Customer');
+  await editor.getByRole('button', { name: 'Save' }).first().click();
+  await expect(editor.locator('definition-form')).toBeVisible();
+  await editor.getByRole('button', { name: 'Back to Data Types' }).click();
+  await expect(editor.locator('.definition-section .api-definition')).toHaveText(['Customer']);
+  await expect(editor.locator('.definition-section')).toBeVisible();
 });
