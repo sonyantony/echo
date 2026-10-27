@@ -101,8 +101,8 @@ interface Props {
    * Called when an edit in the editor added or removed operations, by the operationId their route
    * starts from (a renamed path keeps its operation), and when Upload replaced the spec: every
    * operation of the uploaded file counts as added (those with a route keep it) and those of the
-   * spec before that it lacks as removed. Not called when Copy From Another Flow, New From Samples
-   * or Discard replace the whole spec.
+   * spec before that it lacks as removed. New From Samples does the same with the spec it makes. Not
+   * called when Copy From Another Flow or Discard replace the whole spec.
    */
   onOperationsChanged?(changes: { added: RoutableOperation[]; removed: RoutableOperation[] }): void;
   /**
@@ -735,6 +735,12 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
             const before = pathsOf(currentJson());
             const json = specFromSamples({ ...samples, current: currentJson(), flowName: flowTitle, flowDescription });
             void checkNewPaths(json, pathsOf(json).filter((p) => !before.includes(p)));
+            // Its operation gets a route, and the routes of the operations it replaces are dealt with
+            // as when they are deleted in the editor (by the ids their routes start from).
+            const current = (op: RoutableOperation) => ({ ...op, operationId: renamedSince.current.get(op.operationId) ?? op.operationId });
+            const { added, removed } = operationChanges(operations.current ?? operationsOf(currentJson()) ?? [], operationsOf(json) ?? []);
+            renamedSince.current = new Map();
+            if (added.length || removed.length) onOperationsChangedRef.current?.({ added, removed: removed.map(current) });
             latest.current = json;
             setInitialJson(json);
             setEditorKey((k) => k + 1);
