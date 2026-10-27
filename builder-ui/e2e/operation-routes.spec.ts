@@ -249,3 +249,22 @@ test('a method added in Interface gets a route at once; deleting it asks about a
   await expect.poll(async () => (await saved()).includes('constant: all the cards')).toBe(true);
   expect(editorErrors).toEqual([]);
 });
+
+test('Discard leaves no routes behind for the operations it throws away', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('discard');
+  await createFlow(page, name, '', { route: false });
+  const routeFile = `/api/flows/${flowIdOf(page)}/files/${name}.camel.yaml`;
+  await upload(page, spec('/cards', 'listCards'));
+  await expect(page.getByText('Added a route for GET /cards, DELETE /cards/{id}.')).toBeVisible();
+  await fileMenu(page, /^Save(?! As)/);
+  await expect(page.getByText('Saved.')).toBeVisible();
+  expect((await (await page.request.get(routeFile)).text()).match(/uri: direct\n/g)).toHaveLength(2);
+
+  // The spec on screen is discarded: the routes ECHO made for its operations go with it.
+  await page.getByRole('button', { name: 'Discard', exact: true }).click();
+  await expect(page.getByTestId('custom-node__route.from')).toHaveCount(0);
+  await fileMenu(page, /^Save(?! As)/);
+  await expect(page.getByText('Saved.')).toBeVisible();
+  expect(await (await page.request.get(routeFile)).text()).not.toContain('uri: direct');
+});

@@ -92,10 +92,10 @@ about the route when a method is deleted. The tab line item Openapi is now calle
 - **Upload gives every operation a route** (added 2026-10-25), under the operationId the file
   has (ECHO's only where it has none): one that has a route already keeps it. Operations of the
   spec before that the uploaded file lacks are handled as deleted (quietly when untouched, else
-  Keep/Remove). New From Samples does the same with the spec it makes (added 2026-10-27: a flow
-  started from samples had no route at all once new flows stopped getting a starter route). Copy
-  From Another Flow and Discard still add no routes; Add Route For Operation and the Publish
-  warning cover them.
+  Keep/Remove). New From Samples and Copy From Another Flow do the same with the spec they bring,
+  and Discard treats every operation on screen as deleted (added 2026-10-27: a flow started from
+  samples had no route at all once new flows stopped getting a starter route, and a discarded
+  spec left its routes behind).
 - **After a save renamed operations** (and before the editor opens the renamed spec), a deleted
   operation is looked up by its new id, which its routes already start from.
 

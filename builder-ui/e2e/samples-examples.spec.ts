@@ -122,6 +122,9 @@ test('a response under Responses set to a data type made from a sample gets the 
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   const save = page.getByRole('dialog');
   if (await save.isVisible().catch(() => false)) await save.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/^Saved .*-api\.yaml\.$/)).toBeVisible();
+  // The flow keeps the route it got.
+  await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const flow = await (await page.request.get(`/api/flows/${flowIdOf(page)}`)).json();
   const stored = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/${flow.apiSpec}`)).text();
