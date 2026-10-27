@@ -73,4 +73,30 @@ describe("Apicurio's list on the left as plain items", () => {
     expect(pane()).toBe('none');
     stop();
   });
+
+  it("give data types and responses a Delete button that uses the entry's right-click Delete", () => {
+    document.documentElement.removeAttribute('data-echo-pane');
+    document.body.innerHTML =
+      '<div class="editor-outline"><div class="path-section"><div class="api-path"><span class="name">/orders</span></div></div>' +
+      '<div class="definition-section"><div class="api-definition"><span class="name">Customer</span></div></div>' +
+      '<div class="response-section"><div class="api-response"><span class="name">Missing</span></div></div></div>';
+    const opened = vi.fn();
+    const entry = document.querySelector<HTMLElement>('.api-definition')!;
+    entry.addEventListener('click', opened);
+    // Apicurio's right-click draws its menu; its Delete is what deletes.
+    const deleted = vi.fn();
+    entry.addEventListener('contextmenu', () => {
+      document.body.insertAdjacentHTML('beforeend', '<ul id="definition-context-menu"><li><a>Rename</a></li><li><a>Delete</a></li></ul>');
+      document.querySelectorAll<HTMLElement>('#definition-context-menu a')[1].addEventListener('click', deleted);
+    });
+    const stop = addOverviewNav(document);
+
+    expect(document.querySelector('.api-path .echo-entry-delete')).toBeNull();
+    expect(document.querySelector('.api-response .echo-entry-delete')!.getAttribute('aria-label')).toBe('Delete Missing');
+    document.querySelector<HTMLElement>('.api-definition .echo-entry-delete')!.click();
+    expect(deleted).toHaveBeenCalledOnce();
+    expect(opened).not.toHaveBeenCalled();
+    expect(pane()).toBe('none');
+    stop();
+  });
 });

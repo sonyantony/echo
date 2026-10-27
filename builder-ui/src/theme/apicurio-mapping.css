@@ -374,6 +374,20 @@
 :root[data-echo-theme] .editor-outline .api-response:hover {
   background-color: var(--echo-ink-faint) !important;
 }
+/* ECHO's Delete button at the right end of each data type and response (see apispec/overviewNav.ts). */
+:root[data-echo-theme] .editor-outline .echo-entry-delete {
+  margin: 0 8px 0 auto;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--echo-text-subtle);
+  cursor: pointer;
+}
+:root[data-echo-theme] .editor-outline .echo-entry-delete:is(:hover, :focus-visible) {
+  background-color: var(--echo-ink-faint);
+  color: var(--echo-text);
+}
 :root[data-echo-theme] .editor-outline .selected,
 :root[data-echo-theme] .editor-master .editor-main.selected {
   background-color: var(--echo-brand-subtle) !important;

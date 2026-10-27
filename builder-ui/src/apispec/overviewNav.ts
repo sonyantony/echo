@@ -7,7 +7,8 @@
  *  - info, tags, source: that part of Apicurio's main form (its Design/Source tabs hidden);
  *  - paths, definitions, responses: Apicurio's own section for them (list, count, Add, right-click menu),
  *    which is hidden on the left and laid over the right pane instead. Picking an entry in it opens the
- *    entry as before, and the pane goes back to none.
+ *    entry as before, and the pane goes back to none. Data Types and Responses entries get a Delete button
+ *    on the right, which deletes through Apicurio's own right-click Delete.
  * Apicurio draws its list again now and then, so the items are added back whenever they are missing.
  */
 export type OverviewPane = 'none' | 'info' | 'tags' | 'paths' | 'definitions' | 'responses' | 'source';
@@ -25,6 +26,32 @@ const ITEMS: { pane: OverviewPane; label: string; icon: string; section?: string
   { pane: 'source', label: 'Source', icon: 'fa-code' },
 ];
 const LIST_ENTRY = '.api-path, .api-definition, .api-response';
+/** Entries with a Delete button, and the id of the right-click menu Apicurio opens for them. */
+const DELETABLE: { entry: string; menu: string }[] = [
+  { entry: '.definition-section .api-definition', menu: 'definition-context-menu' },
+  { entry: '.response-section .api-response', menu: 'response-context-menu' },
+];
+const DELETE_CLASS = 'echo-entry-delete';
+
+/**
+ * Deletes `entry` as its right-click menu's Delete does: the menu is opened where the button is and
+ * its Delete picked, so Apicurio's own checks and undo apply.
+ */
+function deleteEntry(doc: Document, entry: HTMLElement, button: HTMLElement, menu: string) {
+  const view = doc.defaultView;
+  const box = button.getBoundingClientRect();
+  entry.dispatchEvent(
+    new (view?.MouseEvent ?? MouseEvent)('contextmenu', { bubbles: true, cancelable: true, button: 2, clientX: box.left, clientY: box.bottom }),
+  );
+  // The menu is drawn by Apicurio, usually at once, else a moment later.
+  let tries = 20;
+  const pick = () => {
+    const item = [...doc.querySelectorAll<HTMLElement>(`#${menu} li > a`)].find((a) => a.textContent?.trim() === 'Delete');
+    if (item) item.click();
+    else if (tries-- > 0) view?.setTimeout(pick, 25);
+  };
+  pick();
+}
 
 /** Shows `pane` in the right pane (or nothing, with 'none'). */
 export function showPane(doc: Document, pane: OverviewPane) {
@@ -90,6 +117,19 @@ export function addOverviewNav(doc: Document) {
       const text = count ? `(${count})` : '';
       if (shown && shown.textContent !== text) shown.textContent = text;
     }
+    for (const { entry } of DELETABLE) {
+      for (const row of outline.querySelectorAll<HTMLElement>(entry)) {
+        if (row.querySelector(`:scope > .${DELETE_CLASS}`)) continue;
+        const name = row.querySelector('.name')?.textContent?.trim() ?? '';
+        const button = doc.createElement('button');
+        button.type = 'button';
+        button.className = DELETE_CLASS;
+        button.title = name ? `Delete ${name}` : 'Delete';
+        button.setAttribute('aria-label', button.title);
+        button.innerHTML = '<span class="pficon pficon-delete"></span>';
+        row.append(button);
+      }
+    }
     // Something else picked (a new path, say, after Add): the right pane is Apicurio's again.
     const pane = root?.dataset.echoPane;
     if (pane && pane !== 'none' && doc.querySelector('.editor-detail') && !doc.querySelector('.editor-detail main-form')) {
@@ -100,6 +140,15 @@ export function addOverviewNav(doc: Document) {
   const onClick = (event: Event) => {
     const target = event.target as Element | null;
     if (!target?.closest?.('.editor-outline')) return;
+    const remove = target.closest<HTMLElement>(`.${DELETE_CLASS}`);
+    if (remove) {
+      // Only the Delete: the entry is not opened.
+      event.preventDefault();
+      event.stopPropagation();
+      const found = DELETABLE.find(({ entry }) => remove.parentElement?.matches(entry));
+      if (found) deleteEntry(doc, remove.parentElement!, remove, found.menu);
+      return;
+    }
     const picked = target.closest<HTMLElement>(`.${ITEM_CLASS}`);
     if (picked) {
       showPane(doc, picked.dataset.pane as OverviewPane);
