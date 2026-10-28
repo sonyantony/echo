@@ -56,6 +56,16 @@ class CamelCatalogTest {
         }
 
         @Test
+        void stepsOfferOnlyTheAllowedLanguages() throws Exception {
+            String languages = "$.setBody.propertiesSchema.definitions['org.apache.camel.model.language.ExpressionDefinition']"
+                    + ".anyOf[0].oneOf[*].required[0]";
+            mvc.perform(get(DIR + "patterns-1.json"))
+                    .andExpect(jsonPath(languages).value(org.hamcrest.Matchers.contains("constant", "simple")))
+                    // A oneOf that isn't a list of languages is left as it is.
+                    .andExpect(jsonPath("$.setBody.propertiesSchema.anyOf[0].oneOf", hasSize(2)));
+        }
+
+        @Test
         void restConfigurationShowsOnlyContextPathRequestValidationAndCorsAtTheTopLevel() throws Exception {
             for (String part : List.of("properties", "propertiesSchema.properties")) {
                 mvc.perform(get(DIR + "entities-1.json"))

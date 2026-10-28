@@ -1,1 +1,6 @@
-{"setBody":{},"marshal":{},"kamelet":{},"choice":{}}
+{"setBody":{"propertiesSchema":{"definitions":{"org.apache.camel.model.language.ExpressionDefinition":{"anyOf":[{"oneOf":[
+ {"type":"object","required":["constant"],"properties":{"constant":{"$ref":"#/definitions/org.apache.camel.model.language.ConstantExpression"}}},
+ {"type":"object","required":["groovy"],"properties":{"groovy":{"$ref":"#/definitions/org.apache.camel.model.language.GroovyExpression"}}},
+ {"type":"object","required":["simple"],"properties":{"simple":{"$ref":"#/definitions/org.apache.camel.model.language.SimpleExpression"}}}]}]}},
+ "anyOf":[{"oneOf":[{"$ref":"#/definitions/org.apache.camel.model.language.ExpressionDefinition"},{"type":"object","required":["expression"],"properties":{"expression":{"$ref":"#/definitions/org.apache.camel.model.language.ExpressionDefinition"}}}]}]}},
+ "marshal":{},"kamelet":{},"choice":{}}

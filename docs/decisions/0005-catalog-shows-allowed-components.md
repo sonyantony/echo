@@ -12,6 +12,10 @@ flows whose components are bundled in the Builder. So most of the catalog could 
   languages down to `allowed-languages`. It also drops the processors in
   `echo.catalog.hidden-processors`, which need jars the Builder does not bundle (circuit breaker,
   marshal/unmarshal and the like). Kamelets are dropped unless `kamelet` is an allowed component.
+  The steps' language choices are cut down too: Kaoto builds them from each step's form schema
+  (a `oneOf` of one choice per language in the patterns and entities files), not from the
+  languages catalog, so those `oneOf` lists keep only the allowed languages. With five or fewer,
+  Kaoto shows them as a row of buttons rather than a drop-down; the row wraps to fit the form.
   Every other catalog file is passed through unchanged. The filtered files are built on first
   request and cached.
 - **One list per install.** A buyer who narrows `allowed-components` in /config/application.yaml
