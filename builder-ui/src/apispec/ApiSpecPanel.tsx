@@ -39,10 +39,10 @@ import {
   type RoutableOperation,
 } from './operationIds';
 import { JiraImportModal } from './JiraImportModal';
-import { SamplesSpecModal } from './SamplesSpecModal';
+import { SamplesSpecModal, type SamplesSpec } from './SamplesSpecModal';
 import { SpecNameModal } from './SpecNameModal';
 import { sampleExamples, specFromSamples } from './specFromSamples';
-import type { ImportResult } from './jiraImport';
+import { addOperations, operationKeys, pathInSpec, type ImportResult } from './jiraImport';
 import './ApiSpecPanel.css';
 
 export interface ApiSpecPanelHandle {
@@ -547,6 +547,29 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     setStatus({ variant: 'success', text: `Added ${n} operation${n === 1 ? '' : 's'} from Jira: save to keep ${n === 1 ? 'it' : 'them'}.` });
   };
 
+  /**
+   * Interface Specs from Samples > Add to this spec: the method made from the samples goes into the
+   * spec on screen (under the path it has already, when it has it), with its data types, unsaved.
+   * It gets a route, and a new path another flow has is asked about, as when typed in. When the
+   * spec has that method there (Replace METHOD path), it takes its place under the same
+   * operationId, so its route stays, and the data types only the old one used go.
+   */
+  const addFromSamples = (samples: SamplesSpec) => {
+    setDialog(undefined);
+    const before = currentJson();
+    const path = pathInSpec(before, samples.path);
+    const op = { method: samples.method, path, query: samples.query, request: samples.request, response: samples.response };
+    const { json, paths: done } = addOperations(before, [op], true);
+    void checkNewPaths(json, pathsOf(json).filter((p) => !pathsOf(before).includes(p)));
+    const { added, changed } = operationChanges(operationsOf(before) ?? [], operationsOf(json) ?? []);
+    // A replaced method's route starts from the id a save may have renamed it to.
+    const routed = changed.map((c) => ({ ...c, operationId: renamedSince.current.get(c.operationId) ?? c.operationId }));
+    if (added.length || routed.length) onOperationsChangedRef.current?.({ added, removed: [], changed: routed });
+    showUnsaved(json);
+    const what = done[0]?.replaced ? 'Replaced' : 'Added';
+    setStatus({ variant: 'success', text: `${what} ${samples.method} ${path} from the samples: save to keep it.` });
+  };
+
   const undoImport = () => {
     const before = beforeImport.current;
     if (before === undefined) return;
@@ -630,7 +653,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           <Radio id="echo-spec-json" name="echo-spec-format" label="Json" isChecked={format === 'json'} onChange={() => setFormat('json')} />
         </div>
         <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'samples' })} isDisabled={saving}>
-          New Interface Specs from Samples
+          Interface Specs from Samples
         </Button>
         <Button variant="primary" size="sm" onClick={() => save()} isLoading={saving} isDisabled={saving || (!dirty && !!name)}>
           Save
@@ -746,6 +769,8 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           ]
             .filter(Boolean)
             .join(', and ')}
+          hasOperation={(method, path) => operationKeys(currentJson()).has(`${method} ${pathInSpec(currentJson(), path)}`)}
+          onAdd={addFromSamples}
           onClose={() => setDialog(undefined)}
           onGenerate={(samples) => {
             setDialog(undefined);

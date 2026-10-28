@@ -21,11 +21,22 @@ from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI e
   flow's own from then on. A flow has one spec, so it says first that it replaces the one the flow
   has (and any unsaved edits). Its paths are the other flow's, so it is refused unless that
   flow's paths are gone or changed (a path is in one flow only, decision 0015).
+- **Interface Specs from Samples** (called New From Samples, then New Interface Specs from Samples,
+  before): a method, a path (with an optional sample `?query`) and a sample request and response,
+  from which ECHO writes the operation, its parameters and its data types. With no spec yet it
+  makes the spec (**Create**). When the flow has one, **Add to this spec** keeps everything it has
+  and adds the method, under the path the spec has already (whatever its `{names}`) or a new one,
+  with its data types (names not taken yet), its samples as examples and its route. When the spec
+  has that method on that path, the button reads **Replace GET /path** instead: the method made
+  from the samples takes the old one's place under the same operationId (so its route stays), and
+  the data types only the old one used go; **Cancel** keeps it. **Replace Whole Spec** throws the spec
+  away and makes a new one.
+  A new path another flow has is asked about, as when typed in (decision 0015).
 - **Download Openapi File As Yaml** / **As Json**: the spec on screen, unsaved edits included,
   named after the spec (or the flow while the spec has no name).
 
 The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Yaml for a new spec),
-**New Interface Specs from Samples** (the same dialog as the menu item), **Save**, **Rename** and **Discard**. It takes the place of Apicurio's title bar with the API's name
+**Interface Specs from Samples** (the same dialog as the menu item), **Save**, **Rename** and **Discard**. It takes the place of Apicurio's title bar with the API's name
 (hidden by `theme/apicurio-mapping.css`); Apicurio's undo, redo and Issues stay at its right.
 
 Apicurio's list on the left is plain items (`apispec/overviewNav.ts`): **Info**, **Tag Definitions**,
@@ -93,10 +104,10 @@ itself keeps only what is designed, so the service always follows the spec's cur
   it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user
   picks **Remove Route** in the dialog that asks, and Undo in Interface brings it back as it was.
   Upload gives each operation of the file a route under its own operationId (one with a route
-  keeps it) and treats the old spec's operations it lacks as deleted. New Interface Specs from Samples and Copy
+  keeps it) and treats the old spec's operations it lacks as deleted. Interface Specs from Samples and Copy
   From Another Flow do the same with the spec they bring. Discard treats every operation on screen
   as deleted, so no route made for them is left behind (one somebody worked on is asked about).
-- **Samples are kept as examples.** New Interface Specs from Samples (and Import From Jira) saves each sample as
+- **Samples are kept as examples.** Interface Specs from Samples (and Import From Jira) saves each sample as
   the named example (`examples.sample`) of its body, which Apicurio lists (it does not list a bare
   `example`), and keeps it as the `example` of the data type it makes. Picking such a data type
   for a body or response without an example of its own, e.g. one under Responses, adds the
@@ -232,7 +243,7 @@ comment), the card says so; ECHO's own guess picks the newest. Cards can be left
 that importing replaces it (keeping its operationId, so its route stays).
 
 **Add To Spec** adds the operations and their data types to the spec on screen, unsaved, keeping
-everything it has. Schemas are made as New Interface Specs from Samples makes them (named after method and path,
+everything it has. Schemas are made as Interface Specs from Samples makes them (named after method and path,
 `PostAccountsAccountIdPaymentsRequest`, numbered when the spec has the name; fields with a value are
 required, null ones are optional strings). New operations get a route at once, and a new path
 another flow has is asked about, as when typed in. A last dialog lists the paths and data types it
