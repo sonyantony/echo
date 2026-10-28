@@ -85,7 +85,7 @@ export async function designMenu(page: Page, item: string | RegExp) {
 
 /** Picks an item from the Interface menu (Design opens the flow's OpenAPI spec). */
 export async function interfaceMenu(page: Page, item: string | RegExp) {
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
+  await page.getByRole('button', { name: 'Interface Specs', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();
 }
 

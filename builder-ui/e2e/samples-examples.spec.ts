@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createFlow, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
-// New From Samples (and Import From Jira, which builds bodies the same way) keeps each sample
+// New Interface Specs from Samples (and Import From Jira, which builds bodies the same way) keeps each sample
 // payload as the named example of its body, so Apicurio lists it instead of "No examples
 // defined", and Swagger UI shows it. Request validation is not affected by it. The operation it
 // makes gets its route at once, as one added in the editor does.
@@ -18,7 +18,7 @@ test('the sample request and response are kept as the examples of their bodies',
   const flowId = flowIdOf(page);
   // A path of its own (a path is in one flow only, and other tests use /cards).
   const path = `/${name.replace(/-/g, '')}`;
-  await interfaceMenu(page, /^New From Samples/);
+  await interfaceMenu(page, /^New Interface Specs from Samples/);
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Method').selectOption('POST');
   await dialog.getByLabel('Path').fill(path);
@@ -96,7 +96,15 @@ test('a response under Responses set to a data type made from a sample gets the 
   await login(page);
   const name = uniqueName('nodes');
   await createFlow(page, name);
-  await interfaceMenu(page, /^New From Samples/);
+  await interfaceMenu(page, /^Design/);
+  // The Interface Specs bar has the same item as a button, right before Save.
+  const fromSamples = page.getByRole('button', { name: 'New Interface Specs from Samples', exact: true });
+  const fromSamplesBox = (await fromSamples.boundingBox())!;
+  const saveBox = (await page.locator('.echo-api-spec__bar').getByRole('button', { name: 'Save', exact: true }).boundingBox())!;
+  expect(fromSamplesBox.x + fromSamplesBox.width).toBeLessThanOrEqual(saveBox.x);
+  expect(saveBox.x - (fromSamplesBox.x + fromSamplesBox.width)).toBeLessThan(24);
+  if (shots) await page.locator('.echo-api-spec__bar').screenshot({ path: `${shots}/interface-bar.png` });
+  await fromSamples.click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Method').selectOption('GET');
   await dialog.getByLabel('Path').fill(`/${name.replace(/-/g, '')}`);
