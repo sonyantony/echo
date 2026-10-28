@@ -49,13 +49,14 @@ To skip the drawing, zip the `samples/flows/orders/` folder and choose **Upload 
 Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}`), as
 `demo.spec.ts` does.
 
-The editor's controls sit on the same line as Kaoto's tabs: **File** (New Flow, Open Template, Open
-Flow, Upload Flow, Save, Save As, Save As Template), **Interface** (the flow's Openapi spec; API-first flows start here),
+The editor's controls sit on the same line as Kaoto's tabs: **File** (New Flow, Open Flow Template, Open
+Flow, Manage Flows, Upload Flow, Save, Save As, Save As Template), **Interface** (the flow's Openapi spec; API-first flows start here),
 **Flow Design** (opens the canvas; its menu has Download <flow> and Download <flow> As Image), Rest,
 DataMapper, **Run** (Run <flow>, Run <flow> With...), **Advanced** (Java Beans) and About, with History at the right. Validate and Publish are buttons on
 the Flow Design toolbar.
-**Ctrl+S** saves and **Ctrl+O** opens Open Template (Cmd on a Mac).
+**Ctrl+S** saves and **Ctrl+O** opens Open Flow Template (Cmd on a Mac).
 **Open Flow** goes to the Flows list (asking first about unsaved changes) to pick another flow.
+**Manage Flows** opens the same list, titled Manage Flows, to delete, rename or open flows.
 On narrow screens History moves into the **⋮** menu.
 
 **Download <flow>** (in the Flow Design menu, or Download in a flow's menu on the Flows page) saves the flow folder,
@@ -64,7 +65,7 @@ overwrites an existing flow: give it a new name if the name is taken.
 
 **Save As** (in the File menu) saves what is on screen as a draft with another name and
 opens it; the original keeps its last saved version. **Save As Template** saves it to the
-`templates/` folder of the flow repository (next to `flows/`). **Open Template** (on the Flows
+`templates/` folder of the flow repository (next to `flows/`). **Open Flow Template** (on the Flows
 page or in the editor's File menu) starts a new draft from one of those templates. Both Save As choices warn and ask before
 replacing an existing draft or template. Pipelines build only `flows/`, so templates never become
 images.

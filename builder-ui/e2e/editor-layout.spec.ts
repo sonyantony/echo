@@ -45,7 +45,7 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   expect(file.x + file.width).toBeLessThanOrEqual(spec.x);
   expect(spec.x + spec.width).toBeLessThanOrEqual(design.x);
   await page.getByRole('button', { name: 'File', exact: true }).click();
-  for (const item of [/^Open Template/, /^Open Flow/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/]) {
+  for (const item of [/^Open Flow Template/, /^Open Flow(?! Template)/, /^Manage Flows/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/]) {
     await expect(page.getByRole('menuitem', { name: item })).toBeVisible();
   }
   await page.keyboard.press('Escape');

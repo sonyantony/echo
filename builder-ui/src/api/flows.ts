@@ -153,7 +153,7 @@ export const templatesApi = {
       method: 'POST',
       json: { name, routeContent, overwrite },
     }),
-  /** Open Template: a new draft made from the template. */
+  /** Open Flow Template: a new draft made from the template. */
   open: (template: string, name: string, description?: string) =>
     api<FlowDetail>(`/api/templates/${encodeURIComponent(template)}/flows`, {
       method: 'POST',

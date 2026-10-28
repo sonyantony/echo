@@ -63,9 +63,9 @@ set, so an unset variable never blanks a value in `application.yaml`. After chan
   pipeline leaves a disabled flow out of images, and publishing it again keeps it disabled
   (docs/decisions/0011).
 - **The Flows page** lists published flows from the first enabled target (Git, else S3).
-- **Templates** (Save As Template, Open Template) live in a `templates` folder next to the flows
+- **Templates** (Save As Template, Open Flow Template) live in a `templates` folder next to the flows
   folder: `templates/<name>/` in Git, `<parent of prefix>/templates/<name>/` in S3. Saving a
-  template writes it to every enabled target (Git commit "Save template <name>"); Open Template
+  template writes it to every enabled target (Git commit "Save template <name>"); Open Flow Template
   reads the first enabled one. Each template folder is a flow folder plus `echo-template.json`
   (description, who saved it, when). Pipelines build `flows/` only, so templates are never built.
 - Git keeps every version in its history. S3 keeps only the latest; turn on bucket versioning

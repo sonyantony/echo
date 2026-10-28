@@ -125,7 +125,7 @@ itself keeps only what is designed, so the service always follows the spec's cur
   [Request validation](#request-validation) below.
 - **Swagger UI** for the spec is at **`<Base Path>/docs`** of the running flow (below).
 - The Run panel lists the spec's paths, Base Path included, to call, and links the flow's Swagger UI.
-- Upload, Edit as draft and Open Template take the generated part out again, so it never shows up
+- Upload, Edit as draft and Open Flow Template take the generated part out again, so it never shows up
   in the draft. A flow with its own hand-written (code-first) `rest` keeps it.
 
 ### Request validation

@@ -114,12 +114,15 @@ function lastFlowId(): number | undefined {
 /** Router state the editor passes when it sends you here, so Cancel can take you back. */
 export interface OpenFlowState {
   from?: string;
+  /** Came from File > Manage Flows: the same page, titled Manage Flows. */
+  manage?: boolean;
 }
 
 export function FlowListPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const cameFrom = (useLocation().state as OpenFlowState | null)?.from;
+  const routerState = useLocation().state as OpenFlowState | null;
+  const cameFrom = routerState?.from;
   const flows = useQuery({ queryKey: FLOWS_KEY, queryFn: flowsApi.list });
   const published = useQuery({ queryKey: PUBLISHED_KEY, queryFn: publishedFlowsApi.list, retry: false });
   const [creating, setCreating] = useState(false);
@@ -210,14 +213,14 @@ export function FlowListPage() {
   );
   const templateButton = (
     <Button variant="secondary" onClick={() => setOpeningTemplate(true)}>
-      Open Template
+      Open Flow Template
     </Button>
   );
 
   return (
     <>
       <PageSection>
-        <Title headingLevel="h1">Open Flow</Title>
+        <Title headingLevel="h1">{routerState?.manage ? 'Manage Flows' : 'Open Flow'}</Title>
       </PageSection>
       <PageSection isFilled>
         {flows.isPending && <Spinner aria-label="Loading flows" />}

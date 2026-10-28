@@ -190,7 +190,7 @@ describe('Flow list', () => {
     render(<App queryClient={createQueryClient()} />);
     expect(await screen.findByRole('heading', { name: 'Open Flow' })).toBeInTheDocument();
     await screen.findByRole('link', { name: 'orders' });
-    for (const name of ['New flow', 'Open Template', 'Upload flow']) {
+    for (const name of ['New flow', 'Open Flow Template', 'Upload flow']) {
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
     }
 

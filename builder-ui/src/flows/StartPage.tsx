@@ -44,7 +44,7 @@ export function StartPage() {
             </EmptyStateActions>
             <EmptyStateActions>
               <Button variant="link" onClick={() => setOpeningTemplate(true)}>
-                Open Template
+                Open Flow Template
               </Button>
               <Button variant="link" onClick={() => setUploading(true)}>
                 Upload Flow

@@ -46,8 +46,8 @@ test('Save As copies the flow to a new name and asks before replacing one', asyn
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toHaveCount(0); // replaced
 });
 
-// Save As Template writes templates/<name>/ in Git; Open Template starts a new draft from it.
-test('Save As Template and Open Template', async ({ page }) => {
+// Save As Template writes templates/<name>/ in Git; Open Flow Template starts a new draft from it.
+test('Save As Template and Open Flow Template', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('src'));
   await addStep(page, 1, 'setBody');
@@ -67,8 +67,8 @@ test('Save As Template and Open Template', async ({ page }) => {
   await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toHaveCount(0);
 
-  // Open Template from the editor's File menu.
-  await fileMenu(page, /^Open Template/);
+  // Open Flow Template from the editor's File menu.
+  await fileMenu(page, /^Open Flow Template/);
   const open = page.getByRole('dialog');
   await open.getByRole('combobox', { name: 'Template' }).selectOption(template);
   const flow = uniqueName('fromtpl');
@@ -78,7 +78,7 @@ test('Save As Template and Open Template', async ({ page }) => {
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 
   // Templates are not flows: the Flows page does not list them.
-  await fileMenu(page, /^Open Flow/);
+  await fileMenu(page, /^Open Flow(?! Template)/);
   await expect(page.getByRole('link', { name: flow })).toBeVisible();
   await expect(page.getByRole('cell', { name: template, exact: true })).toHaveCount(0);
 });

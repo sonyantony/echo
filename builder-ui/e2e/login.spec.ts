@@ -17,7 +17,7 @@ test('logs in and lands on the start page', async ({ page }) => {
   await page.getByRole('button', { name: 'Log in' }).click();
   // No canvas to work on: every flow is named before any work on it.
   await expect(page.getByRole('heading', { name: 'Start with a flow' })).toBeVisible();
-  for (const name of ['New Flow', 'Open Flow', 'Open Template', 'Upload Flow']) {
+  for (const name of ['New Flow', 'Open Flow', 'Open Flow Template', 'Upload Flow']) {
     await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   }
   await expect(page.getByTestId('flow-name-tag')).toHaveCount(0);
