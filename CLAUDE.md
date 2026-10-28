@@ -25,6 +25,7 @@ app and built into an image by the buyer's pipeline).
   The flows' `{{placeholders}}` become `configmap.yaml` (values from `--env-values` / `ENV_VALUES` or the flow's
   `application.properties`); names matching `k8s.secret-names` only go in `secret.yaml.example`, empty, as the build
   never writes secret values: `docs/decisions/0018-flow-settings-as-configmap.md`.
+- Run asks for a properties file of test values for the flow's `{{placeholders}}` (Run <flow> With...), kept in memory per flow and user, never published: `docs/decisions/0019-run-with-a-properties-file.md`.
 - Disabling a published flow (`"disabled": true` in `echo-flow.json`, skipped by `build-flow.sh`) and a route (`autoStartup: false` answers 404, "Disabled" badge): `docs/decisions/0011-disable-flows-and-routes.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
   Themes: colours only in `builder-ui/src/theme/themes.css`; Kaoto and Apicurio map onto its tokens

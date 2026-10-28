@@ -122,4 +122,59 @@ class RunControllerTest {
     void settingsTellTheEditorRunIsAvailable() throws Exception {
         mvc.perform(as(get("/api/editor/settings"))).andExpect(jsonPath("$.runEnabled").value(true));
     }
+
+    private static final String GREET = """
+            - route:
+                id: greet
+                from:
+                  uri: platform-http:/greet
+                  steps:
+                    - log:
+                        message: "greeting from {{greeter.host}} within {{greeter.timeout:500}} ms"
+                    - setBody:
+                        constant: "{{reply.text}}"
+            """;
+
+    @Test
+    void aFlowWithPlaceholdersRunsWithTheChosenPropertiesFile() throws Exception {
+        long id = create("greet", GREET);
+
+        mvc.perform(as(get("/api/flows/{id}/run/values", id)))
+                .andExpect(jsonPath("$.fileName").isEmpty())
+                .andExpect(jsonPath("$.placeholders[*].name").value(org.hamcrest.Matchers.contains(
+                        "greeter.host", "greeter.timeout", "reply.text")))
+                .andExpect(jsonPath("$.placeholders[1].fallback").value("500"));
+
+        // No file chosen yet: Run asks for one.
+        mvc.perform(as(post("/api/flows/{id}/run", id)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.missing[*]").value(org.hamcrest.Matchers.contains("greeter.host", "reply.text")));
+
+        mvc.perform(as(post("/api/flows/{id}/run", id)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fileName\":\"dev.properties\",\"content\":\"greeter.host=localhost\\n\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("dev.properties does not set reply.text."));
+
+        mvc.perform(as(post("/api/flows/{id}/run", id)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fileName\":\"test.properties\",\"content\":\"greeter.host=localhost\\nreply.text=Hello from test\\n\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(as(post("/api/flows/{id}/run/request", id)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"method\":\"GET\",\"path\":\"/greet\"}"))
+                .andExpect(jsonPath("$.body").value("Hello from test"));
+
+        // Later runs reuse the file; other users choose their own.
+        mvc.perform(as(get("/api/flows/{id}/run/values", id))).andExpect(jsonPath("$.fileName").value("test.properties"));
+        mvc.perform(as(post("/api/flows/{id}/run", id))).andExpect(status().isOk());
+        mvc.perform(post("/api/flows/{id}/run", id).with(user("tester").roles("DESIGNER")).with(csrf()))
+                .andExpect(status().isConflict());
+
+        // A value the file does not set, added to the flow later, asks for the file again.
+        mvc.perform(as(put("/api/flows/{id}/files/{file}", id, "greet.camel.yaml"))
+                        .contentType(MediaType.TEXT_PLAIN).content(GREET.replace("{{reply.text}}", "{{reply.text}} {{reply.suffix}}")))
+                .andExpect(status().isNoContent());
+        mvc.perform(as(post("/api/flows/{id}/run", id)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.fileName").value("test.properties"))
+                .andExpect(jsonPath("$.missing[*]").value(org.hamcrest.Matchers.contains("reply.suffix")));
+    }
 }

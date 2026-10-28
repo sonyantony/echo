@@ -13,7 +13,9 @@ import java.net.http.HttpResponse;
 import java.security.Principal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -31,7 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The editor's Run button: start, stop and call a draft running inside the Builder. Starting
- * validates the saved draft first, like publish does.
+ * validates the saved draft first, like publish does. A flow that uses {{placeholders}} runs with
+ * the values of a properties file the user chose (Run With...), kept by {@link RunValues}.
  */
 @RestController
 @EnableScheduling
@@ -45,16 +48,19 @@ public class RunController {
     private final FlowValidator validator;
     private final FlowRunner runner;
     private final ApiCatalog apis;
+    private final RunValues values;
     private final HttpClient http = HttpClient.newBuilder()
             .proxy(HttpClient.Builder.NO_PROXY)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
-    public RunController(FlowService flows, FlowValidator validator, FlowRunner runner, ApiCatalog apis) {
+    public RunController(FlowService flows, FlowValidator validator, FlowRunner runner, ApiCatalog apis,
+            RunValues values) {
         this.flows = flows;
         this.validator = validator;
         this.runner = runner;
         this.apis = apis;
+        this.values = values;
     }
 
     /**
@@ -74,11 +80,43 @@ public class RunController {
 
     public record TestResponse(int status, String contentType, String body, long durationMs) {}
 
+    /**
+     * The values the saved draft uses and the properties file chosen for them (null: none yet).
+     * Starting answers 409 with this, and missing, when the file is needed or no longer sets them all.
+     */
+    public record RunValuesInfo(String fileName, List<RunValues.Placeholder> placeholders, List<String> missing) {}
+
+    /** A properties file chosen with Run With...: its name and its text. */
+    public record ChosenFile(String fileName, String content) {}
+
+    @GetMapping("/values")
+    public RunValuesInfo values(@PathVariable long id, Principal user) {
+        var placeholders = RunValues.placeholders(routeOf(id));
+        var chosen = values.get(id, user.getName());
+        return new RunValuesInfo(chosen.map(RunValues.Chosen::fileName).orElse(null), placeholders,
+                RunValues.missing(placeholders, chosen.map(RunValues.Chosen::values).orElseGet(Properties::new)));
+    }
+
+    /** Starts the saved draft, with file's values when given (and keeps them for later runs), else with those chosen before. */
     @PostMapping
-    public ResponseEntity<?> start(@PathVariable long id, Principal user) {
+    public ResponseEntity<?> start(@PathVariable long id, @RequestBody(required = false) ChosenFile file,
+            Principal user) {
         var flow = flows.get(id);
         String routeFile = FlowNames.routeFile(flow.getName());
-        var files = apis.withSpecs(routeFile, flows.files(id));
+        var files = new HashMap<>(apis.withSpecs(routeFile, flows.files(id)));
+        var placeholders = RunValues.placeholders(files.get(routeFile));
+        if (file != null) {
+            values.choose(id, user.getName(), file.fileName(), file.content(), placeholders);
+        }
+        var chosen = values.get(id, user.getName());
+        if (!placeholders.isEmpty()) {
+            var missing = RunValues.missing(placeholders, chosen.map(RunValues.Chosen::values).orElseGet(Properties::new));
+            if (chosen.isEmpty() || !missing.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                        new RunValuesInfo(chosen.map(RunValues.Chosen::fileName).orElse(null), placeholders, missing));
+            }
+        }
+        chosen.ifPresent(c -> files.put("application.properties", RunValues.merged(files.get("application.properties"), c)));
         var validation = validator.validate(routeFile, files);
         if (!validation.valid()) {
             return ResponseEntity.unprocessableEntity().body(validation);
@@ -142,6 +180,11 @@ public class RunController {
             Thread.currentThread().interrupt();
             throw new RunException("The request was interrupted.", e);
         }
+    }
+
+    private String routeOf(long id) {
+        var flow = flows.get(id);
+        return flows.files(id).get(FlowNames.routeFile(flow.getName()));
     }
 
     @ExceptionHandler(RunException.class)

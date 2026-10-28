@@ -41,7 +41,7 @@ test('tab-line menus close on an outside press and on Escape', async ({ page }) 
   await expect(menuItem(page, /^Download .* As Image/)).toBeHidden();
 
   for (const [name, item] of [
-    ['Run', /^Run /],
+    ['Run', /^Run (?!.*With\.\.\.)/],
     ['Advanced', /^Java Beans/],
   ] as const) {
     await tab(page, name).click();
@@ -58,6 +58,6 @@ test('tab-line menus close on an outside press and on Escape', async ({ page }) 
   await tab(page, 'File').click();
   await expect(menuItem(page, /^New Flow/)).toBeVisible();
   await tab(page, 'Run').click();
-  await expect(menuItem(page, /^Run /)).toBeVisible();
+  await expect(menuItem(page, /^Run (?!.*With\.\.\.)/)).toBeVisible();
   await expect(menuItem(page, /^New Flow/)).toBeHidden();
 });

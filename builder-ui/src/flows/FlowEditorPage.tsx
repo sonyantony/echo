@@ -16,7 +16,7 @@ import {
   PageSection,
   Spinner,
 } from '@patternfly/react-core';
-import { CheckCircleIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon, FileIcon, PlayIcon, UploadIcon } from '@patternfly/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -26,6 +26,8 @@ import {
   editorSettings,
   flowsApi,
   runApi,
+  type RunFile,
+  type RunValues,
   templatesApi,
   validateFlow,
   type ValidationResult,
@@ -59,6 +61,7 @@ import { OpenTemplateModal } from './OpenTemplateModal';
 import { PublishModal } from './PublishModal';
 import { publishSummary } from './publishSummary';
 import { RunPanel } from './RunPanel';
+import { RunWithModal } from './RunWithModal';
 import { SaveAsModal } from './SaveAsModal';
 import { UploadFlowModal } from './UploadFlowModal';
 import { useOperationRoutes } from './useOperationRoutes';
@@ -102,6 +105,8 @@ function FlowEditor() {
     enabled: runEnabled,
     refetchInterval: 15000,
   });
+  // The properties file this user chose for the flow's test runs (Run With...).
+  const runValues = useQuery({ queryKey: ['flow', id, 'run-values'], queryFn: () => runApi.values(id), enabled: runEnabled });
 
   const apiFiles = useMemo(() => new ApiFlowFiles(id), [id]);
   const editor = useRef<KaotoEditorHandle>(null);
@@ -132,6 +137,7 @@ function FlowEditor() {
   const [stopping, setStopping] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [runMenuOpen, setRunMenuOpen] = useState(false);
+  const [runWith, setRunWith] = useState<RunValues>();
   useDismissMenu(fileMenuOpen, setFileMenuOpen);
   useDismissMenu(runMenuOpen, setRunMenuOpen);
   const [savingAs, setSavingAs] = useState<'flow' | 'template'>();
@@ -293,24 +299,48 @@ function FlowEditor() {
     }
   }, [dirty, id, save]);
 
-  /** Runs what is on screen inside the Builder: unsaved edits are saved and the draft validated first. */
-  const startRun = useCallback(async () => {
-    setStarting(true);
-    setValidation(undefined);
+  /**
+   * Runs what is on screen inside the Builder: unsaved edits are saved and the draft validated first.
+   * A flow using {{placeholders}} runs with the properties file chosen before (file, when given, replaces
+   * it); without one, or when it no longer sets every value, Run With... opens to choose one.
+   */
+  const startRun = useCallback(
+    async (file?: RunFile) => {
+      setStarting(true);
+      setValidation(undefined);
+      try {
+        if (dirty && !(await save())) return;
+        setMessage(undefined);
+        queryClient.setQueryData(['flow', id, 'run'], await runApi.start(id, file));
+        setRunWith(undefined);
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 409) {
+          setRunWith(e.details as RunValues);
+        } else if (e instanceof ApiError && e.status === 422) {
+          setRunWith(undefined);
+          setValidation(e.details as ValidationResult);
+        } else if (file) {
+          throw e;
+        } else {
+          setMessage({ variant: 'danger', text: `Could not run: ${(e as Error).message}` });
+        }
+      } finally {
+        setStarting(false);
+        void queryClient.invalidateQueries({ queryKey: ['flow', id, 'run-values'] });
+      }
+    },
+    [dirty, id, save, queryClient],
+  );
+
+  /** Run With...: choose a properties file for the values the saved draft uses (unsaved edits are saved first). */
+  const chooseRunFile = useCallback(async () => {
     try {
       if (dirty && !(await save())) return;
-      setMessage(undefined);
-      queryClient.setQueryData(['flow', id, 'run'], await runApi.start(id));
+      setRunWith({ ...(await runApi.values(id)), missing: [] });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 422) {
-        setValidation(e.details as ValidationResult);
-      } else {
-        setMessage({ variant: 'danger', text: `Could not run: ${(e as Error).message}` });
-      }
-    } finally {
-      setStarting(false);
+      setMessage({ variant: 'danger', text: `Could not run: ${(e as Error).message}` });
     }
-  }, [dirty, id, save, queryClient]);
+  }, [dirty, id, save]);
 
   const stopRun = useCallback(async () => {
     setStopping(true);
@@ -520,11 +550,26 @@ function FlowEditor() {
           <DropdownItem
               key="run"
               icon={<PlayIcon />}
-              onClick={startRun}
+              onClick={() => void startRun()}
               isDisabled={starting || saving || validating}
-              description={run.data ? 'Restart the flow with your latest changes' : 'Run this flow inside the Builder and send it test requests'}
+              description={
+                runValues.data?.fileName
+                  ? `With the values in ${runValues.data.fileName}`
+                  : run.data
+                    ? 'Restart the flow with your latest changes'
+                    : 'Run this flow inside the Builder and send it test requests'
+              }
             >
               {run.data ? 'Restart' : 'Run'} {flow.data.displayName}
+            </DropdownItem>
+            <DropdownItem
+              key="run-with"
+              icon={<FileIcon />}
+              onClick={() => void chooseRunFile()}
+              isDisabled={starting || saving || validating}
+              description="Choose a properties file and run with its values"
+            >
+              Run {flow.data.displayName} With...
             </DropdownItem>
         </DropdownList>
       </Dropdown>
@@ -576,6 +621,14 @@ function FlowEditor() {
           warnings={mappingReview.warnings}
           error={mappingReview.error}
         />
+        {runWith && (
+          <RunWithModal
+            flowName={flow.data.displayName}
+            values={runWith}
+            onRun={(file) => startRun(file)}
+            onClose={() => setRunWith(undefined)}
+          />
+        )}
         {validation && (
           <div className="echo-flow-editor__message">
             <ValidationPanel result={validation} onClose={() => setValidation(undefined)} />
