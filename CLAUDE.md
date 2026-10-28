@@ -6,12 +6,12 @@ app and built into an image by the buyer's pipeline).
 
 - Requirements: `docs/Initial Requirements.md`. Build plan and milestones: `docs/ECHO Builder Plan.md`.
 - Decisions: `docs/decisions/` (one short note per significant choice).
-- Save As, Save As Template and Open Template (templates in `templates/` next to `flows/`): `docs/decisions/0007-save-as-and-templates.md`.
+- Save As, Save As Template and Open Flow Template (templates in `templates/` next to `flows/`): `docs/decisions/0007-save-as-and-templates.md`.
 - The REST service made from the flow's spec (Base Path, 404 for missing operations, no Rest tab): `docs/decisions/0008-rest-from-the-spec.md`.
 - operationIds are made by ECHO from method + path where missing (uploaded specs keep theirs and their comments; Interface hides them, renames move the routes,
   Flow > Add Route For Operation, methods added in Interface or uploaded get a route at once and deleted ones ask about theirs, Publish warns about operations without a route):
   `docs/decisions/0013-operation-ids-from-method-and-path.md`.
-- Every flow is named before any work on it: login lands on a start page (New Flow, Open Flow, Open Template, Upload Flow),
+- Every flow is named before any work on it: login lands on a start page (New Flow, Open Flow, Open Flow Template, Upload Flow),
   and a name (or the ID it makes) another Builder or published flow has is refused with an offer to open that flow:
   `docs/decisions/0014-every-flow-named-first.md`.
 - A path (Base Path + spec path, `/x` and `/x/{id}` count as one, any method) is in one flow only: Interface asks to switch to

@@ -13,7 +13,7 @@ REST part by hand, so the editor has no Rest tab.
   `missingOperation: ignore`. The draft keeps only what the user designs, so the REST part always
   follows the spec as it is at that moment (renamed, replaced by Upload or Copy From Another Flow)
   without the editor reloading anything. The published flow is complete, so the buyer's pipeline
-  is unchanged. Upload, Edit as draft and Open Template take the generated part out again
+  is unchanged. Upload, Edit as draft and Open Flow Template take the generated part out again
   (`RestFromSpec.strip`).
 - **Base Path is the spec's server URL.** Camel serves the operations under the path of the spec's
   server URL (checked in Run and in a pipeline-built jar). Openapi Design shows Apicurio's Servers

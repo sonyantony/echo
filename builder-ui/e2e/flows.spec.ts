@@ -8,7 +8,7 @@ test('creates, renames and deletes a flow', async ({ page }) => {
   const name = uniqueName('crud');
   await createFlow(page, name, 'CRUD test');
 
-  await fileMenu(page, /^Open Flow/);
+  await fileMenu(page, /^Open Flow(?! Template)/);
   const row = page.getByRole('row').filter({ hasText: name });
   await expect(row).toContainText('CRUD test');
   await expect(row).toContainText('Draft');
@@ -54,7 +54,7 @@ test('adds a step on the canvas and keeps it after saving', async ({ page }) => 
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
 });
 
-// Ctrl+S saves and Ctrl+O opens Open Template, instead of the browser's own save and open.
+// Ctrl+S saves and Ctrl+O opens Open Flow Template, instead of the browser's own save and open.
 test('Ctrl+S saves and Ctrl+O opens a template', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('keys'));
@@ -67,7 +67,7 @@ test('Ctrl+S saves and Ctrl+O opens a template', async ({ page }) => {
   await expect(page.getByTestId('unsaved')).toHaveCount(0);
 
   await page.keyboard.press('Control+o');
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Open Template' })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Open Flow Template' })).toBeVisible();
 });
 
 // File > Open Flow goes to the Flows list, asking first about unsaved changes.
@@ -75,9 +75,21 @@ test('File > Open Flow shows the Flows list', async ({ page }) => {
   await login(page);
   await createFlow(page, uniqueName('openflow'));
   await addStep(page, 1, 'setBody');
-  await fileMenu(page, /^Open Flow/);
+  await fileMenu(page, /^Open Flow(?! Template)/);
   await page.getByRole('dialog').getByRole('button', { name: 'Leave' }).click();
   await expect(page.getByRole('heading', { name: 'Open Flow', exact: true })).toBeVisible();
+});
+
+// File > Manage Flows opens the same list (with Delete), titled Manage Flows.
+test('File > Manage Flows shows the Flows list titled Manage Flows', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('manageflows');
+  await createFlow(page, name);
+  await fileMenu(page, /^Manage Flows/);
+  await expect(page.getByRole('heading', { name: 'Manage Flows', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
 });
 
 test('warns before leaving with unsaved changes', async ({ page }) => {
@@ -86,7 +98,7 @@ test('warns before leaving with unsaved changes', async ({ page }) => {
   await addStep(page, 1, 'setBody');
   await expect(page.getByTestId('unsaved')).toBeVisible();
 
-  await fileMenu(page, /^Open Flow/);
+  await fileMenu(page, /^Open Flow(?! Template)/);
   await expect(page.getByText('Leave without saving?')).toBeVisible();
   await page.getByRole('button', { name: 'Stay' }).click();
   await expect(page.getByTestId('custom-node__route.from.steps.1.setBody')).toBeVisible();
@@ -220,7 +232,7 @@ test('names a flow with capitals and spaces and shows the ID made from it', asyn
   await expect(page.getByTestId('flow-name-tag')).toHaveText(`Flow: ${name}`);
   await expect(page.getByTestId('flow-name-tag')).toHaveAttribute('title', new RegExp(`ID: ${id}`));
 
-  await fileMenu(page, /^Open Flow/);
+  await fileMenu(page, /^Open Flow(?! Template)/);
   const row = page.getByRole('row').filter({ hasText: name });
   await expect(row.getByRole('link', { name })).toBeVisible();
   await expect(row).toContainText(`ID: ${id}`);

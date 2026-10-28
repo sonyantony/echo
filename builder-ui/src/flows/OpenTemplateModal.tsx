@@ -27,7 +27,7 @@ interface Props {
   onClose(): void;
 }
 
-/** Open Template: picks a template from Git's templates folder and makes a new draft from it. */
+/** Open Flow Template: picks a template from Git's templates folder and makes a new draft from it. */
 export function OpenTemplateModal({ onOpened, onClose }: Props) {
   const templates = useQuery({ queryKey: ['templates'], queryFn: templatesApi.list });
   const [template, setTemplate] = useState('');
@@ -62,7 +62,7 @@ export function OpenTemplateModal({ onOpened, onClose }: Props) {
   return (
     <Modal isOpen variant="small" onClose={onClose} aria-labelledby="open-template-title">
       <ModalHeader
-        title="Open Template"
+        title="Open Flow Template"
         labelId="open-template-title"
         description="Start a new flow from a template stored in Git. The template itself is not changed."
       />

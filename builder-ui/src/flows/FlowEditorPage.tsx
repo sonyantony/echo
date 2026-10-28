@@ -450,7 +450,7 @@ function FlowEditor() {
     );
   }
 
-  /** Opens a draft just made by New Flow, Open Template or Upload Flow (leaving this one asks about unsaved edits). */
+  /** Opens a draft just made by New Flow, Open Flow Template or Upload Flow (leaving this one asks about unsaved edits). */
   const openNewDraft = async (newId: number) => {
     setCreating(false);
     setOpeningTemplate(false);
@@ -492,7 +492,7 @@ function FlowEditor() {
             description="Start a new flow from a template stored in Git"
             aria-keyshortcuts="Control+O"
           >
-            Open Template
+            Open Flow Template
             <Shortcut keys="Ctrl+O" />
           </DropdownItem>
           <DropdownItem
@@ -501,6 +501,13 @@ function FlowEditor() {
             description="Pick a flow from the list of flows"
           >
             Open Flow
+          </DropdownItem>
+          <DropdownItem
+            key="manage-flows"
+            onClick={() => navigate(OPEN_FLOW_PATH, { state: { ...openFlowState, manage: true } })}
+            description="Delete, rename or open flows from the list of flows"
+          >
+            Manage Flows
           </DropdownItem>
           <DropdownItem
             key="upload"
@@ -524,7 +531,7 @@ function FlowEditor() {
           <DropdownItem
             key="save-as-template"
             onClick={() => setSavingAs('template')}
-            description="Store this flow in Git's templates folder for Open Template"
+            description="Store this flow in Git's templates folder for Open Flow Template"
           >
             Save As Template
           </DropdownItem>

@@ -10,12 +10,12 @@ overwrite its folder), and a name that made another flow's ID quietly got `-2`, 
 all work to happen on a flow that already has a unique name.
 
 - **A start page instead of the blank canvas.** After login (and from the logo) the page offers New
-  Flow, Open Flow, Open Template and Upload Flow, and nothing to edit. Each of them names the flow
+  Flow, Open Flow, Open Flow Template and Upload Flow, and nothing to edit. Each of them names the flow
   first (Upload may keep the name in the file), so the editor only ever shows a named flow. The
   untitled flow's "first Save names the flow and its spec" is gone with it; a flow is started from
   its API by New Flow, then Interface.
 - **A name must be the flow's own, checked against the Builder and the publish target.** New Flow,
-  Open Template, Upload, Save As and Rename refuse a name (ignoring case) that another flow has as
+  Open Flow Template, Upload, Save As and Rename refuse a name (ignoring case) that another flow has as
   its name or ID, or whose ID (`FlowNames.idFor`) another flow has, in the Builder or in the primary
   publish target (Git, else S3; `PublishedNames`). A flow's own published folder does not count.
   If the publish target cannot be read, only the Builder is checked; Publish reports the problem.
