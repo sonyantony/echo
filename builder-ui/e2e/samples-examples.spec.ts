@@ -92,7 +92,7 @@ test('the sample request and response are kept as the examples of their bodies',
   await page.request.delete(`/api/flows/${flowId}/run`, { headers: { 'X-XSRF-TOKEN': await csrf(page) } });
 });
 
-test('a response under Responses set to a data type made from a sample gets the sample as its example on Save', async ({ page }) => {
+test('a response under Responses set to a data type made from a sample gets the sample as its example at once', async ({ page }) => {
   await login(page);
   const name = uniqueName('nodes');
   await createFlow(page, name);
@@ -116,26 +116,21 @@ test('a response under Responses set to a data type made from a sample gets the 
   await form.locator('.media-type .type').click();
   await form.getByRole('button', { name: /Choose Type/ }).click();
   await form.getByText(/Response$/).last().click();
-  await expect(form.locator('.media-type .type')).toContainText('Response');
-  await expect(form.getByText('No examples defined.')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  const save = page.getByRole('dialog');
-  if (await save.isVisible().catch(() => false)) await save.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText(/^Saved .*-api\.yaml\.$/)).toBeVisible();
-  // The flow keeps the route it got.
-  await fileMenu(page, /^Save$/);
+  // Picking the type adds its sample as the example, before any Save.
+  await expect(form.getByText('1 example(s) defined.')).toBeVisible();
+  await expect(form.getByRole('row', { name: /^sample .*"name":"n1"/ })).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/4-response-component-example.png` });
+  await fileMenu(page, /^Save(?! As)/);
+  const save = page.getByRole('dialog', { name: 'Save' });
+  await save.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const flow = await (await page.request.get(`/api/flows/${flowIdOf(page)}`)).json();
   const stored = await (await page.request.get(`/api/flows/${flowIdOf(page)}/files/${flow.apiSpec}`)).text();
-  expect(stored).toMatch(/GetNodeSuccess:[^]*examples:\n\s+sample:\n\s+summary: The sample\n\s+value:\n\s+name: n1/);
+  expect(stored).toMatch(/GetNodeSuccess:[^]*examples:\n\s+sample:\n(\s+summary: The sample\n)?\s+value:\n\s+name: n1/);
 
-  // The editor shows it once it opens again.
-  await page.getByRole('button', { name: 'Flow', exact: true }).click();
-  await page.getByRole('menuitem', { name: /^Design/ }).click();
-  await interfaceMenu(page, /^Design/);
-  await interfaceItem(page, 'Responses');
-  await editor.locator('.response-section .api-response', { hasText: 'GetNodeSuccess' }).click();
-  await expect(form.getByText('1 example(s) defined.')).toBeVisible();
-  if (shots) await page.screenshot({ path: `${shots}/4-response-component-example.png` });
+  // It is an ordinary edit: undo takes it back, and the type stays.
+  await editor.getByTitle('Click to undo the last change.').click();
+  await expect(form.getByText('No examples defined.')).toBeVisible();
+  await expect(form.getByText(/Response$/).first()).toBeVisible();
 });
