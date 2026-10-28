@@ -316,3 +316,40 @@ test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With..
   await expect(validate).toBeVisible();
   await expect(publish).toBeVisible();
 });
+
+test('only the selected step shows its step toolbar, hovering another step shows none', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('steptoolbar');
+  await createFlow(page, name);
+  const flowId = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
+  const token = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
+  const route = `- route:
+    id: one-route
+    from:
+      uri: direct:one
+      steps:
+        - log:
+            message: first
+        - log:
+            message: second
+`;
+  await page.request.put(`/api/flows/${flowId}/files/${name}.camel.yaml`, {
+    data: route,
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': token },
+  });
+  await page.reload();
+  const step = (i: number) => page.locator(`g[data-id="one-route|route.from.steps.${i}.log"] .custom-node__container`);
+  const toolbars = page.getByTestId('step-toolbar');
+  await expect(step(0)).toBeVisible();
+  // Hovering alone shows no toolbar.
+  await step(1).hover();
+  await page.waitForTimeout(800);
+  await expect(toolbars).toHaveCount(0);
+  await step(0).click();
+  await expect(toolbars).toHaveCount(1);
+  // Hovering another step keeps the one toolbar of the selected step.
+  await step(1).hover();
+  await page.waitForTimeout(800);
+  await expect(toolbars).toHaveCount(1);
+  await page.screenshot({ path: 'test-results/one-step-toolbar.png' });
+});
