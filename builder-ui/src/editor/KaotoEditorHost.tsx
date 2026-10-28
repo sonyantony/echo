@@ -14,6 +14,8 @@ import { disabledRouteCss, disabledRouteIds } from './disabledRoutes';
 import { selectedRouteCss, selectedRouteGroupId } from './selectedRoute';
 import { trackTabUnderline } from './tabUnderline';
 import { trackCanvasScrollbars } from './canvasScrollbars';
+import { fitRoute } from './canvasZoom';
+import { FitRouteButton, MaximizeCanvasButton } from './CanvasViewButtons';
 import { OperationTagFilter } from './OperationTagFilter';
 import type { ApiTags } from '../api/flows';
 import './KaotoEditorHost.css';
@@ -105,6 +107,10 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const [advancedSlot, setAdvancedSlot] = useState<HTMLElement>();
   const [canvasSlot, setCanvasSlot] = useState<HTMLElement>();
   const [designSlot, setDesignSlot] = useState<HTMLElement>();
+  const [fitSlot, setFitSlot] = useState<HTMLElement>();
+  const [maximizeSlot, setMaximizeSlot] = useState<HTMLElement>();
+  /** The canvas fills the whole window (Maximize on the canvas control bar). */
+  const [maximized, setMaximized] = useState(false);
   const [tabBarHeight, setTabBarHeight] = useState(0);
   const [editorElement, setEditorElement] = useState<HTMLDivElement>();
   const onKaotoViewPickedRef = useRef(onKaotoViewPicked);
@@ -201,12 +207,23 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
     design.className = 'echo-kaoto-host__tab-design';
     const canvas = document.createElement('div');
     canvas.className = 'pf-v6-c-toolbar__item echo-kaoto-host__canvas-actions';
+    const fit = document.createElement('div');
+    fit.className = 'pf-v6-c-toolbar__item';
+    const maximize = document.createElement('div');
+    maximize.className = 'pf-v6-c-toolbar__item';
     const attach = () => {
       // The canvas toolbar comes and goes with the Design tab; the same slot moves into each one.
       const clipboardItem = container.querySelector(".context-toolbar [data-testid='clipboardButton']")?.closest('.pf-v6-c-toolbar__item');
       if (clipboardItem && clipboardItem.nextElementSibling !== canvas) {
         clipboardItem.after(canvas);
         setCanvasSlot(canvas);
+      }
+      // So is the zoom control bar at the canvas's bottom left; ECHO's buttons follow Reset View.
+      const resetItem = container.querySelector('.pf-topology-control-bar #reset-view')?.closest('.pf-v6-c-toolbar__item');
+      if (resetItem && resetItem.nextElementSibling !== fit) {
+        resetItem.after(fit, maximize);
+        setFitSlot(fit);
+        setMaximizeSlot(maximize);
       }
       const tabBar = container.querySelector<HTMLElement>(":scope > .shell > div[role='region']");
       if (!tabBar) return;
@@ -262,9 +279,37 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
       startSlot.remove();
       advanced.remove();
       canvas.remove();
+      fit.remove();
+      maximize.remove();
       design.remove();
     };
   }, []);
+
+  // PatternFly's page puts its main area below the masthead (z-index 100 against 300); a
+  // maximized canvas lifts it, so the editor can cover the masthead (KaotoEditorHost.css).
+  useEffect(() => {
+    document.body.classList.toggle('echo-canvas-maximized', maximized);
+    return () => document.body.classList.remove('echo-canvas-maximized');
+  }, [maximized]);
+
+  // Escape restores a maximized canvas, unless a dialog (e.g. the catalog) is open to take it.
+  useEffect(() => {
+    if (!maximized) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !document.querySelector('.pf-v6-c-modal-box, .pf-v6-c-backdrop')) setMaximized(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [maximized]);
+
+  const fitToCanvas = () => {
+    if (containerRef.current) fitRoute(containerRef.current, selectedRoute);
+  };
+  const toggleMaximized = () => {
+    setMaximized((m) => !m);
+    // Once the canvas has its new size, fit the route to it.
+    requestAnimationFrame(() => requestAnimationFrame(fitToCanvas));
+  };
 
   const onFilesPicked = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const picked: Record<string, string> = {};
@@ -292,7 +337,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   };
 
   return (
-    <div className="echo-kaoto-host" data-testid="kaoto-editor-host">
+    <div className={maximized ? 'echo-kaoto-host echo-kaoto-host--maximized' : 'echo-kaoto-host'} data-testid="kaoto-editor-host">
       {error && <div role="alert">Could not start the flow editor: {error}</div>}
       {disabledCss && <style data-testid="disabled-route-badges">{disabledCss}</style>}
       {selectedRoute && <style data-testid="selected-route">{selectedRouteCss(selectedRoute)}</style>}
@@ -316,6 +361,8 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
         )}
       {editorElement && apiTags && apiTags.length > 0 && <OperationTagFilter container={editorElement} apis={apiTags} />}
       {canvasSlot && canvasToolbarActions && createPortal(canvasToolbarActions, canvasSlot)}
+      {fitSlot && createPortal(<FitRouteButton routeSelected={!!selectedRoute} onClick={fitToCanvas} />, fitSlot)}
+      {maximizeSlot && createPortal(<MaximizeCanvasButton maximized={maximized} onClick={toggleMaximized} />, maximizeSlot)}
       {advancedSlot &&
         createPortal(
           <>

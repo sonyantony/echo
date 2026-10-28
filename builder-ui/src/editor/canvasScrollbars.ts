@@ -33,14 +33,29 @@ export function thumbGeometry(viewStart: number, viewEnd: number, contentStart: 
 type Axis = 'x' | 'y';
 
 /**
+ * Moves the view of Kaoto's canvas (its `svg`) by (dx, dy) screen pixels: positive scrolls right
+ * and down. It is the drag on the canvas background a person would make: Kaoto's pan handler is
+ * d3's, which listens on the diagram for mousedown and on the window for mousemove and mouseup.
+ */
+export function panCanvas(svg: SVGSVGElement, dx: number, dy: number) {
+  const target = svg.querySelector<SVGElement>("g[data-kind='graph'] > rect");
+  if (!target || (!dx && !dy)) return;
+  const box = target.getBoundingClientRect();
+  const x = box.left + box.width / 2;
+  const y = box.top + box.height / 2;
+  const init = (clientX: number, clientY: number) => ({ clientX, clientY, button: 0, buttons: 1, bubbles: true, cancelable: true, view: window });
+  target.dispatchEvent(new MouseEvent('mousedown', init(x, y)));
+  window.dispatchEvent(new MouseEvent('mousemove', init(x - dx, y - dy)));
+  window.dispatchEvent(new MouseEvent('mouseup', { ...init(x - dx, y - dy), buttons: 0 }));
+}
+
+/**
  * Kaoto's Design canvas is a PatternFly topology diagram: it is moved by dragging its background
  * and has no scroll bars, so a flow taller or wider than the canvas (e.g. many operation routes)
  * runs off the edge with no sign of more. This adds a vertical bar along the canvas's right edge
  * (next to the split with the step form) and a horizontal one along its bottom, shown only while
  * part of the diagram is out of view. Dragging a thumb, clicking a track or turning the mouse
- * wheel over a bar moves the diagram, by the same drag on the canvas background a person would
- * make (Kaoto's pan handler is d3's, which listens on the diagram for mousedown and on the window
- * for mousemove and mouseup). Returns a cleanup function.
+ * wheel over a bar moves the diagram (panCanvas). Returns a cleanup function.
  */
 export function trackCanvasScrollbars(container: HTMLElement) {
   const bars = document.createElement('div');
@@ -62,19 +77,10 @@ export function trackCanvasScrollbars(container: HTMLElement) {
   let surface: HTMLElement | null = null;
   const svg = () => surface?.querySelector<SVGSVGElement>(':scope > svg') ?? null;
   const diagram = () => svg()?.querySelector<SVGGElement>("g[data-kind='graph'] > g[data-surface]") ?? null;
-  const background = () => svg()?.querySelector<SVGElement>("g[data-kind='graph'] > rect") ?? null;
 
-  /** Moves the diagram's view by (dx, dy) screen pixels: positive scrolls right and down. */
   const scrollBy = (dx: number, dy: number) => {
-    const target = background();
-    if (!target || (!dx && !dy)) return;
-    const box = target.getBoundingClientRect();
-    const x = box.left + box.width / 2;
-    const y = box.top + box.height / 2;
-    const init = (clientX: number, clientY: number) => ({ clientX, clientY, button: 0, buttons: 1, bubbles: true, cancelable: true, view: window });
-    target.dispatchEvent(new MouseEvent('mousedown', init(x, y)));
-    window.dispatchEvent(new MouseEvent('mousemove', init(x - dx, y - dy)));
-    window.dispatchEvent(new MouseEvent('mouseup', { ...init(x - dx, y - dy), buttons: 0 }));
+    const canvas = svg();
+    if (canvas) panCanvas(canvas, dx, dy);
   };
 
   const place = () => {
