@@ -77,12 +77,26 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   operationId the route starts from (a new operation is named as soon as it is added, and a
   renamed path keeps its id until the save, so a rename is never an add plus a delete). An
   operation that appears and has no route gets one on the canvas straight away: the same route
-  Add Route For Operation makes (`direct:<operationId>`, a log step). The route's entry point stays
+  Add Route For Operation makes (`direct:<operationId>` and the scaffold below). The route's entry point stays
   `direct:`, not a `platform-http` endpoint of its own: the REST service ECHO makes from the spec
   already listens on platform-http and calls it, which keeps request validation, Swagger UI and
   the clash checks working. An operation that has a route already (or a disabled one) gets none.
-- **Deleted: ask only when there is work to lose.** A route still as ECHO made it (nothing but
-  its log step) goes quietly, so undoing an add leaves nothing behind. Any other route is kept
+- **The route is a scaffold** (added 2026-10-28, Francise: "make the user do only the least
+  amount of work"). A Set Variable for each path, query and header parameter of the operation
+  (`${header.<name>}`, where the generated REST service puts it), Remove Headers `*` (so the
+  incoming request's headers don't change the downstream URL), a multicast (parallel, joined by the
+  `joinWithComma` StringAggregationStrategy bean, which is added to the flow if missing) with one
+  pipeline: a REST OpenApi step, Convert Body To String and Set Body `"result": ${body}`. After the
+  multicast, Set Body `{${body}}` and a Content-Type `application/json` header, so the replies of
+  further branches merge into one JSON object. The REST OpenApi step is left for the user to point
+  at the operation it calls: the downstream API is not the flow's own spec. When the install
+  approves exactly one API (`echo.apis`), its spec is filled in, and its `{{<id>.host}}` placeholder
+  when the spec names no server. Validate reports a REST OpenApi step that names neither spec nor
+  operation. A parameter added or removed in Interface later adds or removes its Set Variable while
+  the route is still the scaffold ECHO made.
+- **Deleted: ask only when there is work to lose.** A route still as ECHO made it (the scaffold,
+  with its spec and Host as set but no operation picked, or the log step only routes made before
+  2026-10-28 had) goes quietly, so undoing an add leaves nothing behind. Any other route is kept
   unless the user picks **Remove Route** in the dialog that asks (several deleted at once, such as
   a whole path, are listed in one dialog); the dialog warns when other routes call it. A route
   removed this session comes back as it was if its operation does (Undo in Interface). One that

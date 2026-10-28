@@ -63,6 +63,14 @@ test('the sample request and response are kept as the examples of their bodies',
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const route = await (await page.request.get(`/api/flows/${flowId}/files/${name}.camel.yaml`)).text();
   expect(route).toMatch(new RegExp(`uri: direct\\n\\s+parameters:\\n\\s+name: ${operationId}\\n`));
+  // The route's REST OpenApi step waits for the operation it calls; for this run it just answers.
+  const answering = route.replace(/(\n( +)steps:\n)[^]*$/, `$1$2  - setBody:\n$2      constant: ok\n`);
+  expect((await page.request.put(`/api/flows/${flowId}/files/${name}.camel.yaml`, {
+    data: answering,
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': await csrf(page) },
+  })).ok()).toBe(true);
+  await page.reload();
+  await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
   await page.getByRole('button', { name: 'Run', exact: true }).click();
   await page.getByRole('menuitem', { name: new RegExp(`^Run ${name}(?! With\\.\\.\\.)`) }).click();
   // The Run panel's URL (the canvas shows "POST <path>" on the route already).

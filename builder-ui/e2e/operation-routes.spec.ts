@@ -85,7 +85,14 @@ test('an uploaded spec gets a route per operation under its own ids; Add Route F
 
   // A route taken out (here outside the editor): Publish lists its operation and asks.
   const xsrf = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
-  const withoutDelete = YAML.stringify((YAML.parse(route) as { route?: { id?: string } }[]).filter((e) => e.route?.id !== 'route-deleteCardsId'));
+  // The routes ECHO made call nothing yet (their REST OpenApi step waits for an operation): here they just log.
+  const designed = (yaml: string) =>
+    YAML.stringify(
+      (YAML.parse(yaml) as { route?: { from: { steps: unknown[] } } }[]).map((e) =>
+        e.route && JSON.stringify(e.route).includes('rest-openapi') ? { route: { ...e.route, from: { ...e.route.from, steps: [{ log: { message: 'called' } }] } } } : e,
+      ),
+    );
+  const withoutDelete = designed(YAML.stringify((YAML.parse(route) as { route?: { id?: string } }[]).filter((e) => e.route?.id !== 'route-deleteCardsId')));
   expect(withoutDelete).not.toContain('deleteCardsId');
   await page.request.put(routeFile, { data: withoutDelete, headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf } });
   await page.reload();
@@ -109,6 +116,15 @@ test('an uploaded spec gets a route per operation under its own ids; Add Route F
   await expect(page.getByText('Added a route for DELETE /cards/{id}. Design it on the canvas.')).toBeVisible();
   await fileMenu(page, /^Save(?! As)/);
   await expect(page.getByText('Saved.')).toBeVisible();
+  // Its REST OpenApi step waits for the operation it calls: Publish says so.
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await publish.getByRole('button', { name: 'Publish' }).click();
+  await expect(page.getByText(/This REST OpenApi step calls nothing yet/)).toBeVisible();
+  route = await (await page.request.get(routeFile)).text();
+  await page.request.put(routeFile, { data: designed(route), headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf } });
+  await page.reload();
+  await designMenu(page, /^Design/);
+  await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await publish.getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
@@ -226,7 +242,12 @@ test('a method added in Interface gets a route at once; deleting it asks about a
   await expect(page.getByText('Added a route for POST /cards.')).toBeVisible();
   if (shots) await page.screenshot({ path: `${shots}/5-route-added-at-once.png` });
   let route = await saved();
-  expect(route).toMatch(/name: postCards\n\s+steps:\n\s+- log:\n\s+id: log-postCards\n\s+message: POST \/cards called/);
+  // A scaffold: Remove Headers, then a multicast with one pipeline calling a REST OpenApi step, then a JSON reply.
+  const made = (YAML.parse(route) as { route?: { from: { parameters?: { name?: string }; steps: Record<string, { steps?: unknown[] }>[] } } }[])
+    .find((e) => e.route?.from.parameters?.name === 'postCards')!.route!.from.steps;
+  expect(made.map((step) => Object.keys(step)[0])).toEqual(['removeHeaders', 'multicast', 'setBody', 'setHeader']);
+  expect(JSON.stringify(made[1].multicast.steps)).toMatch(/^\[\{"pipeline":.*"uri":"rest-openapi"/);
+  expect(route).toContain('name: joinWithComma');
   expect(route.match(/name: getCards/g)).toHaveLength(1);
 
   // POST's route is still as ECHO made it: deleting POST takes it away without asking.

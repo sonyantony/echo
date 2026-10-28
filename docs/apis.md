@@ -47,6 +47,12 @@ after changing a spec (`docker compose restart`).
    don't change the URL. Then set what the API needs, such as
    `Authorization: Bearer {{blueplanet.token}}`. Secrets stay as placeholders and never go into Git.
 
+A route ECHO makes for a new operation of the flow's spec already has this shape: Set Variable
+steps for the operation's parameters, Remove Headers `*`, and a REST OpenApi step inside a
+multicast. With exactly one approved API, its Specification Uri (and Host placeholder) are filled
+in; pick the Operation Id, then set the headers it needs from the variables, for example a header
+`id` with `${variable.id}`.
+
 The step is saved as:
 
 ```yaml

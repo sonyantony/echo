@@ -43,6 +43,8 @@ import {
   renameDirectRoutes,
   routableOperations,
   routeForOperation,
+  withJoinBean,
+  type ApiCall,
   type OperationRename,
   type RoutableOperation,
 } from '../apispec/operationIds';
@@ -149,7 +151,12 @@ function FlowEditor() {
   /** Renaming routes after a spec save renamed operations; Add Route For Operation waits for it. */
   const renaming = useRef<Promise<void>>(undefined);
   // Methods added in Interface get a route at once; deleted ones ask about theirs.
-  const operationRoutes = useOperationRoutes(editor, (variant, text) => setMessage({ variant, text }));
+  const routeCall = settings.data?.routeCall;
+  const apiCall = useMemo<ApiCall>(
+    () => (routeCall ? { specificationUri: routeCall.specificationUri, host: routeCall.host ?? undefined } : {}),
+    [routeCall],
+  );
+  const operationRoutes = useOperationRoutes(editor, (variant, text) => setMessage({ variant, text }), apiCall);
   /** Client Request Validation and Enable CORS, as the route on screen has them (Flow menu). */
   const [restSettings, setRestSettings] = useState<RestSettings>();
   // The API spec is opened on first use and then kept (hidden while a Kaoto view is open), so its
@@ -813,7 +820,7 @@ function FlowEditor() {
             setAddingRoutes(undefined);
             try {
               const yaml = await editor.current!.getContent();
-              await editor.current!.setContent(operations.reduce((y, op) => appendRoute(y, routeForOperation(op)), yaml));
+              await editor.current!.setContent(operations.reduce((y, op) => appendRoute(y, routeForOperation(op, apiCall)), withJoinBean(yaml)));
               setMessage({
                 variant: 'success',
                 text: `Added a route for ${operations.map(operationLabel).join(', ')}. Design it on the canvas.`,
