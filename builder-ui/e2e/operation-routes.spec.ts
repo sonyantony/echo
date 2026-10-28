@@ -208,6 +208,8 @@ test('a method added in Interface gets a route at once; deleting it asks about a
   await fileMenu(page, /^Save(?! As)/);
   await page.getByRole('dialog', { name: 'Save' }).getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
+  // The dialog closes before the spec is stored; until then the next Save would ask for a name again.
+  await expect(page.getByText(`Saved ${name}-api.yaml.`)).toBeVisible();
   const method = (label: string) => editor.locator('.operation-tab').getByText(label, { exact: true });
   const deleteOperation = async (label: string) => {
     await method(label).click();
