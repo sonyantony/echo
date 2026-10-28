@@ -148,18 +148,17 @@ export function SamplesSpecModal({ replaces, hasOperation, onGenerate, onAdd, on
             />
             {responseSample.shown && <SampleError text={responseSample.error!} />}
           </FormGroup>
-          {replaces && (
+          {replaces && canAdd && !taken && (
+            <p className="echo-samples-spec__add-note">
+              <strong>Add to this spec</strong>: adds this method to the spec.
+            </p>
+          )}
+          {replaces && (!canAdd || taken) && (
             <Alert
               variant="warning"
               isInline
               isPlain
-              title={
-                !canAdd
-                  ? `A flow has one OpenAPI spec: ${replaces}.`
-                  : taken
-                    ? `A flow has one OpenAPI spec. Replace Whole Spec makes a new one: ${replaces}.`
-                    : `A flow has one OpenAPI spec. Add to this spec keeps it and adds this method; Replace makes a new one: ${replaces}.`
-              }
+              title={canAdd ? `A flow has one OpenAPI spec. Replace Whole Spec makes a new one: ${replaces}.` : `A flow has one OpenAPI spec: ${replaces}.`}
             />
           )}
           {taken && (
@@ -179,7 +178,7 @@ export function SamplesSpecModal({ replaces, hasOperation, onGenerate, onAdd, on
               {taken ? `Replace ${method} ${fullPath}` : 'Add to this spec'}
             </Button>
             <Button variant="danger" isDisabled={!valid} onClick={replace}>
-              {taken ? 'Replace Whole Spec' : 'Replace'}
+              Replace Whole Spec
             </Button>
           </>
         ) : (

@@ -29,8 +29,8 @@ from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI e
   with its data types (names not taken yet), its samples as examples and its route. When the spec
   has that method on that path, the button reads **Replace GET /path** instead: the method made
   from the samples takes the old one's place under the same operationId (so its route stays), and
-  the data types only the old one used go; **Cancel** keeps it. **Replace** (**Replace Whole Spec**
-  then) throws the spec away and makes a new one.
+  the data types only the old one used go; **Cancel** keeps it. **Replace Whole Spec** throws the spec
+  away and makes a new one.
   A new path another flow has is asked about, as when typed in (decision 0015).
 - **Download Openapi File As Yaml** / **As Json**: the spec on screen, unsaved edits included,
   named after the spec (or the flow while the spec has no name).

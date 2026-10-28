@@ -172,7 +172,7 @@ test('Add to this spec adds a method from samples to the spec the flow has, or r
   // The flow has a spec now: Add to this spec, beside Replace; a method it has already is offered for replacing.
   await page.getByRole('button', { name: 'Interface Specs from Samples', exact: true }).click();
   dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('button', { name: 'Replace' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Replace Whole Spec' })).toBeVisible();
   await dialog.getByLabel('Method').selectOption('GET');
   await dialog.getByLabel('Path').fill(`${path}/{cardId}`);
   await dialog.getByLabel('Sample response (JSON)').fill('{"id":"c-1"}');

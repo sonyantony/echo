@@ -54,7 +54,6 @@ describe('Interface Specs from Samples dialog', () => {
     render(
       <SamplesSpecModal replaces="cards.yaml is overwritten when you save" hasOperation={hasOperation} onGenerate={onGenerate} onAdd={onAdd} onClose={() => {}} />,
     );
-    expect(screen.getByText(/Add to this spec keeps it and adds this method; Replace makes a new one: cards.yaml is overwritten/)).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Method'), 'GET');
     await user.type(screen.getByLabelText(/Path/), '/cards/{{id}');
     await user.click(screen.getByLabelText(/Sample response/));
@@ -67,6 +66,9 @@ describe('Interface Specs from Samples dialog', () => {
 
     await user.selectOptions(screen.getByLabelText('Method'), 'DELETE');
     expect(screen.getByRole('button', { name: 'Add to this spec' })).toBeEnabled();
+    // One plain line, no warning, while the method can be added.
+    expect(screen.getByText(/: adds this method to the spec\./)).toBeInTheDocument();
+    expect(screen.queryByText(/A flow has one OpenAPI spec/)).not.toBeInTheDocument();
     // Enter in the Path field adds; it never replaces.
     await user.type(screen.getByLabelText(/Path/), '{Enter}');
     expect(onAdd).toHaveBeenCalledWith({ method: 'DELETE', path: '/cards/{id}', operationId: 'deleteCardsId', request: undefined, response: { id: 'c-1' } });

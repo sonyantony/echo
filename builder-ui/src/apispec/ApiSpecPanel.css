@@ -163,3 +163,8 @@
   font-style: italic;
   color: var(--echo-text-subtle);
 }
+
+/* Interface Specs from Samples: what Add to this spec does, one plain line. */
+.echo-samples-spec__add-note {
+  margin: 0;
+}
