@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { followApicurioTheme } from './apicurioTheme';
 import { fillNewOperationId } from './operationIdFiller';
+import { fillSampleExample, newlyTyped, type NewlyTyped } from './sampleExampleFiller';
 import { simplifyBasePathDialog } from './basePath';
 import { titleCaseSectionLabels } from './sectionLabels';
 import { addSourceUpload } from './sourceToolbar';
@@ -60,6 +61,9 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
   onChangeRef.current = onChange;
   const timer = useRef<number>(undefined);
   const fillTimer = useRef<number>(undefined);
+  const exampleTimer = useRef<number>(undefined);
+  /** The spec as the editor last reported it, to see which bodies just got a type. */
+  const previous = useRef<string | undefined>(initialContent);
   const stopTheme = useRef<() => void>(undefined);
   const stopBasePath = useRef<() => void>(undefined);
   const stopLabels = useRef<() => void>(undefined);
@@ -73,6 +77,8 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
         const content = JSON.stringify(event.data.data.content, null, 2);
         onChangeRef.current(content);
         nameNewOperation(content);
+        exampleFromSample(newlyTyped(previous.current, content));
+        previous.current = content;
       }
     };
     window.addEventListener('message', listener);
@@ -80,6 +86,7 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
       window.removeEventListener('message', listener);
       window.clearInterval(timer.current);
       window.clearInterval(fillTimer.current);
+      window.clearInterval(exampleTimer.current);
       stopTheme.current?.();
       stopDialogs.current?.();
       stopBasePath.current?.();
@@ -121,6 +128,24 @@ export const ApicurioEditorHost = forwardRef<ApicurioEditorHandle, Props>(functi
     fillTimer.current = window.setInterval(() => {
       const doc = frame.current?.contentDocument;
       if (++tries >= 10 || !doc || fillNewOperationId(doc, content)) window.clearInterval(fillTimer.current);
+    }, 100);
+  };
+
+  /**
+   * A body or response just set to a data type made from a sample gets the sample as its example
+   * at once (sampleExampleFiller.ts), a step at a time as Apicurio's form and dialog show up.
+   */
+  const exampleFromSample = (targets: NewlyTyped[]) => {
+    if (!targets.length) return;
+    window.clearInterval(exampleTimer.current);
+    const queue = [...targets];
+    let tries = 0;
+    exampleTimer.current = window.setInterval(() => {
+      const doc = frame.current?.contentDocument;
+      const step = doc && queue.length ? fillSampleExample(doc, queue[0]) : 'none';
+      // A row may show up a moment after the change is reported.
+      if (step === 'done' || (step === 'none' && tries >= 5)) queue.shift();
+      if (!queue.length || ++tries >= 40) window.clearInterval(exampleTimer.current);
     }, 100);
   };
 
