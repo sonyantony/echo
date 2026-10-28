@@ -491,6 +491,15 @@
   border-color: var(--echo-ink);
   color: var(--echo-text);
 }
+/* A drop-down with nothing picked yet ("Choose Type"): Apicurio greys its label (#bbb) so it reads
+   as disabled. Show it bold and in the text colour, as something to click. */
+:root[data-echo-theme] .dropdown.empty > button.btn {
+  border-color: var(--echo-ink);
+}
+:root[data-echo-theme] .dropdown.empty > button.btn > span {
+  color: var(--echo-text) !important;
+  font-weight: 600;
+}
 :root[data-echo-theme] .form-control {
   border-radius: 6px;
   border-color: var(--echo-border-strong);
