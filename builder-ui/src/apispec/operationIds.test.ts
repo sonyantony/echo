@@ -7,6 +7,7 @@ import {
   naturalOperationIds,
   operationChanges,
   operationIdFor,
+  refreshRoutes,
   relabelRoutes,
   removeDirectRoutes,
   renameDirectRoutes,
@@ -15,6 +16,8 @@ import {
   routeForOperation,
   specOperations,
   untouchedRoutes,
+  withJoinBean,
+  withoutUnusedJoinBean,
 } from './operationIds';
 
 const spec = (paths: Record<string, Record<string, object>>) => JSON.stringify({ openapi: '3.0.3', info: { title: 'Cards' }, paths }, null, 2);
@@ -160,14 +163,98 @@ describe('operationIds', () => {
     const op = { method: 'GET', path: '/cards/{id}', operationId: 'getCardsId' };
     const yaml = appendRoute('- route:\n    autoStartup: false\n    from:\n      uri: direct:getCards\n      steps: []\n', routeForOperation(op));
     expect(directRoutes(yaml)).toEqual(new Map([['getCards', false], ['getCardsId', true]]));
-    expect(YAML.parse(yaml)[1]).toEqual({
-      route: {
-        id: 'route-getCardsId',
-        description: 'GET /cards/{id}',
-        from: { id: 'from-getCardsId', uri: 'direct', parameters: { name: 'getCardsId' }, steps: [{ log: { id: 'log-getCardsId', message: 'GET /cards/{id} called' } }] },
-      },
-    });
+    expect(YAML.parse(yaml)[1].route).toMatchObject({ id: 'route-getCardsId', description: 'GET /cards/{id}', from: { uri: 'direct', parameters: { name: 'getCardsId' } } });
     expect(appendRoute('', routeForOperation(op))).toBe(routeForOperation(op));
+  });
+
+  it('makes a route a scaffold: variables, Remove Headers, a multicast calling REST OpenApi, a JSON reply', () => {
+    const [op] = routableOperations(
+      JSON.stringify({
+        openapi: '3.0.3',
+        info: { title: 'Cards' },
+        components: { parameters: { Limit: { name: 'limit', in: 'query' } } },
+        paths: {
+          '/cards/{cardId}': {
+            parameters: [{ name: 'cardId', in: 'path' }],
+            get: {
+              parameters: [
+                { name: 'X-Trace', in: 'header' },
+                { name: 'status', in: 'query' },
+                { $ref: '#/components/parameters/Limit' },
+                { name: 'session', in: 'cookie' },
+              ],
+            },
+          },
+        },
+      }),
+    );
+    expect(op.parameters?.map((p) => p.name)).toEqual(['cardId', 'status', 'limit', 'X-Trace']);
+    const route = YAML.parse(routeForOperation(op, { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.host}}' }))[0].route;
+    expect(route.from.steps).toEqual([
+      { setVariable: { id: 'variable-getCardsCardId-cardId', name: 'cardId', simple: '${header.cardId}' } },
+      { setVariable: { id: 'variable-getCardsCardId-status', name: 'status', simple: '${header.status}' } },
+      { setVariable: { id: 'variable-getCardsCardId-limit', name: 'limit', simple: '${header.limit}' } },
+      { setVariable: { id: 'variable-getCardsCardId-X-Trace', name: 'X-Trace', simple: '${header.X-Trace}' } },
+      { removeHeaders: { id: 'remove-headers-getCardsCardId', pattern: '*' } },
+      {
+        multicast: {
+          id: 'multicast-getCardsCardId',
+          parallelProcessing: true,
+          aggregationStrategy: '#joinWithComma',
+          steps: [
+            {
+              pipeline: {
+                id: 'pipeline-getCardsCardId-1',
+                steps: [
+                  { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.host}}' } } },
+                  { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
+                  { setBody: { id: 'label-getCardsCardId-1', simple: '"result": ${body}' } },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      { setBody: { id: 'reply-getCardsCardId', simple: '{${body}}' } },
+      { setHeader: { id: 'content-type-getCardsCardId', name: 'Content-Type', constant: 'application/json' } },
+    ]);
+    // No approved API to point at: the call is left for the user to pick.
+    const bare = YAML.parse(routeForOperation({ method: 'POST', path: '/cards', operationId: 'postCards' }))[0].route.from.steps;
+    expect(bare[0]).toEqual({ removeHeaders: { id: 'remove-headers-postCards', pattern: '*' } });
+    expect(bare[1].multicast.steps[0].pipeline.steps[0].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: {} });
+  });
+
+  it('adds the bean the multicasts join replies with, once', () => {
+    const route = routeForOperation({ method: 'GET', path: '/cards', operationId: 'getCards' });
+    const once = withJoinBean(appendRoute('[]', route));
+    expect(YAML.parse(once)[0]).toEqual({
+      beans: [{ name: 'joinWithComma', type: 'org.apache.camel.processor.aggregate.StringAggregationStrategy', properties: { delimiter: ', ' } }],
+    });
+    expect(directRoutes(once).has('getCards')).toBe(true);
+    expect(withJoinBean(once)).toBe(once);
+    expect(YAML.parse(withJoinBean('[]'))).toHaveLength(1);
+    const otherBeans = withJoinBean(`- beans:\n    - name: other\n      type: java.lang.String\n${route}`);
+    expect(YAML.parse(otherBeans)[0].beans.map((b: { name: string }) => b.name)).toEqual(['other', 'joinWithComma']);
+    // Taken out again once no route uses it.
+    expect(withoutUnusedJoinBean(once)).toBe(once);
+    expect(withoutUnusedJoinBean(removeDirectRoutes(once, ['getCards']).yaml)).toBe('[]\n');
+    expect(YAML.parse(withoutUnusedJoinBean(removeDirectRoutes(otherBeans, ['getCards']).yaml))).toEqual([{ beans: [{ name: 'other', type: 'java.lang.String' }] }]);
+  });
+
+  it('follows parameters added and removed later, on routes still as ECHO made them', () => {
+    const op = { method: 'GET', path: '/cards', operationId: 'getCards', parameters: [] };
+    const call = { specificationUri: 'blueplanet.openapi.json' };
+    const made = routeForOperation(op, call);
+    const withStatus = { ...op, parameters: [{ name: 'status', in: 'query' as const }] };
+    const refreshed = refreshRoutes(made, [withStatus]);
+    expect(refreshed).toBe(routeForOperation(withStatus, call));
+    expect(untouchedRoutes(refreshed)).toEqual(new Set(['getCards']));
+    expect(refreshRoutes(refreshed, [op])).toBe(made);
+    expect(refreshRoutes(refreshed, [withStatus])).toBe(refreshed);
+    // Picked the operation: the user's now.
+    const picked = made.replace('specificationUri: blueplanet.openapi.json', 'specificationUri: blueplanet.openapi.json\n                          operationId: getService');
+    expect(untouchedRoutes(picked).size).toBe(0);
+    expect(refreshRoutes(picked, [withStatus])).toBe(picked);
   });
 
   it('tells which operations an edit added and removed, a renamed path keeping its operation', () => {
@@ -176,7 +263,9 @@ describe('operationIds', () => {
     const { added, removed } = operationChanges(before, after);
     expect(added).toMatchObject([{ method: 'POST', path: '/payment-cards', operationId: 'postPaymentCards' }]);
     expect(removed).toMatchObject([{ method: 'DELETE', operationId: 'deleteCards' }]);
-    expect(operationChanges(after, after)).toEqual({ added: [], removed: [] });
+    expect(operationChanges(after, after)).toEqual({ added: [], removed: [], changed: [] });
+    const withQuery = routableOperations(spec({ '/payment-cards': { get: { operationId: 'getCards', parameters: [{ name: 'q', in: 'query' }] }, post: {} } }));
+    expect(operationChanges(after, withQuery).changed).toMatchObject([{ operationId: 'getCards', parameters: [{ name: 'q', in: 'query' }] }]);
   });
 
   it('removes the routes for operations and gives them back as they were', () => {
@@ -200,14 +289,20 @@ describe('operationIds', () => {
   });
 
   it('tells routes still as ECHO made them from ones somebody worked on', () => {
-    const made = routeForOperation({ method: 'GET', path: '/cards', operationId: 'getCards' });
-    expect(untouchedRoutes(made)).toEqual(new Set(['getCards']));
-    expect(untouchedRoutes(made.replace('called', 'was called'))).toEqual(new Set(['getCards']));
-    const added = made.replace(/( +)- log:/, '$1- setBody:\n$1    constant: hi\n$1- log:');
-    expect(directRoutes(added).has('getCards')).toBe(true);
+    const made = routeForOperation({ method: 'GET', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }] });
+    expect(untouchedRoutes(made)).toEqual(new Set(['getCardsId']));
+    // A renamed operation's route keeps its step ids.
+    expect(untouchedRoutes(made.replace('id: remove-headers-getCardsId', 'id: remove-headers-getCardId'))).toEqual(new Set(['getCardsId']));
+    const added = made.replace(/( +)- removeHeaders:/, '$1- setBody:\n$1    constant: hi\n$1- removeHeaders:');
+    expect(directRoutes(added).has('getCardsId')).toBe(true);
     expect(untouchedRoutes(added).size).toBe(0);
-    expect(untouchedRoutes(made.replace('id: log-getCards', 'id: log-1234')).size).toBe(0);
+    expect(untouchedRoutes(made.replace('"result"', '"cards"')).size).toBe(0);
     expect(untouchedRoutes(made.replace('    description:', '    autoStartup: false\n    description:')).size).toBe(0);
+    // Routes made before the scaffold: a log step only.
+    const logged = '- route:\n    id: route-getCards\n    description: GET /cards\n    from:\n      id: from-getCards\n      uri: direct\n      parameters:\n        name: getCards\n      steps:\n        - log:\n            id: log-getCards\n            message: GET /cards called\n';
+    expect(untouchedRoutes(logged)).toEqual(new Set(['getCards']));
+    expect(untouchedRoutes(logged.replace('called', 'was called'))).toEqual(new Set(['getCards']));
+    expect(untouchedRoutes(logged.replace('id: log-getCards', 'id: log-1234')).size).toBe(0);
   });
 
   it('finds calls to a direct endpoint, in either form', () => {

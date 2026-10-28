@@ -29,6 +29,12 @@ class EditorSettingsTest {
         }
 
         @Test
+        void withoutApprovedApisNewRoutesCallNothingYet() throws Exception {
+            mvc.perform(get("/api/editor/settings").with(user("designer").roles("DESIGNER")))
+                    .andExpect(jsonPath("$.routeCall").doesNotExist());
+        }
+
+        @Test
         void needsALogin() throws Exception {
             mvc.perform(get("/api/editor/settings")).andExpect(status().isUnauthorized());
         }
@@ -45,6 +51,24 @@ class EditorSettingsTest {
         void autosaveIntervalComesFromConfig() throws Exception {
             mvc.perform(get("/api/editor/settings").with(user("designer").roles("DESIGNER")))
                     .andExpect(jsonPath("$.autosaveSeconds").value(30));
+        }
+    }
+
+    @Nested
+    @SpringBootTest(properties = {
+        "echo.apis.specs[0].id=inventory",
+        "echo.apis.specs[0].file=src/test/resources/apis/inventory.yaml"
+    })
+    @AutoConfigureMockMvc
+    class OneApprovedApi {
+        @Autowired
+        private MockMvc mvc;
+
+        @Test
+        void newRoutesCallItsSpec() throws Exception {
+            mvc.perform(get("/api/editor/settings").with(user("designer").roles("DESIGNER")))
+                    .andExpect(jsonPath("$.routeCall.specificationUri").value("inventory.openapi.json"))
+                    .andExpect(jsonPath("$.routeCall.host").value("{{inventory.host}}"));
         }
     }
 }

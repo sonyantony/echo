@@ -5,10 +5,14 @@ import {
   callsDirect,
   directRoutes,
   operationLabel,
+  refreshRoutes,
   relabelRoutes,
   removeDirectRoutes,
   routeForOperation,
   untouchedRoutes,
+  withJoinBean,
+  withoutUnusedJoinBean,
+  type ApiCall,
   type RoutableOperation,
 } from '../apispec/operationIds';
 import type { KaotoEditorHandle } from '../editor/KaotoEditorHost';
@@ -17,6 +21,8 @@ import type { KaotoEditorHandle } from '../editor/KaotoEditorHost';
 export interface OperationChanges {
   added: RoutableOperation[];
   removed: RoutableOperation[];
+  /** Still there with other parameters: their routes, if still as ECHO made them, follow. */
+  changed?: RoutableOperation[];
 }
 
 interface Asking {
@@ -27,8 +33,10 @@ interface Asking {
 
 /**
  * Keeps the flow's routes in step with the operations edited in Interface (docs/decisions/0013):
- * a method added there gets a route on the canvas at once (direct:<operationId> and a log step, as
- * Add Route For Operation makes it). When a method is deleted, a route still as ECHO made it goes
+ * a method added there gets a route on the canvas at once (routeForOperation's scaffold, as Add
+ * Route For Operation makes it, calling `call`). A parameter added or removed later changes the
+ * route's Set Variable steps while the route is still as ECHO made it. When a method is deleted, a
+ * route still as ECHO made it goes
  * quietly (so undoing an add leaves nothing behind); one somebody worked on is kept unless the user
  * says Remove Route. A removed route comes back as it was if the method does (undo).
  *
@@ -40,9 +48,12 @@ interface Asking {
 export function useOperationRoutes(
   editor: RefObject<KaotoEditorHandle | null>,
   onMessage: (variant: 'success' | 'danger', text: string) => void,
+  call?: ApiCall,
 ) {
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
+  const callRef = useRef(call);
+  callRef.current = call;
   /** Routes removed this session, by operationId, for when their operation comes back. */
   const removedRoutes = useRef(new Map<string, string>());
   /** The operations Interface has now, as far as edits told us. */
@@ -64,7 +75,7 @@ export function useOperationRoutes(
     });
   }, [editor]);
 
-  const onOperationsChanged = useCallback(({ added, removed }: OperationChanges) => {
+  const onOperationsChanged = useCallback(({ added, removed, changed = [] }: OperationChanges) => {
     for (const op of removed) present.current.delete(op.operationId);
     for (const op of added) present.current.add(op.operationId);
     edit((yaml) => {
@@ -74,11 +85,12 @@ export function useOperationRoutes(
       const quiet = gone.filter((op) => untouched.has(op.operationId));
       const ask = gone.filter((op) => !untouched.has(op.operationId));
       // A route kept for an operation that moved under the same id (an upload) shows where it is now.
-      let next = relabelRoutes(removeDirectRoutes(yaml, quiet.map((op) => op.operationId)).yaml, added);
+      let next = relabelRoutes(withoutUnusedJoinBean(removeDirectRoutes(yaml, quiet.map((op) => op.operationId)).yaml), added);
+      next = refreshRoutes(next, changed);
       const made: RoutableOperation[] = [];
       for (const op of added) {
         if (directRoutes(next).has(op.operationId)) continue;
-        next = appendRoute(next, removedRoutes.current.get(op.operationId) ?? routeForOperation(op));
+        next = appendRoute(withJoinBean(next), removedRoutes.current.get(op.operationId) ?? routeForOperation(op, callRef.current));
         removedRoutes.current.delete(op.operationId);
         made.push(op);
       }
@@ -103,7 +115,7 @@ export function useOperationRoutes(
     edit((yaml) => {
       const result = removeDirectRoutes(yaml, ids);
       result.removed.forEach((route, id) => removedRoutes.current.set(id, route));
-      return result.yaml;
+      return withoutUnusedJoinBean(result.yaml);
     });
   };
 

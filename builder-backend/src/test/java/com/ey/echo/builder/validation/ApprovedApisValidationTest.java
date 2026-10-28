@@ -131,6 +131,13 @@ class ApprovedApisValidationTest {
             - to:
                 uri: http://localhost:9090/services
             """))).isEmpty();
+        // A step that names nothing (as a new operation's route leaves it) is not left to fail at start.
+        assertThat(problems(open, call("""
+            - to:
+                uri: rest-openapi
+                parameters: {}
+            """))).containsExactly(
+                "This REST OpenApi step calls nothing yet. Set Specification Uri to one of: inventory.openapi.json, and pick its Operation Id.");
         // Approved APIs are still checked.
         assertThat(problems(open, call("""
             - to:

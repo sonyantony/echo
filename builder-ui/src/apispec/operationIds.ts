@@ -25,6 +25,14 @@ export interface SpecOperation {
   path: string;
   operationId?: string;
   summary?: string;
+  /** Its path, query and header parameters, path first, as the route keeps them in variables. */
+  parameters?: OperationParameter[];
+}
+
+/** A parameter of an operation: its name and where it comes from. */
+export interface OperationParameter {
+  name: string;
+  in: 'path' | 'query' | 'header';
 }
 
 /** What users read for an operation: GET /cards/{cardId}. */
@@ -32,15 +40,15 @@ export const operationLabel = (op: { method: string; path: string }) => `${op.me
 
 type Operation = Record<string, unknown>;
 
-function operationsIn(spec: Record<string, unknown>): { method: string; path: string; op: Operation }[] {
+function operationsIn(spec: Record<string, unknown>): { method: string; path: string; op: Operation; item: Operation }[] {
   const paths = spec.paths;
   if (!paths || typeof paths !== 'object') return [];
-  const result: { method: string; path: string; op: Operation }[] = [];
+  const result: { method: string; path: string; op: Operation; item: Operation }[] = [];
   for (const [path, item] of Object.entries(paths as Record<string, unknown>)) {
     if (!item || typeof item !== 'object') continue;
     for (const [verb, op] of Object.entries(item as Record<string, unknown>)) {
       if (VERBS.includes(verb.toLowerCase()) && op && typeof op === 'object' && !Array.isArray(op)) {
-        result.push({ method: verb.toUpperCase(), path, op: op as Operation });
+        result.push({ method: verb.toUpperCase(), path, op: op as Operation, item: item as Operation });
       }
     }
   }
@@ -49,13 +57,48 @@ function operationsIn(spec: Record<string, unknown>): { method: string; path: st
 
 const idOf = (op: Operation) => (typeof op.operationId === 'string' && op.operationId.trim() ? op.operationId.trim() : undefined);
 
+const PARAMETER_PLACES: OperationParameter['in'][] = ['path', 'query', 'header'];
+
+/**
+ * An operation's parameters: those of its path (also each {name} in the path, declared or not) and
+ * its own, a $ref to components/parameters followed. Path ones first, then query, then header; one
+ * per name.
+ */
+function parametersOf(spec: Record<string, unknown>, path: string, item: Operation, op: Operation): OperationParameter[] {
+  const components = (spec.components as Record<string, unknown> | undefined)?.parameters as Record<string, unknown> | undefined;
+  const resolve = (p: unknown): Operation | undefined => {
+    if (!p || typeof p !== 'object') return undefined;
+    const ref = (p as Operation).$ref;
+    if (typeof ref === 'string') {
+      const m = /^#\/components\/parameters\/(.+)$/.exec(ref);
+      const target = m ? components?.[m[1]] : undefined;
+      return target && typeof target === 'object' ? (target as Operation) : undefined;
+    }
+    return p as Operation;
+  };
+  const found: OperationParameter[] = [...path.matchAll(/\{([^}]+)\}/g)].map((m) => ({ name: m[1], in: 'path' }));
+  for (const list of [item.parameters, op.parameters]) {
+    if (!Array.isArray(list)) continue;
+    for (const raw of list) {
+      const p = resolve(raw);
+      const name = typeof p?.name === 'string' ? p.name.trim() : '';
+      const place = p?.in as OperationParameter['in'];
+      if (name && PARAMETER_PLACES.includes(place)) found.push({ name, in: place });
+    }
+  }
+  const seen = new Set<string>();
+  return PARAMETER_PLACES.flatMap((place) => found.filter((p) => p.in === place)).filter((p) => !seen.has(p.name) && !!seen.add(p.name));
+}
+
 /** The spec's operations (editor JSON), in order. */
 export function specOperations(editorJson: string): SpecOperation[] {
-  return operationsIn(JSON.parse(editorJson) as Record<string, unknown>).map(({ method, path, op }) => ({
+  const spec = JSON.parse(editorJson) as Record<string, unknown>;
+  return operationsIn(spec).map(({ method, path, op, item }) => ({
     method,
     path,
     operationId: idOf(op),
     summary: typeof op.summary === 'string' ? op.summary : undefined,
+    parameters: parametersOf(spec, path, item, op),
   }));
 }
 
@@ -304,25 +347,169 @@ export function directRoutes(yaml: string): Map<string, boolean> {
   return names;
 }
 
-/** A route for the operation, as Add Route For Operation appends it: it logs the call until the user designs it. */
-export function routeForOperation(op: SpecOperation & { operationId: string }): string {
-  return YAML.stringify(
-    [
-      {
-        route: {
-          id: `route-${op.operationId}`,
-          description: operationLabel(op),
-          from: {
-            id: `from-${op.operationId}`,
-            uri: 'direct',
-            parameters: { name: op.operationId },
-            steps: [{ log: { id: `log-${op.operationId}`, message: `${operationLabel(op)} called` } }],
+/**
+ * Where the REST OpenApi step of a new route points before the user picks the operation: the
+ * approved API's spec when the install has just one, and its Host placeholder when its spec names no
+ * server. Empty when there are several (or none) to choose from.
+ */
+export interface ApiCall {
+  specificationUri?: string;
+  host?: string;
+}
+
+/** The bean the routes' multicasts join their replies with (docs/decisions/0013). */
+export const JOIN_BEAN = 'joinWithComma';
+
+const STRING_AGGREGATION = 'org.apache.camel.processor.aggregate.StringAggregationStrategy';
+
+const JOIN_BEAN_YAML = YAML.stringify(
+  [{ beans: [{ name: JOIN_BEAN, type: STRING_AGGREGATION, properties: { delimiter: ', ' } }] }],
+  { lineWidth: 0 },
+);
+
+/** The route as ECHO makes it, as data (routeForOperation's YAML). */
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall) {
+  const callParameters: Record<string, string> = {};
+  if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
+  if (call.host) callParameters.host = call.host;
+  return {
+    route: {
+      id: `route-${operationId}`,
+      description: label,
+      from: {
+        id: `from-${operationId}`,
+        uri: 'direct',
+        parameters: { name: operationId },
+        steps: [
+          ...variables.map((name) => ({ setVariable: { id: `variable-${operationId}-${name}`, name, simple: `\${header.${name}}` } })),
+          { removeHeaders: { id: `remove-headers-${operationId}`, pattern: '*' } },
+          {
+            multicast: {
+              id: `multicast-${operationId}`,
+              parallelProcessing: true,
+              aggregationStrategy: `#${JOIN_BEAN}`,
+              steps: [
+                {
+                  pipeline: {
+                    id: `pipeline-${operationId}-1`,
+                    steps: [
+                      { to: { id: `call-${operationId}-1`, uri: 'rest-openapi', parameters: callParameters } },
+                      { convertBodyTo: { id: `to-string-${operationId}-1`, type: 'String' } },
+                      { setBody: { id: `label-${operationId}-1`, simple: '"result": ${body}' } },
+                    ],
+                  },
+                },
+              ],
+            },
           },
-        },
+          { setBody: { id: `reply-${operationId}`, simple: '{${body}}' } },
+          { setHeader: { id: `content-type-${operationId}`, name: 'Content-Type', constant: 'application/json' } },
+        ],
       },
-    ],
-    { lineWidth: 0 },
-  );
+    },
+  };
+}
+
+/**
+ * A route for the operation, as a method added in Interface Specs (or Add Route For Operation)
+ * makes it, so the user only picks the operation to call: a Set Variable for each of its parameters
+ * (from the header Camel puts it in), Remove Headers *, a multicast with one pipeline calling a REST
+ * OpenApi step whose reply it labels "result", then the joined replies wrapped as a JSON object.
+ * The multicast joins replies with the joinWithComma bean (withJoinBean adds it to the flow).
+ */
+export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
+  const variables = (op.parameters ?? []).map((p) => p.name);
+  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call)], { lineWidth: 0 });
+}
+
+/** The route YAML with the joinWithComma bean the new routes' multicasts use, if it isn't there. */
+export function withJoinBean(yaml: string): string {
+  const doc = parseRoute(yaml);
+  if (doc) {
+    for (const entry of (doc.contents as YAML.YAMLSeq).items) {
+      const beans = isMap(entry) ? entry.get('beans') : undefined;
+      if (isSeq(beans) && beans.items.some((b) => isMap(b) && b.get('name') === JOIN_BEAN)) return yaml;
+    }
+    // Next to beans already there.
+    const holder = (doc.contents as YAML.YAMLSeq).items.find((entry) => isMap(entry) && isSeq(entry.get('beans')));
+    if (holder) {
+      ((holder as YAMLMap).get('beans') as YAML.YAMLSeq).add(doc.createNode((YAML.parse(JOIN_BEAN_YAML) as { beans: unknown[] }[])[0].beans[0]));
+      return doc.toString({ lineWidth: 0 });
+    }
+  }
+  const trimmed = yaml.trimEnd();
+  if (!trimmed || trimmed === '[]') return JOIN_BEAN_YAML;
+  return `${JOIN_BEAN_YAML}${trimmed}\n`;
+}
+
+/**
+ * The route YAML without the joinWithComma bean ECHO added (withJoinBean) once nothing uses it any
+ * more, e.g. when the routes it was added for were taken away again. Unchanged (the same string)
+ * otherwise.
+ */
+export function withoutUnusedJoinBean(yaml: string): string {
+  const doc = parseRoute(yaml);
+  if (!doc || yaml.includes(`#${JOIN_BEAN}`) || yaml.includes(`#bean:${JOIN_BEAN}`)) return yaml;
+  const seq = doc.contents as YAML.YAMLSeq;
+  let changed = false;
+  for (const entry of [...seq.items]) {
+    const beans = isMap(entry) ? entry.get('beans') : undefined;
+    if (!isSeq(beans)) continue;
+    const ours = beans.items.filter((b) => isMap(b) && b.get('name') === JOIN_BEAN && b.get('type') === STRING_AGGREGATION);
+    if (!ours.length) continue;
+    beans.items = beans.items.filter((b) => !ours.includes(b));
+    if (!beans.items.length && (entry as YAMLMap).items.length === 1) seq.items = seq.items.filter((e) => e !== entry);
+    changed = true;
+  }
+  if (!changed) return yaml;
+  return seq.items.length ? doc.toString({ lineWidth: 0 }) : '[]\n';
+}
+
+/** The scaffold a route of ECHO's is, if it still is one: its variables and where its call points. */
+function asScaffold(route: YAMLMap, name: string): { variables: string[]; call: ApiCall } | undefined {
+  const json = route.toJSON() as { description?: unknown; from?: { steps?: unknown[] } };
+  const steps = Array.isArray(json.from?.steps) ? json.from.steps : [];
+  const variables: string[] = [];
+  for (const step of steps) {
+    const v = (step as { setVariable?: { name?: unknown } }).setVariable;
+    if (!v) break;
+    if (typeof v.name !== 'string') return undefined;
+    variables.push(v.name);
+  }
+  const callStep = JSON.stringify(json).match(/"uri":"rest-openapi","parameters":(\{[^{}]*\})/);
+  const parameters = callStep ? (JSON.parse(callStep[1]) as Record<string, unknown>) : {};
+  const call: ApiCall = {
+    specificationUri: typeof parameters.specificationUri === 'string' ? parameters.specificationUri : undefined,
+    host: typeof parameters.host === 'string' ? parameters.host : undefined,
+  };
+  const label = typeof json.description === 'string' ? json.description : '';
+  // Step ids aside: a renamed operation's route keeps the ids it was made with.
+  const withoutIds = (value: unknown) => JSON.stringify(value, (key, v) => (key === 'id' ? undefined : v));
+  return withoutIds(json) === withoutIds(scaffold(name, label, variables, call).route) ? { variables, call } : undefined;
+}
+
+/**
+ * The route YAML with the scaffold route of each of these operations (still as ECHO made it) made
+ * again for the operation's parameters as they are now: a parameter added in Interface Specs gets
+ * its Set Variable, a removed one loses it. Routes somebody worked on stay as they are. Unchanged
+ * (the same string) if no route changed.
+ */
+export function refreshRoutes(yaml: string, operations: RoutableOperation[]): string {
+  const doc = parseRoute(yaml);
+  if (!doc) return yaml;
+  const byId = new Map(operations.map((op) => [op.operationId, op]));
+  let changed = false;
+  for (const { entry, route, name } of routeEntries(doc)) {
+    const op = name === undefined ? undefined : byId.get(name);
+    const was = op && route ? asScaffold(route, name!) : undefined;
+    if (!op || !was) continue;
+    const variables = (op.parameters ?? []).map((p) => p.name);
+    if (variables.join('\n') === was.variables.join('\n')) continue;
+    const label = String(route!.get('description') ?? operationLabel(op));
+    (entry as YAMLMap).set('route', doc.createNode(scaffold(op.operationId, label, variables, was.call).route));
+    changed = true;
+  }
+  return changed ? doc.toString({ lineWidth: 0 }) : yaml;
 }
 
 /** The route YAML with a route appended (an empty or blank file becomes just that route). */
@@ -347,11 +534,14 @@ export function routableOperations(editorJson: string): RoutableOperation[] {
 
 /** Operations an edit added and removed, told apart by their operationId (a renamed path keeps it). */
 export function operationChanges(before: RoutableOperation[], after: RoutableOperation[]) {
-  const was = new Set(before.map((op) => op.operationId));
+  const was = new Map(before.map((op) => [op.operationId, op]));
   const now = new Set(after.map((op) => op.operationId));
+  const names = (op: RoutableOperation) => (op.parameters ?? []).map((p) => p.name).join('\n');
   return {
     added: after.filter((op) => !was.has(op.operationId)),
     removed: before.filter((op) => !now.has(op.operationId)),
+    /** Still there, with other parameters. */
+    changed: after.filter((op) => was.has(op.operationId) && names(was.get(op.operationId)!) !== names(op)),
   };
 }
 
@@ -378,8 +568,9 @@ export function removeDirectRoutes(yaml: string, names: string[]): { yaml: strin
 }
 
 /**
- * The direct endpoints whose route is still as ECHO made it (routeForOperation): nothing but its log
- * step. Removing one of those loses no work.
+ * The direct endpoints whose route is still as ECHO made it: the scaffold routeForOperation makes
+ * (with the variables of any parameters, and the call's spec and Host, but no operation picked), or
+ * the log step only routes were made with before. Removing one of those loses no work.
  */
 export function untouchedRoutes(yaml: string): Set<string> {
   const names = new Set<string>();
@@ -387,7 +578,13 @@ export function untouchedRoutes(yaml: string): Set<string> {
   if (!doc) return names;
   const only = (map: YAMLMap, keys: string[]) => map.items.every((pair) => keys.includes(String((pair.key as YAML.Scalar)?.value ?? pair.key)));
   for (const { route, name } of routeEntries(doc)) {
-    if (!route || !name || !only(route, ['id', 'description', 'from'])) continue;
+    if (!route || !name) continue;
+    if (asScaffold(route, name)) {
+      names.add(name);
+      continue;
+    }
+    // A route made before the scaffold: a log step only.
+    if (!only(route, ['id', 'description', 'from'])) continue;
     const from = route.get('from') as YAMLMap;
     const steps = from.get('steps');
     if (!only(from, ['id', 'uri', 'parameters', 'steps']) || !isSeq(steps) || steps.items.length !== 1) continue;

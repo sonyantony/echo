@@ -84,7 +84,10 @@ itself keeps only what is designed, so the service always follows the spec's cur
   id and label). **Flow > Add Route For Operation** lists the operations by method and path and
   adds a route for each one picked, so nobody types an id.
 - **Routes follow the methods edited in Interface.** A method added there gets its route on the
-  canvas at once (`direct:<operationId>` and a log step, as Add Route For Operation makes it). A
+  canvas at once (`direct:<operationId>` and a scaffold, as Add Route For Operation makes it: a
+  Set Variable per parameter, Remove Headers `*`, a multicast with one pipeline calling a REST
+  OpenApi step whose operation the user picks, and a JSON reply; see decision 0013). Parameters
+  added or removed later change its Set Variable steps while the route is still as ECHO made it. A
   method deleted there takes its route away without asking while the route is still as ECHO made
   it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user
   picks **Remove Route** in the dialog that asks, and Undo in Interface brings it back as it was.

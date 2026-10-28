@@ -311,7 +311,13 @@ public class FlowValidator {
             }
             var api = apis.forSpecificationUri(spec);
             if (api.isEmpty()) {
-                if (apis.only()) {
+                if (spec.isBlank() && operation.isBlank() && !apis.only()) {
+                    // As the route ECHO makes for a new operation leaves it, for the user to pick.
+                    problems.add(new Problem(routeFile, line, apis.apis().isEmpty()
+                            ? "This REST OpenApi step calls nothing yet. Set Specification Uri and Operation Id to the API operation it calls."
+                            : "This REST OpenApi step calls nothing yet. Set Specification Uri to one of: %s, and pick its Operation Id."
+                                    .formatted(approvedFiles())));
+                } else if (apis.only()) {
                     problems.add(new Problem(routeFile, line, (spec.isBlank()
                             ? "This REST OpenApi step has no spec. "
                             : "'%s' is not an approved API. ".formatted(spec))

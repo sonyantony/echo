@@ -104,7 +104,7 @@ interface Props {
    * spec before that it lacks as removed. New From Samples and Copy From Another Flow do the same
    * with the spec they bring, and Discard counts every operation on screen as removed.
    */
-  onOperationsChanged?(changes: { added: RoutableOperation[]; removed: RoutableOperation[] }): void;
+  onOperationsChanged?(changes: { added: RoutableOperation[]; removed: RoutableOperation[]; changed?: RoutableOperation[] }): void;
   /**
    * Switch to the flow that has a path the user just added here (a path is in one flow only): the
    * path is already taken out of this flow's spec, which is saved. Opens that flow, the flow editor
@@ -289,10 +289,10 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     const before = operations.current;
     operations.current = now;
     if (!before) return;
-    const { added, removed } = operationChanges(before, now);
-    if (!added.length && !removed.length) return;
+    const { added, removed, changed } = operationChanges(before, now);
+    if (!added.length && !removed.length && !changed.length) return;
     const current = (op: RoutableOperation) => ({ ...op, operationId: renamedSince.current.get(op.operationId) ?? op.operationId });
-    onOperationsChangedRef.current?.({ added, removed: removed.map(current) });
+    onOperationsChangedRef.current?.({ added, removed: removed.map(current), changed: changed.map(current) });
   }, [checkNewPaths]);
 
   /** What is on screen, as the editor's JSON. */

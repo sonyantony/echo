@@ -318,6 +318,11 @@ export interface EditorSettings {
   jiraImport?: boolean;
   /** The AI engine Import From Jira sends stories to ("gpt-4.1 at acme.openai.azure.com"); absent without one. */
   aiEngine?: string | null;
+  /**
+   * Where the REST OpenApi step of a route made for a new operation points (the one approved API's
+   * spec, and its Host placeholder when the spec names no server); absent unless exactly one is set up.
+   */
+  routeCall?: { specificationUri: string; host?: string | null } | null;
 }
 
 export const editorSettings = () => api<EditorSettings>('/api/editor/settings');
