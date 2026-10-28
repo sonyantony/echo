@@ -37,18 +37,28 @@ export interface SamplesSpec {
 }
 
 interface Props {
-  /** Why the spec on screen is lost, if it is: shown as a warning, and the button reads Replace. */
+  /**
+   * Why the spec on screen is lost, if it is: shown as a warning, and the button reads Replace,
+   * with Add to this spec beside it when onAdd is given.
+   */
   replaces?: string;
+  /** Whether the spec on screen has this method on this path already: Add to this spec replaces that method then. */
+  hasOperation?(method: SampleMethod, path: string): boolean;
   onGenerate(samples: SamplesSpec): void;
+  /**
+   * Add to this spec: the method goes into the spec on screen, which keeps everything it has; or,
+   * when the spec has it on that path, takes its place (Replace METHOD path).
+   */
+  onAdd?(samples: SamplesSpec): void;
   onClose(): void;
 }
 
 /**
- * Openapi > New From Samples: method, path and a sample request and response, from which the
- * flow's spec is made (specFromSamples). The operationId is the method and path, as ECHO names
- * every operation.
+ * Interface Specs > Interface Specs from Samples: method, path and a sample request and response,
+ * from which the flow's spec is made (specFromSamples) or, when it has one, which are added to it
+ * (addOperations). The operationId is the method and path, as ECHO names every operation.
  */
-export function SamplesSpecModal({ replaces, onGenerate, onClose }: Props) {
+export function SamplesSpecModal({ replaces, hasOperation, onGenerate, onAdd, onClose }: Props) {
   const [method, setMethod] = useState<SampleMethod>('POST');
   const [path, setPath] = useState('');
   const [request, setRequest] = useState('');
@@ -62,19 +72,27 @@ export function SamplesSpecModal({ replaces, onGenerate, onClose }: Props) {
   const requestSample = sample(request, !optional);
   const responseSample = sample(response, true);
   const valid = pathValid && !requestSample.error && !responseSample.error;
+  const canAdd = !!replaces && !!onAdd;
+  const taken = canAdd && pathValid && !!hasOperation?.(method, fullPath);
 
+  const samples = (): SamplesSpec => ({ method, path: fullPath, ...(query ? { query } : {}), operationId, request: requestSample.value, response: responseSample.value });
+  // Enter in the Path field adds (or replaces the one method) when it can: it never throws the spec away.
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     if (!valid) return;
-    onGenerate({ method, path: fullPath, ...(query ? { query } : {}), operationId, request: requestSample.value, response: responseSample.value });
+    if (canAdd) onAdd!(samples());
+    else onGenerate(samples());
+  };
+  const replace = () => {
+    if (valid) onGenerate(samples());
   };
 
   return (
     <Modal isOpen variant="medium" onClose={onClose} aria-labelledby="spec-samples-title">
       <ModalHeader
-        title="New OpenAPI spec from samples"
+        title="Interface Specs from Samples"
         labelId="spec-samples-title"
-        description="ECHO writes the schemas, the path and the operation from a sample request and response. Fields with a value in the sample are marked required; tweak the spec afterwards in the editor."
+        description={`ECHO writes the schemas, the path and the operation from a sample request and response${canAdd ? ', as a new spec or added to the one on screen' : ''}. Fields with a value in the sample are marked required; tweak the spec afterwards in the editor.`}
       />
       <ModalBody>
         <Form id="spec-samples-form" onSubmit={submit} className="echo-samples-spec">
@@ -130,13 +148,45 @@ export function SamplesSpecModal({ replaces, onGenerate, onClose }: Props) {
             />
             {responseSample.shown && <SampleError text={responseSample.error!} />}
           </FormGroup>
-          {replaces && <Alert variant="warning" isInline isPlain title={`A flow has one OpenAPI spec: ${replaces}.`} />}
+          {replaces && (
+            <Alert
+              variant="warning"
+              isInline
+              isPlain
+              title={
+                !canAdd
+                  ? `A flow has one OpenAPI spec: ${replaces}.`
+                  : taken
+                    ? `A flow has one OpenAPI spec. Replace Whole Spec makes a new one: ${replaces}.`
+                    : `A flow has one OpenAPI spec. Add to this spec keeps it and adds this method; Replace makes a new one: ${replaces}.`
+              }
+            />
+          )}
+          {taken && (
+            <Alert
+              variant="danger"
+              isInline
+              isPlain
+              title={`This spec has ${method} ${fullPath} already. Replace ${method} ${fullPath} puts the one made from these samples in its place (its route stays); Cancel keeps it.`}
+            />
+          )}
         </Form>
       </ModalBody>
       <ModalFooter>
-        <Button type="submit" form="spec-samples-form" variant={replaces ? 'danger' : 'primary'} isDisabled={!valid}>
-          {replaces ? 'Replace' : 'Create'}
-        </Button>
+        {canAdd ? (
+          <>
+            <Button type="submit" form="spec-samples-form" variant={taken ? 'warning' : 'primary'} isDisabled={!valid}>
+              {taken ? `Replace ${method} ${fullPath}` : 'Add to this spec'}
+            </Button>
+            <Button variant="danger" isDisabled={!valid} onClick={replace}>
+              {taken ? 'Replace Whole Spec' : 'Replace'}
+            </Button>
+          </>
+        ) : (
+          <Button type="submit" form="spec-samples-form" variant={replaces ? 'danger' : 'primary'} isDisabled={!valid}>
+            {replaces ? 'Replace' : 'Create'}
+          </Button>
+        )}
         <Button variant="link" onClick={onClose}>
           Cancel
         </Button>

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createFlow, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
-// New Interface Specs from Samples (and Import From Jira, which builds bodies the same way) keeps each sample
+// Interface Specs from Samples (and Import From Jira, which builds bodies the same way) keeps each sample
 // payload as the named example of its body, so Apicurio lists it instead of "No examples
 // defined", and Swagger UI shows it. Request validation is not affected by it. The operation it
 // makes gets its route at once, as one added in the editor does.
@@ -18,7 +18,7 @@ test('the sample request and response are kept as the examples of their bodies',
   const flowId = flowIdOf(page);
   // A path of its own (a path is in one flow only, and other tests use /cards).
   const path = `/${name.replace(/-/g, '')}`;
-  await interfaceMenu(page, /^New Interface Specs from Samples/);
+  await interfaceMenu(page, /^Interface Specs from Samples/);
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Method').selectOption('POST');
   await dialog.getByLabel('Path').fill(path);
@@ -106,7 +106,7 @@ test('a response under Responses set to a data type made from a sample gets the 
   await createFlow(page, name);
   await interfaceMenu(page, /^Design/);
   // The Interface Specs bar has the same item as a button, right before Save.
-  const fromSamples = page.getByRole('button', { name: 'New Interface Specs from Samples', exact: true });
+  const fromSamples = page.getByRole('button', { name: 'Interface Specs from Samples', exact: true });
   const fromSamplesBox = (await fromSamples.boundingBox())!;
   const saveBox = (await page.locator('.echo-api-spec__bar').getByRole('button', { name: 'Save', exact: true }).boundingBox())!;
   expect(fromSamplesBox.x + fromSamplesBox.width).toBeLessThanOrEqual(saveBox.x);
@@ -149,4 +149,81 @@ test('a response under Responses set to a data type made from a sample gets the 
   await editor.getByTitle('Click to undo the last change.').click();
   await expect(form.getByText('No examples defined.')).toBeVisible();
   await expect(form.getByText(/Response$/).first()).toBeVisible();
+});
+
+test('Add to this spec adds a method from samples to the spec the flow has, or replaces one it has, keeping its route', async ({ page }) => {
+  await login(page);
+  const name = uniqueName('addsamples');
+  await createFlow(page, name, '', { route: false });
+  const flowId = flowIdOf(page);
+  const path = `/${name.replace(/-/g, '')}`;
+  await interfaceMenu(page, /^Interface Specs from Samples/);
+  let dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Method').selectOption('GET');
+  await dialog.getByLabel('Path').fill(`${path}/{id}`);
+  await dialog.getByLabel('Sample response (JSON)').fill('{"id":"c-1","status":"ACTIVE"}');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByText(`Made GET ${path}/{id} from the samples: save to keep it.`)).toBeVisible();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const save = page.getByRole('dialog');
+  if (await save.isVisible().catch(() => false)) await save.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/^Saved .*-api\.yaml\.$/)).toBeVisible();
+
+  // The flow has a spec now: Add to this spec, beside Replace; a method it has already is offered for replacing.
+  await page.getByRole('button', { name: 'Interface Specs from Samples', exact: true }).click();
+  dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('button', { name: 'Replace' })).toBeVisible();
+  await dialog.getByLabel('Method').selectOption('GET');
+  await dialog.getByLabel('Path').fill(`${path}/{cardId}`);
+  await dialog.getByLabel('Sample response (JSON)').fill('{"id":"c-1"}');
+  await expect(dialog.getByRole('button', { name: `Replace GET ${path}/{cardId}` })).toBeEnabled();
+  await expect(dialog.getByText(`This spec has GET ${path}/{cardId} already.`)).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Replace Whole Spec' })).toBeVisible();
+  await dialog.getByText(`This spec has GET ${path}/{cardId} already.`).scrollIntoViewIfNeeded();
+  if (shots) {
+    await page.waitForTimeout(500); // the buttons fade in after the samples are filled in
+    await page.screenshot({ path: `${shots}/6-replace-one-method.png` });
+  }
+  await dialog.getByLabel('Method').selectOption('PUT');
+  const add = dialog.getByRole('button', { name: 'Add to this spec' });
+  await dialog.getByLabel('Sample request (JSON)').fill('{"status":"BLOCKED"}');
+  await expect(add).toBeEnabled();
+  if (shots) await page.screenshot({ path: `${shots}/5-add-to-this-spec.png` });
+  await add.click();
+  await expect(page.getByText(`Added PUT ${path}/{id} from the samples: save to keep it.`)).toBeVisible();
+  await expect(page.getByText(`Added a route for PUT ${path}/{id}.`)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText(/^Saved .*-api\.yaml\.$/)).toBeVisible();
+  await fileMenu(page, /^Save$/);
+  await expect(page.getByTestId('unsaved')).toBeHidden();
+  const flow = await (await page.request.get(`/api/flows/${flowId}`)).json();
+  const stored = await (await page.request.get(`/api/flows/${flowId}/files/${flow.apiSpec}`)).text();
+  // Both methods under the one path, each with its own data types.
+  expect(stored.match(new RegExp(`^  ${path.replace(/\//g, '\\/')}\\/\\{id\\}:`, 'gm'))).toHaveLength(1);
+  expect(stored).toMatch(/\n {4}get:\n/);
+  expect(stored).toMatch(/\n {4}put:\n/);
+  expect(stored).toMatch(/\n {4}Get\w+IdResponse:\n/);
+  expect(stored).toMatch(/\n {4}Put\w+IdRequest:\n/);
+  let route = await (await page.request.get(`/api/flows/${flowId}/files/${name}.camel.yaml`)).text();
+  expect(route.match(/uri: direct\n/g)).toHaveLength(2);
+
+  // Replace GET: the one made from the new samples takes its place; its route stays, no route is added.
+  await page.getByRole('button', { name: 'Interface Specs from Samples', exact: true }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Method').selectOption('GET');
+  await dialog.getByLabel('Path').fill(`${path}/{id}`);
+  await dialog.getByLabel('Sample response (JSON)').fill('{"id":"c-1","limit":2500}');
+  await dialog.getByRole('button', { name: `Replace GET ${path}/{id}` }).click();
+  await expect(page.getByText(`Replaced GET ${path}/{id} from the samples: save to keep it.`)).toBeVisible();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText(/^Saved .*-api\.yaml\.$/)).toBeVisible();
+  await fileMenu(page, /^Save$/);
+  await expect(page.getByTestId('unsaved')).toBeHidden();
+  const replaced = await (await page.request.get(`/api/flows/${flowId}/files/${flow.apiSpec}`)).text();
+  expect(replaced).toContain('limit:');
+  expect(replaced).not.toContain('status: ACTIVE');
+  expect(replaced).not.toMatch(/IdResponse2:/);
+  route = await (await page.request.get(`/api/flows/${flowId}/files/${name}.camel.yaml`)).text();
+  expect(route.match(/uri: direct\n/g)).toHaveLength(2);
 });

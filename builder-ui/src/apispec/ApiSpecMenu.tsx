@@ -90,9 +90,9 @@ export function ApiSpecMenu({ current, onOpen, onShow, panel, onCopy }: Props) {
               onShow();
               panel.current?.newFromSamples();
             }}
-            description="Make the spec from a sample request and response"
+            description="Make the spec, or add a method to it, from a sample request and response"
           >
-            New Interface Specs from Samples
+            Interface Specs from Samples
           </DropdownItem>
           <Divider component="li" key="download-divider" />
           <DropdownItem

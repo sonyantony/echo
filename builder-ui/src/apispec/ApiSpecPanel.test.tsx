@@ -247,6 +247,42 @@ describe('Openapi panel', () => {
     await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false));
   });
 
+  it('Interface Specs from Samples adds a method to the spec, under the path it has, with a route', async () => {
+    mockFetch({
+      'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
+      'GET /api/flows/1': { status: 200, body: flow('cards.yaml') },
+      'POST /api/flows/1/path-clashes': { status: 200, body: [] },
+    });
+    const yaml = 'openapi: 3.0.3\ninfo: { title: Cards, version: 1.0.0 }\npaths:\n  /cards/{id}:\n    get: { operationId: getCardsId }\n';
+    const stub = fetch as unknown as ReturnType<typeof vi.fn>;
+    const json = stub.getMockImplementation()!;
+    stub.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input) === '/api/flows/1/files/cards.yaml' ? new Response(yaml, { status: 200 }) : json(input, init),
+    );
+    const onOperationsChanged = vi.fn();
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <ApiSpecPanel flowId={1} flowName="cards" onOperationsChanged={onOperationsChanged} />
+      </QueryClientProvider>,
+    );
+    await screen.findByTitle('OpenAPI editor');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Interface Specs from Samples' }));
+    await userEvent.selectOptions(screen.getByLabelText('Method'), 'GET');
+    await userEvent.type(screen.getByLabelText(/Path/), '/cards/{{cardId}');
+    await userEvent.click(screen.getByLabelText(/Sample response/));
+    await userEvent.paste('{"id": "c-1"}');
+    // GET /cards/{id} is there already, under another {name}: it could be replaced.
+    expect(screen.getByRole('button', { name: 'Replace GET /cards/{cardId}' })).toBeEnabled();
+    await userEvent.selectOptions(screen.getByLabelText('Method'), 'DELETE');
+    await userEvent.click(screen.getByRole('button', { name: 'Add to this spec' }));
+
+    expect(await screen.findByText('Added DELETE /cards/{id} from the samples: save to keep it.')).toBeInTheDocument();
+    expect(onOperationsChanged).toHaveBeenLastCalledWith({ added: [expect.objectContaining({ method: 'DELETE', path: '/cards/{id}', operationId: 'deleteCardsId' })], removed: [], changed: [] });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
   it('offers Import From Jira only when Jira is set up', async () => {
     mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },

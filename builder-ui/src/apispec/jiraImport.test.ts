@@ -1,4 +1,4 @@
-import { addOperations, basePathOf, operationKeys, withoutBasePath } from './jiraImport';
+import { addOperations, basePathOf, operationKeys, pathInSpec, withoutBasePath } from './jiraImport';
 
 const current = JSON.stringify({
   openapi: '3.0.3',
@@ -60,5 +60,52 @@ describe('Import From Jira', () => {
     expect(basePathOf(JSON.stringify({ servers: [{ url: 'https://api.acme.com/banking/v1/' }] }))).toBe('/banking/v1');
     expect(withoutBasePath('/banking/v1/payments?status=OPEN', '/banking/v1')).toBe('/payments?status=OPEN');
     expect(withoutBasePath('/other/payments', '/banking/v1')).toBe('/other/payments');
+  });
+});
+
+describe('Interface Specs from Samples > Add to this spec', () => {
+  const spec = JSON.stringify({
+    openapi: '3.0.3',
+    info: { title: 'Cards', version: '1.0.0' },
+    paths: { '/cards/{id}': { get: { operationId: 'getCardsId', responses: { '200': { description: 'OK' } } } } },
+    components: { schemas: { GetCardsIdResponse: { type: 'object', properties: { id: { type: 'string' } } } } },
+  });
+
+  it('puts a method under the path the spec has, whatever its {names}', () => {
+    expect(pathInSpec(spec, '/cards/{cardId}')).toBe('/cards/{id}');
+    expect(pathInSpec(spec, '/cards/{id}/')).toBe('/cards/{id}');
+    expect(pathInSpec(spec, '/cards')).toBe('/cards');
+  });
+
+  it('adds the method with its types, keeping what the spec has', () => {
+    const { json } = addOperations(spec, [{ method: 'PUT', path: pathInSpec(spec, '/cards/{cardId}'), request: { id: 'c-1' }, response: { id: 'c-1' } }]);
+    const doc = JSON.parse(json);
+    expect(Object.keys(doc.paths)).toEqual(['/cards/{id}']);
+    expect(doc.paths['/cards/{id}'].get.operationId).toBe('getCardsId');
+    expect(doc.paths['/cards/{id}'].put.operationId).toBe('putCardsId');
+    expect(doc.paths['/cards/{id}'].put.parameters).toEqual([{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }]);
+    expect(Object.keys(doc.components.schemas)).toEqual(['GetCardsIdResponse', 'PutCardsIdRequest', 'PutCardsIdResponse']);
+    expect(doc.paths['/cards/{id}'].put.responses['200'].content['application/json'].examples.sample.value).toEqual({ id: 'c-1' });
+  });
+
+  it('replaces one method, keeping its operationId, and drops the data types only it used', () => {
+    const typed = JSON.parse(spec);
+    typed.paths['/cards/{id}'].get.responses['200'].content = { 'application/json': { schema: { $ref: '#/components/schemas/GetCardsIdResponse' } } };
+    const { json, paths } = addOperations(JSON.stringify(typed), [{ method: 'GET', path: '/cards/{id}', response: { id: 'c-1', limit: 5 } }], true);
+    const doc = JSON.parse(json);
+    expect(paths).toEqual([{ method: 'GET', path: '/cards/{id}', replaced: true }]);
+    expect(doc.paths['/cards/{id}'].get.operationId).toBe('getCardsId');
+    // The old GetCardsIdResponse was used by nothing else, so the new one takes its name.
+    expect(Object.keys(doc.components.schemas)).toEqual(['GetCardsIdResponse']);
+    expect(doc.components.schemas.GetCardsIdResponse.properties.limit).toEqual({ type: 'integer' });
+  });
+
+  it('keeps a replaced method\'s data types another operation uses', () => {
+    const shared = JSON.parse(spec);
+    const ref = { $ref: '#/components/schemas/GetCardsIdResponse' };
+    shared.paths['/cards/{id}'].get.responses['200'].content = { 'application/json': { schema: ref } };
+    shared.paths['/cards'] = { get: { operationId: 'getCards', responses: { '200': { description: 'OK', content: { 'application/json': { schema: ref } } } } } };
+    const doc = JSON.parse(addOperations(JSON.stringify(shared), [{ method: 'GET', path: '/cards/{id}', response: { id: 'c-1' } }], true).json);
+    expect(Object.keys(doc.components.schemas)).toEqual(['GetCardsIdResponse', 'GetCardsIdResponse2']);
   });
 });
