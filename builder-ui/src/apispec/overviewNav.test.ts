@@ -74,10 +74,10 @@ describe("Apicurio's list on the left as plain items", () => {
     stop();
   });
 
-  it("give data types and responses a Delete button that uses the entry's right-click Delete", () => {
+  it("give paths, data types and responses a Delete button that uses the entry's right-click Delete", () => {
     document.documentElement.removeAttribute('data-echo-pane');
     document.body.innerHTML =
-      '<div class="editor-outline"><div class="path-section"><div class="api-path"><span class="name">/orders</span></div></div>' +
+      '<div class="editor-outline"><div class="path-section"><div class="api-path"><div path-item>/orders</div></div></div>' +
       '<div class="definition-section"><div class="api-definition"><span class="name">Customer</span></div></div>' +
       '<div class="response-section"><div class="api-response"><span class="name">Missing</span></div></div></div>';
     const opened = vi.fn();
@@ -89,9 +89,17 @@ describe("Apicurio's list on the left as plain items", () => {
       document.body.insertAdjacentHTML('beforeend', '<ul id="definition-context-menu"><li><a>Rename</a></li><li><a>Delete</a></li></ul>');
       document.querySelectorAll<HTMLElement>('#definition-context-menu a')[1].addEventListener('click', deleted);
     });
+    const path = document.querySelector<HTMLElement>('.api-path [path-item]')!;
+    const pathDeleted = vi.fn();
+    path.addEventListener('contextmenu', () => {
+      document.body.insertAdjacentHTML('beforeend', '<ul id="path-context-menu"><li><a>Clone</a></li><li><a>Delete</a></li></ul>');
+      document.querySelectorAll<HTMLElement>('#path-context-menu a')[1].addEventListener('click', pathDeleted);
+    });
     const stop = addOverviewNav(document);
 
-    expect(document.querySelector('.api-path .echo-entry-delete')).toBeNull();
+    expect(document.querySelector('.api-path .echo-entry-delete')!.getAttribute('aria-label')).toBe('Delete /orders');
+    document.querySelector<HTMLElement>('.api-path .echo-entry-delete')!.click();
+    expect(pathDeleted).toHaveBeenCalledOnce();
     expect(document.querySelector('.api-response .echo-entry-delete')!.getAttribute('aria-label')).toBe('Delete Missing');
     document.querySelector<HTMLElement>('.api-definition .echo-entry-delete')!.click();
     expect(deleted).toHaveBeenCalledOnce();
