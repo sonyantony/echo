@@ -26,8 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Serves Kaoto's Camel catalog, cut down to what flows may use: components to
- * {@code echo.validation.allowed-components}, expression languages to {@code allowed-languages},
- * no processors from {@code echo.catalog.hidden-processors} and no Kamelets unless the
+ * {@code echo.validation.allowed-components}, expression languages to {@code allowed-languages}
+ * (also in the steps' language drop-downs), no processors from {@code echo.catalog.hidden-processors} and no Kamelets unless the
  * {@code kamelet} component is allowed. Other catalog files are passed through unchanged.
  *
  * <p>When flows may only call approved APIs ({@code echo.apis.only}), http and https are left out
@@ -61,6 +61,8 @@ public class CamelCatalogController {
     private final Map<String, Predicate<String>> filters;
     private final Set<String> componentFiles = ConcurrentHashMap.newKeySet();
     private final Set<String> entityFiles = ConcurrentHashMap.newKeySet();
+    private final Set<String> patternFiles = ConcurrentHashMap.newKeySet();
+    private final Set<String> languages;
     private final ApiCatalog apis;
     private final Map<String, byte[]> filtered = new ConcurrentHashMap<>();
 
@@ -75,8 +77,9 @@ public class CamelCatalogController {
         if (apis.only()) {
             components.removeAll(Set.of("http", "https"));
         }
+        this.languages = Set.copyOf(validation.allowedLanguages());
         this.filters = root == null ? Map.of() : filtersFor(Set.copyOf(components),
-                Set.copyOf(validation.allowedLanguages()), Set.copyOf(catalog.hiddenProcessors()));
+                languages, Set.copyOf(catalog.hiddenProcessors()));
     }
 
     @GetMapping(PREFIX + "**")
@@ -122,6 +125,7 @@ public class CamelCatalogController {
                 entityFiles.add(dir + entities);
             }
             put(result, dir, catalogs, "languages", languages::contains);
+            patternFiles.add(dir + catalogs.path("patterns").path("file").asText(""));
             put(result, dir, catalogs, "patterns",
                     name -> !hiddenProcessors.contains(name) && (kamelets || !name.equals("kamelet")));
             put(result, dir, catalogs, "kamelets", name -> kamelets);
@@ -144,6 +148,9 @@ public class CamelCatalogController {
         if (apis.only() && componentFiles.contains(path) && entries.get("rest-openapi") instanceof ObjectNode restOpenApi) {
             offerApprovedApis(restOpenApi);
         }
+        if (patternFiles.contains(path)) {
+            allowedLanguagesOnly(entries);
+        }
         try {
             return json.writeValueAsBytes(entries);
         } catch (IOException e) {
@@ -158,6 +165,7 @@ public class CamelCatalogController {
      */
     private byte[] restForms(Resource file) {
         var entities = (ObjectNode) read(file);
+        allowedLanguagesOnly(entities);
         entities.forEach(entity -> {
             if (entity.path("propertiesSchema").path("definitions").path(OPENAPI_DEFINITION).path("properties")
                     .get("specification") instanceof ObjectNode specification) {
@@ -188,6 +196,36 @@ public class CamelCatalogController {
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /**
+     * Steps' forms offer only the allowed expression languages. Kaoto builds a step's language
+     * drop-down from the {@code oneOf} in its schema where each choice is one language, e.g.
+     * {@code {"required":["groovy"],"properties":{"groovy":{"$ref":"...model.language.GroovyExpression"}}}};
+     * the other languages' choices are taken out (the languages catalog alone doesn't reach the forms).
+     */
+    private void allowedLanguagesOnly(JsonNode node) {
+        if (node instanceof ObjectNode object && object.get("oneOf") instanceof ArrayNode choices
+                && !choices.isEmpty() && java.util.stream.StreamSupport.stream(choices.spliterator(), false)
+                        .allMatch(choice -> languageOf(choice) != null)) {
+            for (int i = choices.size() - 1; i >= 0; i--) {
+                if (!languages.contains(languageOf(choices.get(i)))) {
+                    choices.remove(i);
+                }
+            }
+        }
+        node.forEach(this::allowedLanguagesOnly);
+    }
+
+    /** The language a {@code oneOf} choice stands for, or null when it is not a language choice. */
+    private static String languageOf(JsonNode choice) {
+        if (choice.path("required").size() == 1) {
+            String name = choice.path("required").get(0).asText();
+            if (choice.path("properties").path(name).path("$ref").asText().contains(".model.language.")) {
+                return name;
+            }
+        }
+        return null;
     }
 
     /**
