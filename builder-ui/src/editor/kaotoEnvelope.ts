@@ -28,6 +28,9 @@ export function createEnvelopeContext(catalogUrl: string, files: FlowFiles, call
       catalogUrl,
       runtimeCatalogName: 'Camel Spring Boot 4.22.1',
       colorScheme: 'light',
+      // Kaoto's default ('onHover') also shows a step toolbar on every hovered step, so a
+      // selected step and a hovered one showed two toolbars at once. Only the selected step's shows.
+      nodeToolbarTrigger: 'onSelection',
     }),
     getCatalogURL: async () => catalogUrl,
     getMetadata: async (key: string) => (await readMetadata())[key],
