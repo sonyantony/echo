@@ -6,6 +6,11 @@ parameters and content type all come from the spec. Each install lists the specs
 call in `echo.apis`. A buyer adds their own specs (a vendor's TMF APIs, for example) as files in
 `config/apis/`, without a rebuild. Nothing about any one vendor is in ECHO's code.
 
+With docker compose, `config/apis/` is kept in Git: `config/apis/approved-apis.yaml` holds the
+`echo.apis` settings and docker-compose.yml loads it on top of `config/application.yaml`
+(`SPRING_CONFIG_IMPORT`), so its `echo.apis` wins over any there. This install approves the Blue
+Planet spec (`config/apis/blueplanet.yaml`) for its TMF638, TMF639 and TMF634 operations only.
+
 ```yaml
 echo:
   apis:
