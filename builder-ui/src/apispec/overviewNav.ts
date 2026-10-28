@@ -7,8 +7,9 @@
  *  - info, tags, source: that part of Apicurio's main form (its Design/Source tabs hidden);
  *  - paths, definitions, responses: Apicurio's own section for them (list, count, Add, right-click menu),
  *    which is hidden on the left and laid over the right pane instead. Picking an entry in it opens the
- *    entry as before, and the pane goes back to none. Data Types and Responses entries get a Delete button
- *    on the right, which deletes through Apicurio's own right-click Delete.
+ *    entry as before, and the pane goes back to none. Paths, Data Types and Responses entries get a Delete
+ *    button on the right, which deletes through Apicurio's own right-click Delete (so a
+ *    deleted path's routes are handled as for any deleted operation).
  * An opened data type or response gets a left arrow before its name, which goes back to its list.
  * Apicurio draws its list again now and then, so the items are added back whenever they are missing.
  */
@@ -29,6 +30,7 @@ const ITEMS: { pane: OverviewPane; label: string; icon: string; section?: string
 const LIST_ENTRY = '.api-path, .api-definition, .api-response';
 /** Entries with a Delete button, and the id of the right-click menu Apicurio opens for them. */
 const DELETABLE: { entry: string; menu: string }[] = [
+  { entry: '.path-section .api-path', menu: 'path-context-menu' },
   { entry: '.definition-section .api-definition', menu: 'definition-context-menu' },
   { entry: '.response-section .api-response', menu: 'response-context-menu' },
 ];
@@ -47,7 +49,8 @@ const BACK_CLASS = 'echo-back';
 function deleteEntry(doc: Document, entry: HTMLElement, button: HTMLElement, menu: string) {
   const view = doc.defaultView;
   const box = button.getBoundingClientRect();
-  entry.dispatchEvent(
+  // A path listens for its right-click on the item inside its row.
+  (entry.querySelector(':scope > [path-item]') ?? entry).dispatchEvent(
     new (view?.MouseEvent ?? MouseEvent)('contextmenu', { bubbles: true, cancelable: true, button: 2, clientX: box.left, clientY: box.bottom }),
   );
   // The menu is drawn by Apicurio, usually at once, else a moment later.
@@ -127,7 +130,7 @@ export function addOverviewNav(doc: Document) {
     for (const { entry } of DELETABLE) {
       for (const row of outline.querySelectorAll<HTMLElement>(entry)) {
         if (row.querySelector(`:scope > .${DELETE_CLASS}`)) continue;
-        const name = row.querySelector('.name')?.textContent?.trim() ?? '';
+        const name = (row.querySelector('.name') ?? row).textContent?.trim() ?? '';
         const button = doc.createElement('button');
         button.type = 'button';
         button.className = DELETE_CLASS;
