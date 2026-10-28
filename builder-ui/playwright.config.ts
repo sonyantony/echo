@@ -28,8 +28,14 @@ const jira =
   `--echo.jira.base-url=http://127.0.0.1:${jiraPort} --echo.jira.username=e2e@example.com --echo.jira.token=e2e-token` +
   ` --echo.ai.provider=openai-compatible --echo.ai.openai-compatible.base-url=http://127.0.0.1:${jiraPort}/v1` +
   ` --echo.ai.openai-compatible.model=e2e-model --echo.ai.openai-compatible.api-key=e2e-key`;
+// Two approved APIs (so no single one is prefilled in new routes' REST OpenApi steps): the
+// checked-in Blue Planet spec, limited to two tags, and the backend tests' small one.
+const apis =
+  `'--echo.apis.specs[0].id=blueplanet' '--echo.apis.specs[0].name=Blue Planet' '--echo.apis.specs[0].file=../config/apis/blueplanet.yaml'` +
+  ` '--echo.apis.specs[0].allowed-tags=TMF638 Service Controller,TMF639 Resource Typed Controller'` +
+  ` '--echo.apis.specs[1].id=inventory' '--echo.apis.specs[1].file=../builder-backend/src/test/resources/apis/inventory.yaml'`;
 const backend = {
-  command: `java -jar ${backendJar} --server.port=8080 --echo.data-dir=${dataDir} --echo.git.url=file://${e2eGitRepo} --echo.editor.autosave-seconds=0 ${jira}`,
+  command: `java -jar ${backendJar} --server.port=8080 --echo.data-dir=${dataDir} --echo.git.url=file://${e2eGitRepo} --echo.editor.autosave-seconds=0 ${jira} ${apis}`,
   url: 'http://localhost:8080/actuator/health',
   reuseExistingServer: !process.env.CI,
   timeout: 120_000,
