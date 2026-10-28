@@ -34,6 +34,7 @@ echo:
   apis:
     # The downstream APIs flows may call (see docs/apis.md). Put the spec files in config/apis/.
     # only: true means flows can call nothing else: no plain http/https steps.
+    # With docker compose, config/apis/approved-apis.yaml sets these and wins over this file.
     only: false
     specs: []
     # specs:

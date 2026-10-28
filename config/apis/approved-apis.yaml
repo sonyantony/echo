@@ -1,0 +1,16 @@
+# The downstream APIs flows may call with REST OpenApi steps (docs/apis.md). docker compose loads
+# this file on top of config/application.yaml (SPRING_CONFIG_IMPORT in docker-compose.yml), so
+# its echo.apis settings win over any there. Restart the Builder after changing it or a spec.
+echo:
+  apis:
+    # only: true would also reject plain http/https steps in flows.
+    only: false
+    specs:
+      - id: blueplanet                       # the flow's copy is blueplanet.openapi.json
+        name: Blue Planet
+        file: /config/apis/blueplanet.yaml   # the path inside the container
+        allowed-tags:                        # Service Inventory, Resource Inventory, Resource Catalog
+          - TMF638 Service Controller
+          - TMF639 Resource Typed Controller
+          - TMF639 Resource Untyped Controller
+          - TMF634 Resource Catalog Controller

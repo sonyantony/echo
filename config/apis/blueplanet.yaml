@@ -1,0 +1,1617 @@
+openapi: 3.0.1
+info:
+  title: TMF API
+servers:
+- url: /blueplanet-inventory-tmf-api
+security:
+- bearer-jwt:
+  - read
+  - write
+paths:
+  /bpmn/workflow/definitions/suspend:
+    put:
+      tags:
+      - BPMN
+      - Workflow
+      - Bpmn workflow definition operations
+      description: Suspends given workflow definitions
+      operationId: suspendDefinitions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowDefinitionSuspendActivateRequest'
+        required: true
+      responses:
+        "204":
+          description: Success
+          content:
+            application/json: {}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /bpmn/workflow/definitions/activate:
+    put:
+      tags:
+      - BPMN
+      - Workflow
+      - Bpmn workflow definition operations
+      description: Activates given workflow definitions
+      operationId: activateDefinitions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowDefinitionSuspendActivateRequest'
+        required: true
+      responses:
+        "204":
+          description: Success
+          content:
+            application/json: {}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /v1/service:
+    get:
+      tags:
+      - TMF638 Service Controller
+      summary: lists all services based on query parameters
+      operationId: getServices
+      parameters:
+      - name: name
+        in: query
+        description: "Service Name(Eg: ~'L3VPN.*')"
+      - name: offset
+        in: query
+        description: Service offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "206":
+          description: Partial Content
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DefaultServiceResponse'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DefaultServiceResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    post:
+      tags:
+      - TMF638 Service Controller
+      summary: creates a service
+      operationId: createService
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service Creation Request'
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultServiceResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - TMF638 Service Controller
+      operationId: deleteServices
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /v1/service/async:
+    get:
+      tags:
+      - TMF638 Service Controller
+      summary: lists all services based on query parameters asynchronously
+      operationId: getServicesAsync
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    post:
+      tags:
+      - TMF638 Service Controller
+      summary: creates a service asynchronously
+      operationId: createServiceAsync
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service Creation Request'
+        required: true
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /shutdown/status:
+    post:
+      tags:
+      - Shutdown controller
+      operationId: status
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KafkaStatusResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /shutdown/init:
+    post:
+      tags:
+      - Shutdown controller
+      operationId: init
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /shutdown/cleanup:
+    post:
+      tags:
+      - Shutdown controller
+      operationId: cleanup
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/{resourceType}:
+    get:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Retrieve a list of resources for a specific type
+      operationId: getResources
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: query
+        description: Name
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    post:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Creates a resource
+      operationId: createResource
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefaultResourceCreateRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/resource:
+    get:
+      tags:
+      - TMF639 Resource Untyped Controller
+      description: Retrieve list of all resources
+      operationId: getResources_1
+      parameters:
+      - name: name
+        in: query
+        description: Name
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    post:
+      tags:
+      - TMF639 Resource Untyped Controller
+      operationId: createResource_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefaultResourceCreateRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /onboard/tmf/asset:
+    post:
+      tags:
+      - onboard-controller
+      operationId: onboardAssetRepo
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /v1/service/{id}:
+    get:
+      tags:
+      - TMF638 Service Controller
+      summary: Retrieves the service with an ID
+      operationId: getService
+      parameters:
+      - name: id
+        in: path
+        description: Service ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultServiceResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - TMF638 Service Controller
+      summary: Deletes the service with an ID
+      operationId: deleteService
+      parameters:
+      - name: id
+        in: path
+        description: Service ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    patch:
+      tags:
+      - TMF638 Service Controller
+      summary: Patches the service data with an ID
+      operationId: updateService
+      parameters:
+      - name: id
+        in: path
+        description: Service ID
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefaultServiceUpdateRequest'
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultServiceResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/{resourceType}/{id}:
+    get:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Retrieve resource with a type and an ID
+      operationId: getResource
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - TMF639 Resource Typed Controller
+      operationId: deleteResource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    patch:
+      tags:
+      - TMF639 Resource Typed Controller
+      operationId: updateResource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefaultResourceUpdateRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/resource/{id}:
+    get:
+      tags:
+      - TMF639 Resource Untyped Controller
+      description: Retrieve a resource of any type with an ID
+      operationId: getResource_1
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - TMF639 Resource Untyped Controller
+      operationId: deleteResource_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    patch:
+      tags:
+      - TMF639 Resource Untyped Controller
+      operationId: updateResource_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefaultResourceUpdateRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /v1/service/async/{id}:
+    get:
+      tags:
+      - TMF638 Service Controller
+      summary: Retrieves the service with an ID asynchronously
+      operationId: getServiceAsync
+      parameters:
+      - name: id
+        in: path
+        description: Service ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/{resourceType}/async:
+    get:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Retrieve a list of resources for a specific type asynchronously
+      operationId: getResourcesAsync
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: query
+        description: Name
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/{resourceType}/async/{id}:
+    get:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Retrieve resource with a type and an ID asynchronously
+      operationId: getResourceAsync
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/resource/async:
+    get:
+      tags:
+      - TMF639 Resource Untyped Controller
+      description: Retrieve list of all resources asynchronously
+      operationId: getResourcesAsync_1
+      parameters:
+      - name: name
+        in: query
+        description: Name
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/resource/async/{id}:
+    get:
+      tags:
+      - TMF639 Resource Untyped Controller
+      description: Retrieve a resource of any type with an ID asynchronously
+      operationId: getResourceAsync_1
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /healthcheck/status:
+    get:
+      tags:
+      - TMF Health Check Controller
+      operationId: getStatus
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: integer
+                format: int32
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /catalogManagement/ResourceFunctionSpec:
+    get:
+      tags:
+      - TMF634 Resource Catalog Controller
+      description: lists all resource specifications based on query parameters
+      operationId: getAllResourcesSpec
+      parameters:
+      - name: '@baseType'
+        in: query
+        description: "Base type of the Resource specification.  Eg: PhysicalResourceSpec,VirtualResourceSpec,LogicalResourceSpec"
+      - name: category
+        in: query
+        description: "Category to which Resource specification belongs. Eg: Rack,Device,Card"
+      - name: lifecycleStatus
+        in: query
+        description: Used to indicate the current lifecycle status of the resource
+          specification
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Specification'
+        "206":
+          description: Partial Content
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Specification'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /catalogManagement/ResourceFunctionSpec/{id}:
+    get:
+      tags:
+      - TMF634 Resource Catalog Controller
+      description: Retrieve a resource specification from the catalog by an ID
+      operationId: getResourceSpecById
+      parameters:
+      - name: id
+        in: path
+        description: Specification ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /bpmn/workflow/definitions/{processDefinitionId}/xml:
+    get:
+      tags:
+      - BPMN
+      - Workflow
+      - Bpmn workflow definition operations
+      description: Get workflow definition diagram xml
+      operationId: getDefinitionDiagramXml
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json: {}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /bpmn/workflow/definitions/statistics:
+    get:
+      tags:
+      - BPMN
+      - Workflow
+      - Bpmn workflow definition operations
+      description: Get workflow definition statistics
+      operationId: getDefinitionsStatistics
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json: {}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /bpmn/running:
+    get:
+      tags:
+      - bpmnApplication
+      operationId: isRunning
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: boolean
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+components:
+  schemas:
+    WorkflowDefinitionSuspendActivateRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+        includeProcessInstances:
+          type: boolean
+    Characteristic:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: object
+        valueType:
+          type: string
+        '@schemaLocation':
+          type: string
+    Note:
+      type: object
+      properties:
+        author:
+          type: string
+        date:
+          type: string
+          format: date-time
+        text:
+          type: string
+    Place:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+    RelatedParty:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+        '@type':
+          type: string
+        '@referredType':
+          type: string
+    RelatedService:
+      type: object
+      properties:
+        href:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        state:
+          type: string
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: '#/components/schemas/Characteristic'
+        '@type':
+          type: string
+    Service Creation Request:
+      required:
+      - '@type'
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+          - initial
+          - feasibilityChecked
+          - designed
+          - reserving
+          - reserved
+          - reservingFailed
+          - inactive
+          - activating
+          - active
+          - failed
+          - terminated
+          - unknown
+          - Cancelled
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: '#/components/schemas/Characteristic'
+        note:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/Note'
+        name:
+          type: string
+          writeOnly: true
+        category:
+          type: string
+          writeOnly: true
+        serviceOrder:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/ServiceOrder'
+        relatedParty:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/RelatedParty'
+        serviceType:
+          type: string
+          writeOnly: true
+        serviceRelationship:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/ServiceRelationship'
+        serviceSpecification:
+          $ref: '#/components/schemas/ServiceSpecification'
+        isStateful:
+          type: boolean
+          writeOnly: true
+        isServiceEnabled:
+          type: boolean
+          writeOnly: true
+        hasStarted:
+          type: boolean
+          writeOnly: true
+        place:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/Place'
+        '@baseType':
+          type: string
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+      description: Data required for Service creation
+    ServiceOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        serviceOrderItemId:
+          type: string
+        href:
+          type: string
+        '@referredType':
+          type: string
+    ServiceRelationship:
+      type: object
+      properties:
+        relationshipType:
+          type: string
+        service:
+          $ref: '#/components/schemas/RelatedService'
+    ServiceSpecification:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+        version:
+          type: string
+        '@type':
+          type: string
+    DefaultServiceResponse:
+      type: object
+      properties:
+        service:
+          $ref: '#/components/schemas/Service'
+        urlUtils:
+          $ref: '#/components/schemas/URLUtils'
+        note:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+        name:
+          type: string
+        id:
+          type: string
+        state:
+          type: string
+          enum:
+          - initial
+          - feasibilityChecked
+          - designed
+          - reserving
+          - reserved
+          - reservingFailed
+          - inactive
+          - activating
+          - active
+          - failed
+          - terminated
+          - unknown
+          - Cancelled
+        category:
+          type: string
+        serviceOrder:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceOrder'
+        relatedParty:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedParty'
+        supportingService:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportingItem'
+        supportingResource:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportingResource'
+        serviceType:
+          type: string
+        operatingState:
+          type: string
+        serviceRelationship:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceRelationship'
+        isStateful:
+          type: boolean
+        isServiceEnabled:
+          type: boolean
+        hasStarted:
+          type: boolean
+        startDate:
+          type: string
+          format: date-time
+        startMode:
+          type: string
+        endDate:
+          type: string
+          format: date-time
+        serviceSpecification:
+          $ref: '#/components/schemas/ServiceSpecification'
+        href:
+          type: string
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: '#/components/schemas/Characteristic'
+        place:
+          type: array
+          items:
+            $ref: '#/components/schemas/Place'
+        serviceDate:
+          type: string
+          format: date-time
+        '@baseType':
+          type: string
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        schemaLocation:
+          type: string
+        baseType:
+          type: string
+        externalId:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        description:
+          type: string
+        category:
+          type: string
+        characteristics:
+          type: array
+          items:
+            $ref: '#/components/schemas/Characteristic'
+        relatedParties:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedParty'
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: object
+        note:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+        state:
+          type: string
+          enum:
+          - initial
+          - feasibilityChecked
+          - designed
+          - reserving
+          - reserved
+          - reservingFailed
+          - inactive
+          - activating
+          - active
+          - failed
+          - terminated
+          - unknown
+          - Cancelled
+        serviceDate:
+          type: string
+          format: date-time
+        isServiceEnabled:
+          type: boolean
+        hasStarted:
+          type: boolean
+        isStateful:
+          type: boolean
+        startMode:
+          type: string
+        operatingState:
+          type: string
+        processState:
+          type: string
+        processDescription:
+          type: string
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceOrder'
+        serviceRelationship:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceRelationship'
+        supportingResources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportingResource'
+        supportingServices:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportingItem'
+        places:
+          type: array
+          items:
+            $ref: '#/components/schemas/Place'
+        serviceSpecification:
+          $ref: '#/components/schemas/ServiceSpecification'
+        serviceType:
+          type: string
+        deleted:
+          type: boolean
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: '#/components/schemas/Characteristic'
+    SupportingItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cateogry:
+          type: string
+        referredType:
+          type: string
+        href:
+          type: string
+    SupportingResource:
+      type: object
+      properties:
+        id:
+          type: string
+        externalId:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+        referredType:
+          type: string
+    URLUtils:
+      type: object
+    KafkaStatusResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+    DefaultResourceCreateRequest:
+      required:
+      - '@type'
+      - lifecycleState
+      type: object
+      properties:
+        resource:
+          $ref: '#/components/schemas/Resource'
+        note:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+        name:
+          type: string
+        id:
+          type: string
+        description:
+          type: string
+        href:
+          type: string
+          writeOnly: true
+        category:
+          type: string
+        relatedParty:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedParty'
+        publicIdentifier:
+          type: string
+        resourceRelationship:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceRelationship'
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        inventoryObject:
+          $ref: '#/components/schemas/Resource'
+        lifecycleState:
+          type: string
+        resourceSpecification:
+          $ref: '#/components/schemas/Specification'
+        place:
+          $ref: '#/components/schemas/Place'
+        '@type':
+          type: string
+        '@baseType':
+          type: string
+        '@schemaLocation':
+          type: string
+        resourceCharacteristic:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceCharacteristic'
+      description: Data for Resource creation
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        schemaLocation:
+          type: string
+        baseType:
+          type: string
+        externalId:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        description:
+          type: string
+        category:
+          type: string
+        characteristics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceCharacteristic'
+        relatedParties:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedParty'
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: object
+        note:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+        publicIdentifier:
+          type: string
+        lifecycleState:
+          type: string
+        resourceSpecification:
+          $ref: '#/components/schemas/Specification'
+        resourceRelationship:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceRelationship'
+        place:
+          $ref: '#/components/schemas/Place'
+        maxResRelCntIn:
+          type: integer
+          format: int32
+        maxResRelCntOut:
+          type: integer
+          format: int32
+        totalResRelCntIn:
+          type: integer
+          format: int32
+        totalResRelCntOut:
+          type: integer
+          format: int32
+        incompleteResRel:
+          type: boolean
+        perspective:
+          type: integer
+          format: int64
+        deleted:
+          type: boolean
+    ResourceCharacteristic:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: object
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+    ResourceRef:
+      type: object
+      properties:
+        id:
+          type: string
+        href:
+          type: string
+    ResourceRelationship:
+      type: object
+      properties:
+        type:
+          type: string
+        resource:
+          $ref: '#/components/schemas/ResourceRef'
+        resourceRelationshipCharacteristic:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceCharacteristic'
+    Specification:
+      type: object
+      properties:
+        id:
+          type: string
+        href:
+          type: string
+        name:
+          type: string
+        '@type':
+          type: string
+        '@baseType':
+          type: string
+        category:
+          type: string
+        '@schemaLocation':
+          type: string
+        isBundle:
+          type: boolean
+        lifecycleStatus:
+          type: string
+        lastUpdate:
+          type: string
+        validFor:
+          type: string
+        role:
+          type: string
+    DefaultServiceUpdateRequest:
+      type: object
+      properties:
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: '#/components/schemas/Characteristic'
+        note:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/Note'
+        name:
+          type: string
+          writeOnly: true
+        state:
+          type: string
+          enum:
+          - initial
+          - feasibilityChecked
+          - designed
+          - reserving
+          - reserved
+          - reservingFailed
+          - inactive
+          - activating
+          - active
+          - failed
+          - terminated
+          - unknown
+          - Cancelled
+        category:
+          type: string
+          writeOnly: true
+        serviceOrder:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/ServiceOrder'
+        relatedParty:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/RelatedParty'
+        serviceType:
+          type: string
+          writeOnly: true
+        serviceRelationship:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/ServiceRelationship'
+        serviceSpecification:
+          $ref: '#/components/schemas/ServiceSpecification'
+        isStateful:
+          type: boolean
+          writeOnly: true
+        isServiceEnabled:
+          type: boolean
+          writeOnly: true
+        hasStarted:
+          type: boolean
+          writeOnly: true
+        place:
+          type: array
+          writeOnly: true
+          items:
+            $ref: '#/components/schemas/Place'
+        '@baseType':
+          type: string
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+      description: Service data with fields that require patching
+    DefaultResourceUpdateRequest:
+      required:
+      - lifecycleState
+      type: object
+      properties:
+        resource:
+          $ref: '#/components/schemas/Resource'
+        note:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+        name:
+          type: string
+        id:
+          type: string
+        description:
+          type: string
+        href:
+          type: string
+          writeOnly: true
+        category:
+          type: string
+        relatedParty:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedParty'
+        publicIdentifier:
+          type: string
+        resourceRelationship:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceRelationship'
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        inventoryObject:
+          $ref: '#/components/schemas/Resource'
+        lifecycleState:
+          type: string
+        resourceSpecification:
+          $ref: '#/components/schemas/Specification'
+        place:
+          $ref: '#/components/schemas/Place'
+        '@baseType':
+          type: string
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+        resourceCharacteristic:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceCharacteristic'
+  securitySchemes:
+    bearer-jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

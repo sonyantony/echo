@@ -16,6 +16,8 @@ services:
       - ECHO_S3_SECRET_KEY
       - ECHO_JIRA_TOKEN
       - ECHO_AI_KEY
+      # The approved downstream APIs, kept in Git with their specs (config/apis/).
+      - SPRING_CONFIG_IMPORT=optional:file:/config/apis/approved-apis.yaml
     volumes:
       - echo-data:/data          # H2 database and the Git working copy
       - ./config:/config:ro      # application.yaml with users and the flow repository
