@@ -30,9 +30,9 @@ import org.springframework.web.server.ResponseStatusException;
  * (also in the steps' language drop-downs), no processors from {@code echo.catalog.hidden-processors} and no Kamelets unless the
  * {@code kamelet} component is allowed. Other catalog files are passed through unchanged.
  *
- * <p>When flows may only call approved APIs ({@code echo.apis.only}), http and https are left out
- * too, and the REST OpenApi step's Specification Uri and Operation Id become drop-downs of the
- * approved specs and their allowed operations.
+ * <p>When approved APIs are set ({@code echo.apis.specs}), the REST OpenApi step's Specification
+ * Uri and Operation Id become drop-downs of the approved specs and their allowed operations. When
+ * flows may only call approved APIs ({@code echo.apis.only}), http and https are left out too.
  *
  * <p>The REST configuration form shows only {@link #SHOWN_REST_CONFIGURATION}, in that order and
  * with no collapsible groups: flows always serve REST on platform-http (the only REST transport
@@ -145,7 +145,7 @@ public class CamelCatalogController {
     private byte[] keepOnly(String path, Resource file, Predicate<String> keep) {
         var entries = (ObjectNode) read(file);
         entries.retain(entries.properties().stream().map(Map.Entry::getKey).filter(keep).toList());
-        if (apis.only() && componentFiles.contains(path) && entries.get("rest-openapi") instanceof ObjectNode restOpenApi) {
+        if (!apis.apis().isEmpty() && componentFiles.contains(path) && entries.get("rest-openapi") instanceof ObjectNode restOpenApi) {
             offerApprovedApis(restOpenApi);
         }
         if (patternFiles.contains(path)) {
