@@ -68,7 +68,7 @@ test('the REST service is made from the spec: Base Path, 404 for missing operati
   expect(draft).not.toContain('openApi');
 
   await page.getByRole('button', { name: 'Run', exact: true }).click();
-  await page.getByRole('menuitem', { name: new RegExp(`^Run ${name}`) }).click();
+  await page.getByRole('menuitem', { name: new RegExp(`^Run ${name}(?! With\\.\\.\\.)`) }).click();
   await expect(page.getByText(/\/shop\/orders\/\{id\}$/)).toBeVisible();
   const call = async (path: string) =>
     (await page.request.post(`/api/flows/${flowId}/run/request`, {

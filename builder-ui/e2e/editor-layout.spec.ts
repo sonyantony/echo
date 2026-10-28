@@ -265,7 +265,7 @@ test('the route holding the selected step is outlined and marked in the Routes l
   expect(await width('list-orders')).toBe('1px');
 });
 
-test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate and Publish replace copy to clipboard', async ({ page }) => {
+test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With...; downloads, Validate and Publish replace copy to clipboard', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
   await createFlow(page, name);
@@ -276,8 +276,9 @@ test('the Run menu, just before Advanced, holds Run <flow>; downloads, Validate 
   expect(runBox.x).toBeGreaterThanOrEqual(dataMapper.x + dataMapper.width);
   expect(runBox.x + runBox.width).toBeLessThanOrEqual(advanced.x);
   await run.click();
-  await expect(page.getByRole('menuitem', { name: new RegExp(`^Run ${name}`) })).toBeVisible();
-  await expect(page.getByRole('menuitem')).toHaveCount(1);
+  await expect(page.getByRole('menuitem', { name: new RegExp(`^Run ${name}(?! With\\.\\.\\.)`) })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: new RegExp(`^Run ${name} With\\.\\.\\.`) })).toBeVisible();
+  await expect(page.getByRole('menuitem')).toHaveCount(2);
   await page.keyboard.press('Escape');
 
   // Download Flow, Download Flow As Image, Validate, the REST settings and Publish take the place of Kaoto's copy to

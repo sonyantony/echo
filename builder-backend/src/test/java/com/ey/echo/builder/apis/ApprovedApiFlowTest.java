@@ -129,6 +129,13 @@ class ApprovedApiFlowTest {
         return id;
     }
 
+    /** Run with a properties file setting the route's {{placeholders}}, as Run <flow> With... does. */
+    private org.springframework.test.web.servlet.ResultActions run(long id) throws Exception {
+        String values = "inventory.host=http://localhost:%d\\ninventory.token=t0k3n\\n".formatted(inventory.getAddress().getPort());
+        return mvc.perform(as(post("/api/flows/{id}/run", id)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fileName\":\"test.properties\",\"content\":\"%s\"}".formatted(values)));
+    }
+
     private void put(long id, String file, String content) throws Exception {
         mvc.perform(as(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .put("/api/flows/{id}/files/{file}", id, file))
@@ -140,7 +147,7 @@ class ApprovedApiFlowTest {
     void runCallsTheOperationAtTheSpecsPath() throws Exception {
         long id = create("services");
 
-        mvc.perform(as(post("/api/flows/{id}/run", id))).andExpect(status().isOk());
+        run(id).andExpect(status().isOk());
         mvc.perform(as(post("/api/flows/{id}/run/request", id)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"method\":\"POST\",\"path\":\"/services\",\"body\":\"{\\\"@type\\\":\\\"L3VPN\\\"}\"}"))
                 .andExpect(status().isOk())
@@ -165,7 +172,7 @@ class ApprovedApiFlowTest {
         long id = create("services");
         put(id, "services.camel.yaml", ROUTE.replace("createService", "init"));
 
-        mvc.perform(as(post("/api/flows/{id}/run", id)))
+        run(id)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.problems[0].message").value(
                         "Flows may not call Inventory's 'init' operation (POST /shutdown/init). Allowed: createService, getService."));

@@ -64,7 +64,7 @@ test('the sample request and response are kept as the examples of their bodies',
   const route = await (await page.request.get(`/api/flows/${flowId}/files/${name}.camel.yaml`)).text();
   expect(route).toMatch(new RegExp(`uri: direct\\n\\s+parameters:\\n\\s+name: ${operationId}\\n`));
   await page.getByRole('button', { name: 'Run', exact: true }).click();
-  await page.getByRole('menuitem', { name: new RegExp(`^Run ${name}`) }).click();
+  await page.getByRole('menuitem', { name: new RegExp(`^Run ${name}(?! With\\.\\.\\.)`) }).click();
   // The Run panel's URL (the canvas shows "POST <path>" on the route already).
   await expect(page.getByText(new RegExp(`^http.*${path}$`)).first()).toBeVisible();
   const call = async (method: string, at: string, body?: string) =>

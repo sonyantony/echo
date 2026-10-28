@@ -52,7 +52,7 @@ Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}
 The editor's controls sit on the same line as Kaoto's tabs: **File** (New Flow, Open Template, Open
 Flow, Upload Flow, Save, Save As, Save As Template), **Interface** (the flow's Openapi spec; API-first flows start here),
 **Flow Design** (opens the canvas; its menu has Download <flow> and Download <flow> As Image), Rest,
-DataMapper, **Run** (Run <flow>), **Advanced** (Java Beans) and About, with History at the right. Validate and Publish are buttons on
+DataMapper, **Run** (Run <flow>, Run <flow> With...), **Advanced** (Java Beans) and About, with History at the right. Validate and Publish are buttons on
 the Flow Design toolbar.
 **Ctrl+S** saves and **Ctrl+O** opens Open Template (Cmd on a Mac).
 **Open Flow** goes to the Flows list (asking first about unsaved changes) to pick another flow.
@@ -91,6 +91,15 @@ the header shows:
 
 **Restart** runs your latest changes; **Stop** ends the run. A run stops by itself after 30
 minutes without requests.
+
+A flow that uses `{{placeholders}}` (the orders flow's `{{fulfilment.url}}`) runs with the values of a
+properties file you choose. The first **Run <flow name>** opens **Run <flow name> With...**: it lists
+the values the flow uses and checks that the file you pick with **Browse...** sets each one (a
+placeholder with a default, `{{name:default}}`, needs none). Later runs reuse that file; choose
+**Run > Run <flow name> With...** to pick another. The file is only for test runs: the Builder keeps
+it in memory for you and that flow, never saves it with the flow or publishes it, and asks again
+after a restart or when the flow uses a value the file does not set. The image's values still come
+from the flow's `application.properties` and the pipeline's ConfigMap.
 
 Things to know:
 

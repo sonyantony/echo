@@ -366,13 +366,40 @@ export interface TestResponse {
   durationMs: number;
 }
 
+/** A value the flow uses ({{name}}); fallback is the default written in the placeholder, or null. */
+export interface RunPlaceholder {
+  name: string;
+  fallback: string | null;
+}
+
+/**
+ * The values the saved draft uses and the properties file chosen for its test runs (null: none yet);
+ * missing lists those the file does not set. A 409 from runApi.start carries this as details.
+ */
+export interface RunValues {
+  fileName: string | null;
+  placeholders: RunPlaceholder[];
+  missing: string[];
+}
+
+/** A properties file chosen with Run With...: kept by the Builder for later runs, never saved with the flow. */
+export interface RunFile {
+  fileName: string;
+  content: string;
+}
+
 const runPath = (id: number) => `/api/flows/${id}/run`;
 
 export const runApi = {
   /** The flow's current run, or null when it is not running. */
   status: async (id: number) => (await api<RunInfo | undefined>(runPath(id))) ?? null,
-  /** Validates the saved draft and starts it. A 422 ApiError carries the ValidationResult as details. */
-  start: (id: number) => api<RunInfo>(runPath(id), { method: 'POST' }),
+  /**
+   * Validates the saved draft and starts it, with file's values when given, else with the file chosen
+   * before. A 422 ApiError carries the ValidationResult as details; a 409 the RunValues when a file is needed.
+   */
+  start: (id: number, file?: RunFile) =>
+    api<RunInfo>(runPath(id), { method: 'POST', ...(file ? { json: file } : {}) }),
+  values: (id: number) => api<RunValues>(`${runPath(id)}/values`),
   stop: (id: number) => api<void>(runPath(id), { method: 'DELETE' }),
   log: (id: number, after: number) => api<RunLogLine[]>(`${runPath(id)}/log?after=${after}`),
   /** Sends a request to the running flow through the Builder. */
