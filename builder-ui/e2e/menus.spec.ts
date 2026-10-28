@@ -13,7 +13,7 @@ test('tab-line menus close on an outside press and on Escape', async ({ page }) 
 
   // Interface: a press inside the Apicurio frame closes its menu.
   await interfaceMenu(page, /^Design/);
-  await tab(page, 'Interface').click();
+  await tab(page, 'Interface Specs').click();
   await expect(menuItem(page, /^Upload/)).toBeVisible();
   // Away from where the menus hang, in Apicurio's right-hand pane.
   const frame = page.locator('iframe[title="OpenAPI editor"]');

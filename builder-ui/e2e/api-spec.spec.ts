@@ -201,20 +201,20 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await login(page);
   await createFlow(page, uniqueName('spec-tabs'));
   // Clicking Interface only opens its menu, Design first; Design opens the spec.
-  await page.getByRole('button', { name: 'Interface', exact: true }).click();
+  await page.getByRole('button', { name: 'Interface Specs', exact: true }).click();
   await expect(page.getByRole('menuitem').first()).toHaveText(/^Design/);
   await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
   await page.keyboard.press('Escape');
   await openSpec(page);
-  // The bar: Save, Rename, Discard, and Import From Jira (the e2e backend reads a fake Jira); Info and the rest are in the list on the left; no "Schema from a sample" note.
+  // The bar: New Interface Specs from Samples, Save, Rename, Discard, and Import From Jira (the e2e backend reads a fake Jira); Info and the rest are in the list on the left; no "Schema from a sample" note.
   const bar = page.locator('.echo-api-spec__bar');
-  await expect(bar.getByRole('button')).toHaveText(['Save', 'Rename', 'Discard', 'Import From Jira']);
+  await expect(bar.getByRole('button')).toHaveText(['New Interface Specs from Samples', 'Save', 'Rename', 'Discard', 'Import From Jira']);
   await expect(bar).not.toContainText('Schema from a sample');
   const editor = editorOf(page);
   for (const name of ['File', 'Flow', 'Run', 'Advanced']) {
     await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   }
-  await expect(page.getByRole('button', { name: 'Interface', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
+  await expect(page.getByRole('button', { name: 'Interface Specs', exact: true })).toHaveClass(/echo-tab-menu--underlined/);
 
   // The editor has ECHO's theme and font, not Apicurio's own; its title bar's API name is hidden
   // under ECHO's bar.

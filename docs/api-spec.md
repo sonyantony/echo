@@ -6,7 +6,7 @@ request validation, Swagger UI).
 
 ## Editing
 
-In the flow editor, **Interface** (called Openapi Design, then Openapi, before; on the tab line, right after File: API-first flows start
+In the flow editor, **Interface Specs** (called Openapi Design, then Openapi, then Interface, before; on the tab line, right after File: API-first flows start
 from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI editor
 (visual designer plus a Source tab), in place of Kaoto's views. Like Flow Design it is also a menu:
 
@@ -24,8 +24,8 @@ from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI e
 - **Download Openapi File As Yaml** / **As Json**: the spec on screen, unsaved edits included,
   named after the spec (or the flow while the spec has no name).
 
-The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Yaml for a new spec), **Save**,
-**Rename** and **Discard**. It takes the place of Apicurio's title bar with the API's name
+The bar above the editor holds the format (**Yaml** or **Json** radio buttons; Yaml for a new spec),
+**New Interface Specs from Samples** (the same dialog as the menu item), **Save**, **Rename** and **Discard**. It takes the place of Apicurio's title bar with the API's name
 (hidden by `theme/apicurio-mapping.css`); Apicurio's undo, redo and Issues stay at its right.
 
 Apicurio's list on the left is plain items (`apispec/overviewNav.ts`): **Info**, **Tag Definitions**,
@@ -89,10 +89,10 @@ itself keeps only what is designed, so the service always follows the spec's cur
   it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user
   picks **Remove Route** in the dialog that asks, and Undo in Interface brings it back as it was.
   Upload gives each operation of the file a route under its own operationId (one with a route
-  keeps it) and treats the old spec's operations it lacks as deleted. New From Samples and Copy
+  keeps it) and treats the old spec's operations it lacks as deleted. New Interface Specs from Samples and Copy
   From Another Flow do the same with the spec they bring. Discard treats every operation on screen
   as deleted, so no route made for them is left behind (one somebody worked on is asked about).
-- **Samples are kept as examples.** New From Samples (and Import From Jira) saves each sample as
+- **Samples are kept as examples.** New Interface Specs from Samples (and Import From Jira) saves each sample as
   the named example (`examples.sample`) of its body, which Apicurio lists (it does not list a bare
   `example`), and keeps it as the `example` of the data type it makes. Picking such a data type
   for a body or response without an example of its own, e.g. one under Responses, adds the
@@ -228,7 +228,7 @@ comment), the card says so; ECHO's own guess picks the newest. Cards can be left
 that importing replaces it (keeping its operationId, so its route stays).
 
 **Add To Spec** adds the operations and their data types to the spec on screen, unsaved, keeping
-everything it has. Schemas are made as New From Samples makes them (named after method and path,
+everything it has. Schemas are made as New Interface Specs from Samples makes them (named after method and path,
 `PostAccountsAccountIdPaymentsRequest`, numbered when the spec has the name; fields with a value are
 required, null ones are optional strings). New operations get a route at once, and a new path
 another flow has is asked about, as when typed in. A last dialog lists the paths and data types it

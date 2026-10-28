@@ -629,6 +629,9 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           <Radio id="echo-spec-yaml" name="echo-spec-format" label="Yaml" isChecked={format === 'yaml'} onChange={() => setFormat('yaml')} />
           <Radio id="echo-spec-json" name="echo-spec-format" label="Json" isChecked={format === 'json'} onChange={() => setFormat('json')} />
         </div>
+        <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'samples' })} isDisabled={saving}>
+          New Interface Specs from Samples
+        </Button>
         <Button variant="primary" size="sm" onClick={() => save()} isLoading={saving} isDisabled={saving || (!dirty && !!name)}>
           Save
         </Button>

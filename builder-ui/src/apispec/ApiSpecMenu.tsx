@@ -46,7 +46,7 @@ export function ApiSpecMenu({ current, onOpen, onShow, panel, onCopy }: Props) {
               setOpen((was) => !was);
             }}
           >
-            Interface
+            Interface Specs
           </MenuToggle>
         )}
       >
@@ -92,7 +92,7 @@ export function ApiSpecMenu({ current, onOpen, onShow, panel, onCopy }: Props) {
             }}
             description="Make the spec from a sample request and response"
           >
-            New From Samples
+            New Interface Specs from Samples
           </DropdownItem>
           <Divider component="li" key="download-divider" />
           <DropdownItem
