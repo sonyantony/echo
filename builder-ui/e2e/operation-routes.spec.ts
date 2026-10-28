@@ -245,8 +245,8 @@ test('a method added in Interface gets a route at once; deleting it asks about a
   // A scaffold: Remove Headers, then a multicast with one pipeline calling a REST OpenApi step, then a JSON reply.
   const made = (YAML.parse(route) as { route?: { from: { parameters?: { name?: string }; steps: Record<string, { steps?: unknown[] }>[] } } }[])
     .find((e) => e.route?.from.parameters?.name === 'postCards')!.route!.from.steps;
-  expect(made.map((step) => Object.keys(step)[0])).toEqual(['removeHeaders', 'multicast', 'setBody', 'setHeader']);
-  expect(JSON.stringify(made[1].multicast.steps)).toMatch(/^\[\{"pipeline":.*"uri":"rest-openapi"/);
+  expect(made.map((step) => Object.keys(step)[0])).toEqual(['removeHeaders', 'setHeaders', 'multicast', 'setBody', 'setHeader']);
+  expect(JSON.stringify(made[2].multicast.steps)).toMatch(/^\[\{"pipeline":.*"uri":"rest-openapi"/);
   expect(route).toContain('name: joinWithComma');
   expect(route.match(/name: getCards/g)).toHaveLength(1);
 

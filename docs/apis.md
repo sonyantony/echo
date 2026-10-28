@@ -57,9 +57,11 @@ after changing a spec (`docker compose restart`).
 
 A route ECHO makes for a new operation of the flow's spec already has this shape: Set Variable
 steps for the operation's parameters, Remove Headers `*`, and a REST OpenApi step inside a
-multicast. With exactly one approved API, its Specification Uri (and Host placeholder) are filled
-in; pick the Operation Id, then set the headers it needs from the variables, for example a header
-`id` with `${variable.id}`.
+multicast. A Set Headers step "SetAuthorizationHeaders" before the multicast sets
+`Authorization: Bearer {{<id>.token}}`, and one called "SetMethodParameters" just before the call
+sets a header per variable (`id` from `${variable.id}`) plus `Accept`. With exactly one approved API,
+its Specification Uri (and Host placeholder) are filled in; pick the Operation Id, then adjust the
+SetMethodParameters rows to the parameters it takes.
 
 The step is saved as:
 

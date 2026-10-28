@@ -197,6 +197,13 @@ describe('operationIds', () => {
       { setVariable: { id: 'variable-getCardsCardId-X-Trace', name: 'X-Trace', simple: '${header.X-Trace}' } },
       { removeHeaders: { id: 'remove-headers-getCardsCardId', pattern: '*' } },
       {
+        setHeaders: {
+          id: 'authorization-getCardsCardId',
+          description: 'SetAuthorizationHeaders',
+          headers: [{ name: 'Authorization', simple: 'Bearer {{blueplanet.token}}' }],
+        },
+      },
+      {
         multicast: {
           id: 'multicast-getCardsCardId',
           parallelProcessing: true,
@@ -206,6 +213,19 @@ describe('operationIds', () => {
               pipeline: {
                 id: 'pipeline-getCardsCardId-1',
                 steps: [
+                  {
+                    setHeaders: {
+                      id: 'parameters-getCardsCardId-1',
+                      description: 'SetMethodParameters',
+                      headers: [
+                        { name: 'Accept', constant: 'application/json' },
+                        { name: 'cardId', simple: '${variable.cardId}' },
+                        { name: 'status', simple: '${variable.status}' },
+                        { name: 'limit', simple: '${variable.limit}' },
+                        { name: 'X-Trace', simple: '${variable.X-Trace}' },
+                      ],
+                    },
+                  },
                   { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.host}}' } } },
                   { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
                   { setBody: { id: 'label-getCardsCardId-1', simple: '"result": ${body}' } },
@@ -221,7 +241,10 @@ describe('operationIds', () => {
     // No approved API to point at: the call is left for the user to pick.
     const bare = YAML.parse(routeForOperation({ method: 'POST', path: '/cards', operationId: 'postCards' }))[0].route.from.steps;
     expect(bare[0]).toEqual({ removeHeaders: { id: 'remove-headers-postCards', pattern: '*' } });
-    expect(bare[1].multicast.steps[0].pipeline.steps[0].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: {} });
+    // Camel needs a header in each Set Headers step: Authorization's token placeholder, and Accept.
+    expect(bare[1].setHeaders.headers).toEqual([{ name: 'Authorization', simple: 'Bearer {{api.token}}' }]);
+    expect(bare[2].multicast.steps[0].pipeline.steps[0].setHeaders.headers).toEqual([{ name: 'Accept', constant: 'application/json' }]);
+    expect(bare[2].multicast.steps[0].pipeline.steps[1].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: {} });
   });
 
   it('adds the bean the multicasts join replies with, once', () => {

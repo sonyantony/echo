@@ -372,6 +372,8 @@ function scaffold(operationId: string, label: string, variables: string[], call:
   const callParameters: Record<string, string> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   if (call.host) callParameters.host = call.host;
+  // Camel refuses a Set Headers step without a header, so each starts with one.
+  const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || 'api';
   return {
     route: {
       id: `route-${operationId}`,
@@ -384,6 +386,13 @@ function scaffold(operationId: string, label: string, variables: string[], call:
           ...variables.map((name) => ({ setVariable: { id: `variable-${operationId}-${name}`, name, simple: `\${header.${name}}` } })),
           { removeHeaders: { id: `remove-headers-${operationId}`, pattern: '*' } },
           {
+            setHeaders: {
+              id: `authorization-${operationId}`,
+              description: 'SetAuthorizationHeaders',
+              headers: [{ name: 'Authorization', simple: `Bearer {{${api}.token}}` }],
+            },
+          },
+          {
             multicast: {
               id: `multicast-${operationId}`,
               parallelProcessing: true,
@@ -393,6 +402,16 @@ function scaffold(operationId: string, label: string, variables: string[], call:
                   pipeline: {
                     id: `pipeline-${operationId}-1`,
                     steps: [
+                      {
+                        setHeaders: {
+                          id: `parameters-${operationId}-1`,
+                          description: 'SetMethodParameters',
+                          headers: [
+                            { name: 'Accept', constant: 'application/json' },
+                            ...variables.map((name) => ({ name, simple: `\${variable.${name}}` })),
+                          ],
+                        },
+                      },
                       { to: { id: `call-${operationId}-1`, uri: 'rest-openapi', parameters: callParameters } },
                       { convertBodyTo: { id: `to-string-${operationId}-1`, type: 'String' } },
                       { setBody: { id: `label-${operationId}-1`, simple: '"result": ${body}' } },
@@ -413,8 +432,10 @@ function scaffold(operationId: string, label: string, variables: string[], call:
 /**
  * A route for the operation, as a method added in Interface Specs (or Add Route For Operation)
  * makes it, so the user only picks the operation to call: a Set Variable for each of its parameters
- * (from the header Camel puts it in), Remove Headers *, a multicast with one pipeline calling a REST
- * OpenApi step whose reply it labels "result", then the joined replies wrapped as a JSON object.
+ * (from the header Camel puts it in), Remove Headers *, Set Headers "SetAuthorizationHeaders"
+ * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
+ * after Set Headers "SetMethodParameters" (Accept, and a header per variable) and labelling its reply
+ * "result", then the joined replies wrapped as a JSON object.
  * The multicast joins replies with the joinWithComma bean (withJoinBean adds it to the flow).
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
