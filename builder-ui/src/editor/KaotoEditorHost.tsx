@@ -14,6 +14,8 @@ import { disabledRouteCss, disabledRouteIds } from './disabledRoutes';
 import { selectedRouteCss, selectedRouteGroupId } from './selectedRoute';
 import { trackTabUnderline } from './tabUnderline';
 import { trackCanvasScrollbars } from './canvasScrollbars';
+import { OperationTagFilter } from './OperationTagFilter';
+import type { ApiTags } from '../api/flows';
 import './KaotoEditorHost.css';
 
 export interface KaotoEditorHandle {
@@ -57,6 +59,8 @@ export interface KaotoEditorHostProps {
    * offers the spec's request and response bodies as well as an upload (SpecSchemaPickerModal).
    */
   loadSpec?(): Promise<Record<string, unknown> | undefined>;
+  /** The approved APIs' tags: given, the REST OpenApi step's form gets a Tag drop-down above Operation Id. */
+  apiTags?: ApiTags[];
 }
 
 type Picked = Record<string, string> | undefined;
@@ -77,7 +81,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked, loadSpec },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked, loadSpec, apiTags },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -102,6 +106,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   const [canvasSlot, setCanvasSlot] = useState<HTMLElement>();
   const [designSlot, setDesignSlot] = useState<HTMLElement>();
   const [tabBarHeight, setTabBarHeight] = useState(0);
+  const [editorElement, setEditorElement] = useState<HTMLDivElement>();
   const onKaotoViewPickedRef = useRef(onKaotoViewPicked);
   onKaotoViewPickedRef.current = onKaotoViewPicked;
 
@@ -185,6 +190,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    setEditorElement(container);
     const slot = document.createElement('div');
     slot.className = 'echo-kaoto-host__tab-actions';
     const startSlot = document.createElement('li');
@@ -308,6 +314,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
           </KaotoTabMenu>,
           designSlot,
         )}
+      {editorElement && apiTags && apiTags.length > 0 && <OperationTagFilter container={editorElement} apis={apiTags} />}
       {canvasSlot && canvasToolbarActions && createPortal(canvasToolbarActions, canvasSlot)}
       {advancedSlot &&
         createPortal(

@@ -323,6 +323,15 @@ export interface EditorSettings {
    * spec, and its Host placeholder when the spec names no server); absent unless exactly one is set up.
    */
   routeCall?: { specificationUri: string; host?: string | null } | null;
+  /** The tags of each approved API with their allowed operations, for the REST OpenApi step's Tag drop-down. */
+  apiTags?: ApiTags[];
+}
+
+/** An approved API's tags, A to Z, each with its allowed operations (an operation with several tags is under each). */
+export interface ApiTags {
+  specificationUri: string;
+  name?: string | null;
+  tags: { name: string; operations: string[] }[];
 }
 
 export const editorSettings = () => api<EditorSettings>('/api/editor/settings');

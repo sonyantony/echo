@@ -4,6 +4,9 @@ import com.ey.echo.builder.ai.AiProvider;
 import com.ey.echo.builder.apis.ApiCatalog;
 import com.ey.echo.builder.jira.JiraProperties;
 import com.ey.echo.builder.run.RunProperties;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeMap;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,9 +20,18 @@ public class EditorSettingsController {
      * @param aiEngine the AI engine stories are sent to ("gpt-4.1 at acme.openai.azure.com"); null without one
      * @param routeCall where the REST OpenApi step of a route made for a new operation points; null
      *     unless exactly one approved API is set up
+     * @param apiTags the tags of each approved API, for the REST OpenApi step's Tag drop-down
      */
     public record EditorSettings(int autosaveSeconds, boolean runEnabled, boolean jiraImport, String aiEngine,
-            RouteCall routeCall) {}
+            RouteCall routeCall, List<ApiTags> apiTags) {}
+
+    /**
+     * The tags of an approved API's allowed operations, A to Z (case ignored), each with its allowed
+     * operations; an operation with several tags is under each. Operations without a tag are in no tag.
+     */
+    public record ApiTags(String specificationUri, String name, List<Tag> tags) {}
+
+    public record Tag(String name, List<String> operations) {}
 
     /**
      * The approved API a new route's REST OpenApi step calls until the user picks its operation.
@@ -34,7 +46,7 @@ public class EditorSettingsController {
             ObjectProvider<AiProvider> ai, ApiCatalog apis) {
         AiProvider engine = ai.getIfAvailable();
         this.settings = new EditorSettings(properties.autosaveSeconds(), run.enabled(), jira.active(),
-                engine == null ? null : engine.describe(), routeCall(apis));
+                engine == null ? null : engine.describe(), routeCall(apis), apiTags(apis));
     }
 
     private static RouteCall routeCall(ApiCatalog apis) {
@@ -44,6 +56,16 @@ public class EditorSettingsController {
         }
         var api = loaded.get(0);
         return new RouteCall(api.fileName(), api.hasHost() ? null : "{{" + api.id() + ".host}}");
+    }
+
+    private static List<ApiTags> apiTags(ApiCatalog apis) {
+        return apis.apis().stream().filter(a -> a.problem() == null).map(api -> {
+            var byTag = new TreeMap<String, List<String>>(String.CASE_INSENSITIVE_ORDER);
+            api.operations().values().stream().filter(ApiCatalog.Operation::allowed).forEach(op ->
+                    op.tags().forEach(tag -> byTag.computeIfAbsent(tag, t -> new ArrayList<>()).add(op.id())));
+            var tags = byTag.entrySet().stream().map(e -> new Tag(e.getKey(), List.copyOf(e.getValue()))).toList();
+            return new ApiTags(api.fileName(), api.name(), tags);
+        }).toList();
     }
 
     @GetMapping("/api/editor/settings")

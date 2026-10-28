@@ -42,6 +42,10 @@ after changing a spec (`docker compose restart`).
 1. Add a **REST OpenApi** step. In its **All** tab, pick **Specification Uri** and **Operation Id**.
    Both are drop-downs of the approved specs and their allowed operations. With `only: true` the
    catalog also has no HTTP steps. Reload the browser page after restarting the Builder.
+   The **Tag** drop-down above Operation Id lists the spec's tags that have allowed operations
+   (A to Z, with how many); picking one leaves only its operations in the Operation Id drop-down.
+   It is only a filter, ECHO's own control in Kaoto's form: nothing of it is saved in the flow. A
+   step whose operation is set opens on that operation's tag.
 2. Set **Host** to the API's address, for example `{{blueplanet.host}}`, when the spec has no server
    host (relative `servers`). Set the value in the flow's `application.properties`, or supply it
    when the container starts.

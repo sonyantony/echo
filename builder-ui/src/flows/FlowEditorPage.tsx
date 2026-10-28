@@ -655,6 +655,7 @@ function FlowEditor() {
           initialContent={route.data ?? ''}
           files={files}
           loadSpec={loadSpecForSchemas}
+          apiTags={settings.data?.apiTags}
           onChange={onChange}
           tabBarStart={
             <>
