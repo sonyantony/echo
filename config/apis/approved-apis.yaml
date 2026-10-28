@@ -9,8 +9,10 @@ echo:
       - id: blueplanet                       # the flow's copy is blueplanet.openapi.json
         name: Blue Planet
         file: /config/apis/blueplanet.yaml   # the path inside the container
-        allowed-tags:                        # Service Inventory, Resource Inventory, Resource Catalog
+        allowed-tags:                        # Service Inventory, Resource Inventory, Resource Catalog, Lumen
           - TMF638 Service Controller
           - TMF639 Resource Typed Controller
-          - TMF639 Resource Untyped Controller
           - TMF634 Resource Catalog Controller
+          - Lumen Custom Numbers API Controller
+          - Lumen Device Template API Controller
+          - Lumen Name Generation API Controller

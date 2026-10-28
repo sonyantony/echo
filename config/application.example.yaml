@@ -44,8 +44,10 @@ echo:
     #     allowed-tags:                        # leave both lists out to allow every operation
     #       - TMF638 Service Controller
     #       - TMF639 Resource Typed Controller
-    #       - TMF639 Resource Untyped Controller
     #       - TMF634 Resource Catalog Controller
+    #       - Lumen Custom Numbers API Controller
+    #       - Lumen Device Template API Controller
+    #       - Lumen Name Generation API Controller
     #     allowed-operations: []               # operationIds allowed whatever their tags
 
   jira:

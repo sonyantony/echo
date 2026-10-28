@@ -9,7 +9,9 @@ call in `echo.apis`. A buyer adds their own specs (a vendor's TMF APIs, for exam
 With docker compose, `config/apis/` is kept in Git: `config/apis/approved-apis.yaml` holds the
 `echo.apis` settings and docker-compose.yml loads it on top of `config/application.yaml`
 (`SPRING_CONFIG_IMPORT`), so its `echo.apis` wins over any there. This install approves the Blue
-Planet spec (`config/apis/blueplanet.yaml`) for its TMF638, TMF639 and TMF634 operations only.
+Planet spec (`config/apis/blueplanet.yaml`) for its TMF638 Service, TMF639 Resource Typed,
+TMF634 Resource Catalog and Lumen Custom Numbers, Device Template and Name Generation
+operations only (45 of the spec's 66).
 
 ```yaml
 echo:
@@ -22,8 +24,10 @@ echo:
         allowed-tags:                   # operations with one of these tags may be called
           - TMF638 Service Controller
           - TMF639 Resource Typed Controller
-          - TMF639 Resource Untyped Controller
           - TMF634 Resource Catalog Controller
+          - Lumen Custom Numbers API Controller
+          - Lumen Device Template API Controller
+          - Lumen Name Generation API Controller
         allowed-operations: []          # operationIds allowed whatever their tags
 ```
 
