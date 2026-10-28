@@ -36,8 +36,8 @@ after changing a spec (`docker compose restart`).
 ## In a flow
 
 1. Add a **REST OpenApi** step. In its **All** tab, pick **Specification Uri** and **Operation Id**.
-   With `only: true` both are drop-downs of the approved specs and their allowed operations, and
-   the catalog has no HTTP steps.
+   Both are drop-downs of the approved specs and their allowed operations. With `only: true` the
+   catalog also has no HTTP steps. Reload the browser page after restarting the Builder.
 2. Set **Host** to the API's address, for example `{{blueplanet.host}}`, when the spec has no server
    host (relative `servers`). Set the value in the flow's `application.properties`, or supply it
    when the container starts.

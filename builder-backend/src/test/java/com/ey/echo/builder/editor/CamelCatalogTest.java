@@ -159,4 +159,28 @@ class CamelCatalogTest {
                             .value(org.hamcrest.Matchers.contains("createService", "getService")));
         }
     }
+
+    @Nested
+    @SpringBootTest(properties = {
+        "echo.catalog.locations=classpath:/test-camel-catalog/",
+        "echo.apis.only=false",
+        "echo.apis.specs[0].id=inventory",
+        "echo.apis.specs[0].file=src/test/resources/apis/inventory.yaml",
+        "echo.apis.specs[0].allowed-tags=TMF638 Service Controller"
+    })
+    @AutoConfigureMockMvc
+    class ApprovedApisAlongsideHttp {
+        @Autowired
+        private MockMvc mvc;
+
+        @Test
+        void restOpenApiOffersTheApprovedOperationsAndHttpStays() throws Exception {
+            mvc.perform(get(DIR + "components-1.json"))
+                    .andExpect(jsonPath("$.http").exists())
+                    .andExpect(jsonPath("$['rest-openapi'].properties.specificationUri.enum[0]")
+                            .value("inventory.openapi.json"))
+                    .andExpect(jsonPath("$['rest-openapi'].propertiesSchema.properties.operationId.enum")
+                            .value(org.hamcrest.Matchers.contains("createService", "getService")));
+        }
+    }
 }
