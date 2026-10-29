@@ -186,6 +186,34 @@ class FlowControllerTest {
     }
 
     @Test
+    void savesFilesOfOneFlowSentAtTheSameTime() throws Exception {
+        // Opening a DataMapper saves its .xsl and .kaoto at once: neither may fail on the other.
+        long id = create("orders");
+        int count = 8;
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(count);
+        try {
+            var saves = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
+            for (int i = 0; i < count; i++) {
+                String path = "kaoto-datamapper-" + i + ".xsl";
+                saves.add(pool.submit(() -> {
+                    start.await();
+                    return mvc.perform(as(put("/api/flows/{id}/files/" + path, id))
+                                    .contentType(MediaType.TEXT_PLAIN).content("<xsl:stylesheet/>"))
+                            .andReturn().getResponse().getStatus();
+                }));
+            }
+            start.countDown();
+            for (var save : saves) {
+                assertThat(save.get()).isEqualTo(204);
+            }
+        } finally {
+            pool.shutdown();
+        }
+        mvc.perform(as(get("/api/flows/{id}", id))).andExpect(jsonPath("$.files", hasSize(2 + count)));
+    }
+
+    @Test
     void keepsTheApiSpecUnderItsOwnNameOnePerFlow() throws Exception {
         long id = create("orders");
         mvc.perform(as(get("/api/flows/{id}", id))).andExpect(jsonPath("$.apiSpec").doesNotExist());

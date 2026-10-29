@@ -23,6 +23,8 @@ export function createEnvelopeContext(catalogUrl: string, files: FlowFiles, call
     }
   };
 
+  let metadataWrites: Promise<unknown> = Promise.resolve();
+
   const requests: Partial<Record<keyof KaotoEditorChannelApi, unknown>> = {
     getVSCodeKaotoSettings: async () => ({
       catalogUrl,
@@ -34,11 +36,16 @@ export function createEnvelopeContext(catalogUrl: string, files: FlowFiles, call
     }),
     getCatalogURL: async () => catalogUrl,
     getMetadata: async (key: string) => (await readMetadata())[key],
-    setMetadata: async (key: string, value: unknown) => {
-      const metadata = await readMetadata();
-      if (value === undefined) delete metadata[key];
-      else metadata[key] = value;
-      await files.write(KAOTO_METADATA_FILE, JSON.stringify(metadata, null, 2));
+    // One at a time: each rewrites the whole .kaoto file, so two at once would lose one's change.
+    setMetadata: (key: string, value: unknown) => {
+      const write = metadataWrites.then(async () => {
+        const metadata = await readMetadata();
+        if (value === undefined) delete metadata[key];
+        else metadata[key] = value;
+        await files.write(KAOTO_METADATA_FILE, JSON.stringify(metadata, null, 2));
+      });
+      metadataWrites = write.catch(() => undefined);
+      return write;
     },
     getResourcesContentByType: async () => [],
     getResourceContent: (path: string) => files.read(normalize(path)),

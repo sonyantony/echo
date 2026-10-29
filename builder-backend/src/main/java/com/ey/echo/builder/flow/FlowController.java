@@ -14,6 +14,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -109,7 +110,7 @@ public class FlowController {
     public ResponseEntity<Void> writeFile(
             @PathVariable long id, @PathVariable String path, @RequestBody(required = false) String content,
             Principal user) {
-        service.writeFile(id, stripSlash(path), content == null ? "" : content, user.getName());
+        retryOnConflict(() -> service.writeFile(id, stripSlash(path), content == null ? "" : content, user.getName()));
         return ResponseEntity.noContent().build();
     }
 
@@ -149,8 +150,26 @@ public class FlowController {
 
     @DeleteMapping("/{id}/files/{*path}")
     public ResponseEntity<Void> deleteFile(@PathVariable long id, @PathVariable String path, Principal user) {
-        service.deleteFile(id, stripSlash(path), user.getName());
+        retryOnConflict(() -> service.deleteFile(id, stripSlash(path), user.getName()));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Runs a file change again when another change to the same flow committed first. The editor
+     * saves several files at once (opening a DataMapper writes its .xsl and .kaoto together), and
+     * each save touches the flow's row, so the second one used to fail on the row's version.
+     */
+    private static void retryOnConflict(Runnable change) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                change.run();
+                return;
+            } catch (ObjectOptimisticLockingFailureException e) {
+                if (attempt >= 5) {
+                    throw e;
+                }
+            }
+        }
     }
 
     private static String stripSlash(String path) {
