@@ -367,8 +367,11 @@ const JOIN_BEAN_YAML = YAML.stringify(
   { lineWidth: 0 },
 );
 
-/** The route as ECHO makes it, as data (routeForOperation's YAML). */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall) {
+/**
+ * The route as ECHO makes it, as data (routeForOperation's YAML). `before` makes it as routes made
+ * before 2026-10-29 ended: a Set Header Content-Type only, without the 200 response code.
+ */
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, before = false) {
   const callParameters: Record<string, string> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   if (call.host) callParameters.host = call.host;
@@ -422,7 +425,19 @@ function scaffold(operationId: string, label: string, variables: string[], call:
             },
           },
           { setBody: { id: `reply-${operationId}`, simple: '{${body}}' } },
-          { setHeader: { id: `content-type-${operationId}`, name: 'Content-Type', constant: 'application/json' } },
+          before
+            ? { setHeader: { id: `content-type-${operationId}`, name: 'Content-Type', constant: 'application/json' } }
+            : {
+                // An explicit 200, so a status a downstream call left behind is not the reply's.
+                setHeaders: {
+                  id: `reply-headers-${operationId}`,
+                  description: 'SetResponseHeaders',
+                  headers: [
+                    { name: 'Content-Type', constant: 'application/json' },
+                    { name: 'CamelHttpResponseCode', constant: '200' },
+                  ],
+                },
+              },
         ],
       },
     },
@@ -435,7 +450,8 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * (from the header Camel puts it in), Remove Headers *, Set Headers "SetAuthorizationHeaders"
  * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
  * after Set Headers "SetMethodParameters" (Accept, and a header per variable) and labelling its reply
- * "result", then the joined replies wrapped as a JSON object.
+ * "result", then the joined replies wrapped as a JSON object and Set Headers "SetResponseHeaders"
+ * (Content-Type: application/json, CamelHttpResponseCode: 200).
  * The multicast joins replies with the joinWithComma bean (withJoinBean adds it to the flow).
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
@@ -506,7 +522,9 @@ function asScaffold(route: YAMLMap, name: string): { variables: string[]; call: 
   const label = typeof json.description === 'string' ? json.description : '';
   // Step ids aside: a renamed operation's route keeps the ids it was made with.
   const withoutIds = (value: unknown) => JSON.stringify(value, (key, v) => (key === 'id' ? undefined : v));
-  return withoutIds(json) === withoutIds(scaffold(name, label, variables, call).route) ? { variables, call } : undefined;
+  const made = withoutIds(json);
+  // Routes made before the response code was set count too.
+  return [false, true].some((before) => made === withoutIds(scaffold(name, label, variables, call, before).route)) ? { variables, call } : undefined;
 }
 
 /**

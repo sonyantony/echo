@@ -40,7 +40,8 @@ test('a new method gets a scaffold route, and a query parameter added later gets
   await expect(page.getByText(`Saved ${name}-api.yaml.`)).toBeVisible();
 
   let made = await steps();
-  expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariable', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'setHeader']);
+  expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariable', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'setHeaders']);
+  expect(made[5].setHeaders).toMatchObject({ description: 'SetResponseHeaders' });
   expect(made[0].setVariable).toMatchObject({ name: 'orderId', simple: '${header.orderId}' });
   expect(made[2].setHeaders).toMatchObject({ description: 'SetAuthorizationHeaders' });
   const branch = made[3].multicast.steps![0].pipeline.steps!;

@@ -236,7 +236,16 @@ describe('operationIds', () => {
         },
       },
       { setBody: { id: 'reply-getCardsCardId', simple: '{${body}}' } },
-      { setHeader: { id: 'content-type-getCardsCardId', name: 'Content-Type', constant: 'application/json' } },
+      {
+        setHeaders: {
+          id: 'reply-headers-getCardsCardId',
+          description: 'SetResponseHeaders',
+          headers: [
+            { name: 'Content-Type', constant: 'application/json' },
+            { name: 'CamelHttpResponseCode', constant: '200' },
+          ],
+        },
+      },
     ]);
     // No approved API to point at: the call is left for the user to pick.
     const bare = YAML.parse(routeForOperation({ method: 'POST', path: '/cards', operationId: 'postCards' }))[0].route.from.steps;
@@ -321,6 +330,14 @@ describe('operationIds', () => {
     expect(untouchedRoutes(added).size).toBe(0);
     expect(untouchedRoutes(made.replace('"result"', '"cards"')).size).toBe(0);
     expect(untouchedRoutes(made.replace('    description:', '    autoStartup: false\n    description:')).size).toBe(0);
+    // Routes made before the reply's Set Headers: a Set Header Content-Type only.
+    const contentTypeOnly = made.replace(
+      /( +)- setHeaders:\n\s+id: reply-headers-getCardsId[\s\S]*$/,
+      '$1- setHeader:\n$1    id: content-type-getCardsId\n$1    name: Content-Type\n$1    constant: application/json\n',
+    );
+    expect(contentTypeOnly).not.toBe(made);
+    expect(untouchedRoutes(contentTypeOnly)).toEqual(new Set(['getCardsId']));
+    expect(untouchedRoutes(contentTypeOnly.replace('constant: application/json\n', 'constant: text/plain\n')).size).toBe(0);
     // Routes made before the scaffold: a log step only.
     const logged = '- route:\n    id: route-getCards\n    description: GET /cards\n    from:\n      id: from-getCards\n      uri: direct\n      parameters:\n        name: getCards\n      steps:\n        - log:\n            id: log-getCards\n            message: GET /cards called\n';
     expect(untouchedRoutes(logged)).toEqual(new Set(['getCards']));

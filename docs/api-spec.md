@@ -98,7 +98,8 @@ itself keeps only what is designed, so the service always follows the spec's cur
   canvas at once (`direct:<operationId>` and a scaffold, as Add Route For Operation makes it: a
   Set Variable per parameter, Remove Headers `*`, Set Headers "SetAuthorizationHeaders", a
   multicast with one pipeline: Set Headers "SetMethodParameters" and a REST OpenApi step whose
-  operation the user picks, and a JSON reply; see decision 0013). Parameters
+  operation the user picks, and a JSON reply whose Set Headers "SetResponseHeaders" sets
+  Content-Type `application/json` and response code 200; see decision 0013). Parameters
   added or removed later change its Set Variable steps while the route is still as ECHO made it. A
   method deleted there takes its route away without asking while the route is still as ECHO made
   it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user

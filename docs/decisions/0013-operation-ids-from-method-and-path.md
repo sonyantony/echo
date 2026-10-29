@@ -91,8 +91,10 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   pipeline: a Set Headers step described "SetMethodParameters" (`Accept: application/json` and a
   header per variable, `${variable.<name>}`, as REST OpenApi takes parameters from same-named
   headers), a REST OpenApi step, Convert Body To String and Set Body `"result": ${body}`. After the
-  multicast, Set Body `{${body}}` and a Content-Type `application/json` header, so the replies of
-  further branches merge into one JSON object. The REST OpenApi step is left for the user to point
+  multicast, Set Body `{${body}}` (so the replies of further branches merge into one JSON object)
+  and a Set Headers step described "SetResponseHeaders": Content-Type `application/json` and
+  CamelHttpResponseCode `200`, so a status a downstream call left behind is not the reply's
+  (a Content-Type Set Header only before 2026-10-29). The REST OpenApi step is left for the user to point
   at the operation it calls: the downstream API is not the flow's own spec. When the install
   approves exactly one API (`echo.apis`), its spec is filled in, and its `{{<id>.host}}` placeholder
   when the spec names no server. Validate reports a REST OpenApi step that names neither spec nor
@@ -100,7 +102,8 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   the route is still the scaffold ECHO made (and its SetMethodParameters row). Each Set Headers
   step starts with a header because Camel refuses one without (added 2026-10-28, Francise).
 - **Deleted: ask only when there is work to lose.** A route still as ECHO made it (the scaffold,
-  with its spec and Host as set but no operation picked, or the log step only routes made before
+  with its spec and Host as set but no operation picked, also ending in the Content-Type-only Set
+  Header of before 2026-10-29, or the log step only routes made before
   2026-10-28 had) goes quietly, so undoing an add leaves nothing behind. Any other route is kept
   unless the user picks **Remove Route** in the dialog that asks (several deleted at once, such as
   a whole path, are listed in one dialog); the dialog warns when other routes call it. A route
