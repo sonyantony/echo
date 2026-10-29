@@ -59,7 +59,8 @@ add button goes. Without one the operations are served from the root.
   for a file name (a name typed without extension gets the format's). Picking the other format
   and saving rewrites the file with the other extension (`customer.json` becomes
   `customer.yaml`). File > Save and Ctrl+S save the spec too, from any view; autosave follows
-  `echo.editor.autosave-seconds` once the spec has a name.
+  `echo.editor.autosave-seconds`. A spec not named yet is autosaved as `<flow>-api.yaml` once it
+  has a path, since its operations have routes on the canvas already (Rename changes the name).
 - **Save As** always asks for the name.
 - **Discard** (after asking, if there are unsaved edits) starts again from a blank spec without
   a name. The saved spec stays in the flow until something is saved over it.
