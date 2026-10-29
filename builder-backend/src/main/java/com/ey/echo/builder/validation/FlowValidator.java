@@ -49,6 +49,8 @@ public class FlowValidator {
             "python", "ognl", "mvel", "spel", "datasonnet", "jsonata", "csimple", "joor", "java", "wasm");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([^}:]+)(?::([^}]*))?}}");
     private static final Set<String> XSLT_COMPONENTS = Set.of("xslt-saxon", "xslt");
+    private static final String NOTHING_MAPPED =
+            "A DataMapper step has no mapping yet. Open it in the DataMapper and map its fields.";
     /** An http or https uri: group 2 is the URL after the scheme, without options. */
     private static final Pattern HTTP_URI = Pattern.compile("^(https?)(?::/*([^?]*))?(?:\\?.*)?$");
 
@@ -90,7 +92,8 @@ public class FlowValidator {
         }
 
         loadWithCamel(routeFile, yaml, problems);
-        if (!problems.isEmpty()) {
+        // Nothing mapped yet is no reason to stop: the rest of the flow is still worth checking.
+        if (problems.stream().anyMatch(p -> !p.message().equals(NOTHING_MAPPED))) {
             return ValidationResult.of(problems);
         }
 
@@ -106,7 +109,12 @@ public class FlowValidator {
             context.build();
             PluginHelper.getRoutesLoader(context).loadRoutes(ResourceHelper.fromString(routeFile, yaml));
         } catch (Exception e) {
-            problems.add(new Problem(routeFile, lineOf(e), describe(e)));
+            String message = describe(e);
+            // A DataMapper as Kaoto adds it (and ECHO's route scaffold does): xslt-saxon, no file yet.
+            if (message.contains("resourceUri is required") && message.contains("syntax xslt")) {
+                message = NOTHING_MAPPED;
+            }
+            problems.add(new Problem(routeFile, lineOf(e), message));
         }
     }
 
@@ -420,7 +428,7 @@ public class FlowValidator {
                                 .formatted(approvedNames(), scheme)));
                 return;
             }
-            if (XSLT_COMPONENTS.contains(scheme)) {
+            if (XSLT_COMPONENTS.contains(scheme) && colon > 0) {
                 String resource = uri.substring(colon + 1).replaceFirst("\\?.*$", "")
                         .replaceFirst("^(classpath|file):", "");
                 if (!files.containsKey(resource)) {

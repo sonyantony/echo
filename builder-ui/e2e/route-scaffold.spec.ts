@@ -9,7 +9,7 @@ import { createFlow, designMenu, fileMenu, interfaceItem, interfaceMenu, login, 
 const shots = process.env.ECHO_E2E_SCREENSHOTS;
 const flowIdOf = (page: Page) => page.url().replace(/.*\/flows\/(\d+).*/, '$1');
 
-type Step = Record<string, { name?: string; simple?: string; steps?: Step[]; uri?: string; description?: string; headers?: { name: string }[] }>;
+type Step = Record<string, { id?: string; name?: string; simple?: string; steps?: Step[]; uri?: string; description?: string; headers?: { name: string }[] }>;
 
 test('a new method gets a scaffold route, and a query parameter added later gets its variable', async ({ page }) => {
   await login(page);
@@ -40,14 +40,18 @@ test('a new method gets a scaffold route, and a query parameter added later gets
   await expect(page.getByText(`Saved ${name}-api.yaml.`)).toBeVisible();
 
   let made = await steps();
-  expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariable', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'setHeaders']);
-  expect(made[5].setHeaders).toMatchObject({ description: 'SetResponseHeaders' });
+  expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariable', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'step', 'setHeaders']);
+  // A DataMapper after the reply's Set Body, and every step the user has to work on reads Attention.
+  expect(made[5].step).toMatchObject({ description: 'Attention' });
+  expect(made[5].step.id).toMatch(/^kaoto-datamapper-/);
+  expect(made[6].setHeaders).toMatchObject({ description: 'SetResponseHeaders' });
   expect(made[0].setVariable).toMatchObject({ name: 'orderId', simple: '${header.orderId}' });
   expect(made[2].setHeaders).toMatchObject({ description: 'SetAuthorizationHeaders' });
   const branch = made[3].multicast.steps![0].pipeline.steps!;
   expect(branch.map((s) => Object.keys(s)[0])).toEqual(['setHeaders', 'to', 'convertBodyTo', 'setBody']);
-  expect(branch[0].setHeaders).toMatchObject({ description: 'SetMethodParameters' });
-  expect(branch[1].to.uri).toBe('rest-openapi');
+  expect(branch[0].setHeaders).toMatchObject({ description: 'Attention' });
+  expect(branch[1].to).toMatchObject({ uri: 'rest-openapi', description: 'Attention' });
+  expect(branch[3].setBody).toMatchObject({ description: 'Attention' });
 
   // A query parameter added to the method: the route, still as ECHO made it, gets its variable.
   await editor.getByTitle('Add a new query parameter.').last().click();
@@ -57,7 +61,7 @@ test('a new method gets a scaffold route, and a query parameter added later gets
   await expect(nameField).toBeHidden();
   await expect.poll(async () => (await steps()).filter((s) => s.setVariable).map((s) => s.setVariable.name)).toEqual(['orderId', 'status']);
   made = await steps();
-  // ...and its row in SetMethodParameters.
+  // ...and its row in the pipeline's Set Headers.
   expect(made[4].multicast.steps![0].pipeline.steps![0].setHeaders.headers!.map((h) => h.name)).toEqual(['Accept', 'orderId', 'status']);
 
   await designMenu(page, /^Design/);
