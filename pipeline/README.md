@@ -73,12 +73,12 @@ pipeline/build-flow.sh flows --manifests-only    # just check the flows and writ
 
 The build finds every `{{placeholder}}` the app's flows use and turns it into the environment
 variable Spring reads as that property: dots and dashes become underscores, upper case
-(`inventory.host` -> `INVENTORY_HOST`). Give each environment its own values in a `.properties` file
+(`inventory.base-url` -> `INVENTORY_BASE_URL`). Give each environment its own values in a `.properties` file
 that you keep outside the flow repository, and pass it to the build:
 
 ```properties
 # /etc/echo/prod.properties
-inventory.host=https://inventory.prod.example.com
+inventory.base-url=https://inventory.prod.example.com
 fulfilment.url=https://fulfilment.prod.example.com/api
 ```
 

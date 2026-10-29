@@ -37,7 +37,7 @@ class ApprovedApisValidationTest {
 
     private List<String> problems(FlowValidator validator, String route) {
         return validator.validate("f.camel.yaml", Map.of("f.camel.yaml", route,
-                "application.properties", "inventory.host=http://localhost:9090\n"))
+                "application.properties", "inventory.base-url=http://localhost:9090\n"))
                 .problems().stream().map(Problem::message).toList();
     }
 
@@ -51,7 +51,7 @@ class ApprovedApisValidationTest {
             - to:
                 uri: rest-openapi:inventory.openapi.json#getService
                 parameters:
-                  host: "{{inventory.host}}"
+                  host: "{{inventory.base-url}}"
             """))).isEmpty();
     }
 
@@ -63,7 +63,7 @@ class ApprovedApisValidationTest {
                 parameters:
                   specificationUri: inventory.openapi.json
                   operationId: createService
-                  host: "{{inventory.host}}"
+                  host: "{{inventory.base-url}}"
             """))).isEmpty();
     }
 
@@ -73,7 +73,7 @@ class ApprovedApisValidationTest {
             - to:
                 uri: rest-openapi:inventory.openapi.json#init
                 parameters:
-                  host: "{{inventory.host}}"
+                  host: "{{inventory.base-url}}"
             """))).containsExactly(
                 "Flows may not call Inventory's 'init' operation (POST /shutdown/init). Allowed: createService, getService.");
     }
@@ -84,14 +84,14 @@ class ApprovedApisValidationTest {
             - to:
                 uri: rest-openapi:inventory.openapi.json#getServices
                 parameters:
-                  host: "{{inventory.host}}"
+                  host: "{{inventory.base-url}}"
             """))).containsExactly("'getServices' is not an operation of Inventory.");
         assertThat(problems(call("""
             - to:
                 uri: rest-openapi
                 parameters:
                   specificationUri: inventory.openapi.json
-                  host: "{{inventory.host}}"
+                  host: "{{inventory.base-url}}"
             """))).containsExactly("Choose the Inventory operation this step calls (Operation Id).");
     }
 
@@ -101,7 +101,7 @@ class ApprovedApisValidationTest {
             - to:
                 uri: rest-openapi:inventory.openapi.json#getService
             """))).containsExactly(
-                "Inventory's spec names no server, so set Host on this REST OpenApi step, for example {{inventory.host}} in application.properties.");
+                "Inventory's spec names no server, so set Host on this REST OpenApi step, for example {{inventory.base-url}} in application.properties.");
     }
 
     @Test
@@ -143,7 +143,7 @@ class ApprovedApisValidationTest {
             - to:
                 uri: rest-openapi:inventory.openapi.json#init
                 parameters:
-                  host: "{{inventory.host}}"
+                  host: "{{inventory.base-url}}"
             """))).hasSize(1);
     }
 
@@ -157,7 +157,7 @@ class ApprovedApisValidationTest {
                     - to:
                         uri: rest-openapi:inventory.openapi.json#getService
                         parameters:
-                          host: "{{inventory.host}}"
+                          host: "{{inventory.base-url}}"
             """;
         assertThat(problems(route)).containsExactly(
                 "The incoming request's headers would change the URL this REST OpenApi step calls. Add a Remove Headers step with pattern * before it.");
@@ -168,13 +168,13 @@ class ApprovedApisValidationTest {
         assertThat(problems(call("""
             - enrich:
                 simple:
-                  expression: rest-openapi:inventory.openapi.json#getService?host={{inventory.host}}
+                  expression: rest-openapi:inventory.openapi.json#getService?host={{inventory.base-url}}
             """))).isEmpty();
         assertThat(problems(call("""
             - enrich:
                 expression:
                   constant:
-                    expression: rest-openapi:inventory.openapi.json#createService?host={{inventory.host}}
+                    expression: rest-openapi:inventory.openapi.json#createService?host={{inventory.base-url}}
             """))).isEmpty();
     }
 
@@ -186,7 +186,7 @@ class ApprovedApisValidationTest {
                   expression: rest-openapi:inventory.openapi.json#init
             """))).containsExactly(
                 "Flows may not call Inventory's 'init' operation (POST /shutdown/init). Allowed: createService, getService.",
-                "Inventory's spec names no server, so set Host on this Enrich step, for example {{inventory.host}} in application.properties.");
+                "Inventory's spec names no server, so set Host on this Enrich step, for example {{inventory.base-url}} in application.properties.");
         assertThat(problems(call("""
             - enrich:
                 simple:

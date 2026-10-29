@@ -16,7 +16,7 @@ const blueplanet = {
 };
 const inventory = {
   specificationUri: "inventory.openapi.json",
-  host: "{{inventory.host}}",
+  host: "{{inventory.base-url}}",
   tags: [],
 };
 const apis = [blueplanet, inventory];
@@ -25,12 +25,12 @@ describe("enrich api calls", () => {
   it("reads the spec, operation and options of a rest-openapi URI", () => {
     expect(
       parseApiCall(
-        " rest-openapi:inventory.openapi.json#getService?host={{inventory.host}}",
+        " rest-openapi:inventory.openapi.json#getService?host={{inventory.base-url}}",
       ),
     ).toEqual({
       specificationUri: "inventory.openapi.json",
       operationId: "getService",
-      options: "host={{inventory.host}}",
+      options: "host={{inventory.base-url}}",
     });
     expect(parseApiCall("rest-openapi:blueplanet.openapi.json")).toEqual({
       specificationUri: "blueplanet.openapi.json",
@@ -45,13 +45,13 @@ describe("enrich api calls", () => {
       "rest-openapi:blueplanet.openapi.json#getB",
     );
     expect(apiCallUri(inventory, "getService")).toBe(
-      "rest-openapi:inventory.openapi.json#getService?host={{inventory.host}}",
+      "rest-openapi:inventory.openapi.json#getService?host={{inventory.base-url}}",
     );
     expect(apiCallUri(inventory, "getService", "host=http://x")).toBe(
       "rest-openapi:inventory.openapi.json#getService?host=http://x",
     );
     expect(apiCallUri(inventory, "")).toBe(
-      "rest-openapi:inventory.openapi.json?host={{inventory.host}}",
+      "rest-openapi:inventory.openapi.json?host={{inventory.base-url}}",
     );
   });
 

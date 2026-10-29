@@ -61,7 +61,7 @@ public class EditorSettingsController {
     }
 
     private static String hostOf(ApiCatalog.Api api) {
-        return api.hasHost() ? null : "{{" + api.id() + ".host}}";
+        return api.hasHost() ? null : "{{" + api.id() + ".base-url}}";
     }
 
     private static List<ApiTags> apiTags(ApiCatalog apis) {

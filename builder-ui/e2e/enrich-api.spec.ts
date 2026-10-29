@@ -77,21 +77,21 @@ test("a new Enrich opens on the approved API drop-downs and writes the rest-open
   await expect(operation.locator("option")).toHaveCount(8);
   await operation.selectOption("getResource");
   await expect(page.getByTestId("enrich-api-uri")).toHaveText(
-    "Calls rest-openapi:blueplanet.openapi.json#getResource?host={{blueplanet.host}}",
+    "Calls rest-openapi:blueplanet.openapi.json#getResource?host={{blueplanet.base-url}}",
   );
   if (shots) {
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${shots}/1-enrich-approved-api.png` });
   }
   expect(await savedRoute(page, name)).toContain(
-    "expression: rest-openapi:blueplanet.openapi.json#getResource?host={{blueplanet.host}}",
+    "expression: rest-openapi:blueplanet.openapi.json#getResource?host={{blueplanet.base-url}}",
   );
 
   // A spec without a server gets its Host placeholder in the URI.
   await api.selectOption("inventory.openapi.json");
   await operation.selectOption("init");
   await expect(page.getByTestId("enrich-api-uri")).toHaveText(
-    "Calls rest-openapi:inventory.openapi.json#init?host={{inventory.host}}",
+    "Calls rest-openapi:inventory.openapi.json#init?host={{inventory.base-url}}",
   );
 
   // Typing the URI by hand shows Kaoto's Expression with the call in it.
@@ -101,7 +101,7 @@ test("a new Enrich opens on the approved API drop-downs and writes the rest-open
     .getByTestId("simple.expression__field-wrapper")
     .locator("textarea");
   await expect(text).toHaveValue(
-    "rest-openapi:inventory.openapi.json#init?host={{inventory.host}}",
+    "rest-openapi:inventory.openapi.json#init?host={{inventory.base-url}}",
   );
   await text.fill("http://host.docker.internal:9090/orders");
   expect(await savedRoute(page, name)).toContain(

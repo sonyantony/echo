@@ -112,7 +112,7 @@ class FlowRunnerTest {
                                 - to:
                                     uri: rest-openapi:fulfilment.json#createFulfilment
                                     parameters:
-                                      host: "{{fulfilment.host}}"
+                                      host: "{{fulfilment.base-url}}"
                         """,
                 "fulfilment.json", """
                         {"openapi": "3.0.3", "info": {"title": "Fulfilment", "version": "1"},
@@ -120,7 +120,7 @@ class FlowRunnerTest {
                            "requestBody": {"content": {"application/json": {"schema": {"type": "object"}}}},
                            "responses": {"200": {"description": "ok"}}}}}}
                         """,
-                "application.properties", "fulfilment.host=" + downstreamUrl(""));
+                "application.properties", "fulfilment.base-url=" + downstreamUrl(""));
 
         var run = runner.start(1, "spec", "spec.camel.yaml", files, "designer");
         var response = post(run.port, "/orders", "{\"reference\":\"A100\"}");

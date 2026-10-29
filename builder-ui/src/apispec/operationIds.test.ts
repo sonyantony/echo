@@ -189,7 +189,7 @@ describe('operationIds', () => {
       }),
     );
     expect(op.parameters?.map((p) => p.name)).toEqual(['cardId', 'status', 'limit', 'X-Trace']);
-    const route = YAML.parse(routeForOperation(op, { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.host}}' }))[0].route;
+    const route = YAML.parse(routeForOperation(op, { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}' }))[0].route;
     expect(route.from.steps).toEqual([
       { setVariable: { id: 'variable-getCardsCardId-cardId', name: 'cardId', simple: '${header.cardId}' } },
       { setVariable: { id: 'variable-getCardsCardId-status', name: 'status', simple: '${header.status}' } },
@@ -226,7 +226,7 @@ describe('operationIds', () => {
                       ],
                     },
                   },
-                  { to: { id: 'call-getCardsCardId-1', description: 'Attention', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.host}}' } } },
+                  { to: { id: 'call-getCardsCardId-1', description: 'Attention', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}' } } },
                   { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
                   { setBody: { id: 'label-getCardsCardId-1', description: 'Attention', simple: '"result": ${body}' } },
                 ],

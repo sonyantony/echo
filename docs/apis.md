@@ -46,7 +46,7 @@ after changing a spec (`docker compose restart`).
    (A to Z, with how many); picking one leaves only its operations in the Operation Id drop-down.
    It is only a filter, ECHO's own control in Kaoto's form: nothing of it is saved in the flow. A
    step whose operation is set opens on that operation's tag.
-2. Set **Host** to the API's address, for example `{{blueplanet.host}}`, when the spec has no server
+2. Set **Host** to the API's address, for example `{{blueplanet.base-url}}`, when the spec has no server
    host (relative `servers`). Set the value in the flow's `application.properties`, or supply it
    when the container starts.
 3. Path and query parameters come from headers with the same names. For example, set a header `id`
@@ -72,7 +72,7 @@ The step is saved as:
     parameters:
       specificationUri: blueplanet.openapi.json
       operationId: createService
-      host: "{{blueplanet.host}}"
+      host: "{{blueplanet.base-url}}"
 ```
 
 ## What the Builder checks
