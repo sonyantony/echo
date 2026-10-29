@@ -76,7 +76,7 @@ class ApprovedApiFlowTest {
                         parameters:
                           specificationUri: inventory.openapi.json
                           operationId: createService
-                          host: "{{inventory.host}}"
+                          host: "{{inventory.base-url}}"
             """;
 
     @Autowired
@@ -124,14 +124,14 @@ class ApprovedApiFlowTest {
                 .andReturn().getResponse().getContentAsString();
         long id = ((Number) JsonPath.read(body, "$.id")).longValue();
         put(id, name + ".camel.yaml", ROUTE);
-        put(id, "application.properties", "inventory.host=http://localhost:%d\ninventory.token=t0k3n\n"
+        put(id, "application.properties", "inventory.base-url=http://localhost:%d\ninventory.token=t0k3n\n"
                 .formatted(inventory.getAddress().getPort()));
         return id;
     }
 
     /** Run with a properties file setting the route's {{placeholders}}, as Run <flow> With... does. */
     private org.springframework.test.web.servlet.ResultActions run(long id) throws Exception {
-        String values = "inventory.host=http://localhost:%d\\ninventory.token=t0k3n\\n".formatted(inventory.getAddress().getPort());
+        String values = "inventory.base-url=http://localhost:%d\\ninventory.token=t0k3n\\n".formatted(inventory.getAddress().getPort());
         return mvc.perform(as(post("/api/flows/{id}/run", id)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fileName\":\"test.properties\",\"content\":\"%s\"}".formatted(values)));
     }

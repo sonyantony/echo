@@ -331,7 +331,7 @@ export interface EditorSettings {
 export interface ApiTags {
   specificationUri: string;
   name?: string | null;
-  /** The Host placeholder ({{<id>.host}}) when the spec names no server host. */
+  /** The Host placeholder ({{<id>.base-url}}) when the spec names no server host. */
   host?: string | null;
   tags: { name: string; operations: string[] }[];
 }

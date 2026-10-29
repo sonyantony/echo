@@ -417,7 +417,7 @@ public class FlowValidator {
             }
             if (!a.hasHost() && option.apply("host").map(String::isBlank).orElse(true)) {
                 problems.add(new Problem(routeFile, line,
-                        "%s's spec names no server, so set Host on this %s, for example {{%s.host}} in application.properties."
+                        "%s's spec names no server, so set Host on this %s, for example {{%s.base-url}} in application.properties."
                                 .formatted(a.name(), what, a.id())));
             }
         }
