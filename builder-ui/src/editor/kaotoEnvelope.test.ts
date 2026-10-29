@@ -25,6 +25,12 @@ describe('Kaoto envelope context', () => {
     expect(await requests.getMetadata('kaoto-datamapper-1')).toEqual({ xsltPath: 'kaoto-datamapper-1.xsl' });
   });
 
+  it('keeps every key when metadata is set several times at once', async () => {
+    const { files, requests } = setup();
+    await Promise.all([requests.setMetadata('a', 1), requests.setMetadata('b', 2), requests.setMetadata('c', 3)]);
+    expect(JSON.parse(files.files.get(KAOTO_METADATA_FILE)!)).toEqual({ a: 1, b: 2, c: 3 });
+  });
+
   it('removes a metadata key when set to undefined', async () => {
     const { files, requests } = setup({ [KAOTO_METADATA_FILE]: '{"a":1,"b":2}' });
     await requests.setMetadata('a', undefined);
