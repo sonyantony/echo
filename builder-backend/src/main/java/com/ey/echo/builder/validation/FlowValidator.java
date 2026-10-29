@@ -55,6 +55,8 @@ public class FlowValidator {
     private static final Pattern HTTP_URI = Pattern.compile("^(https?)(?::/*([^?]*))?(?:\\?.*)?$");
 
     private static final String REST_OPENAPI = "rest-openapi";
+    /** An endpoint URI as an Enrich expression: a component scheme, a colon, and no spaces. */
+    private static final Pattern ENDPOINT_URI = Pattern.compile("^[a-z][a-z0-9+.-]*:\\S*$");
 
     private final ValidationProperties properties;
     private final ApiCatalog apis;
@@ -193,6 +195,9 @@ public class FlowValidator {
             if (key.equals("restConfiguration") && value instanceof MappingNode rest) {
                 checkRestConfiguration(rest);
             }
+            if (key.equals("enrich") && value instanceof MappingNode enrich) {
+                checkEnrich(enrich);
+            }
             if (key.equals("uri") && value instanceof ScalarNode s) {
                 checkUri(s.getValue(), line);
             } else if (OTHER_LANGUAGES.contains(key)) {
@@ -292,21 +297,78 @@ public class FlowValidator {
             if (uriNode == null) {
                 return;
             }
-            String uri = quietlyResolved(uriNode.getValue().strip());
+            checkApiCall(uriNode.getValue(), uriNode.getStartMark().getLine() + 1, "REST OpenApi step",
+                    name -> scalar(step, "parameters", name));
+        }
+
+        /**
+         * An Enrich step whose expression is a plain endpoint URI (simple without ${...}, or
+         * constant), as ECHO's approved API drop-downs write it: the URI is checked like a To
+         * step's, and a {@code rest-openapi:} one like a REST OpenApi step, its options being in
+         * the URI ({@code ?host=...}).
+         */
+        private void checkEnrich(MappingNode enrich) {
+            ScalarNode text = null;
+            for (NodeTuple t : enrich.getValue()) {
+                if (!(t.getKeyNode() instanceof ScalarNode k)) {
+                    continue;
+                }
+                Node language = t.getValueNode();
+                if (k.getValue().equals("expression") && language instanceof MappingNode m && m.getValue().size() == 1
+                        && m.getValue().get(0).getKeyNode() instanceof ScalarNode lk) {
+                    k = lk;
+                    language = m.getValue().get(0).getValueNode();
+                }
+                if (k.getValue().equals("simple") || k.getValue().equals("constant")) {
+                    text = expressionNode(language);
+                }
+            }
+            if (text == null) {
+                return;
+            }
+            String uri = text.getValue().strip();
+            if (uri.contains("${") || !ENDPOINT_URI.matcher(uri).matches()) {
+                return; // computed, or not a URI: Camel decides at run time
+            }
+            int line = text.getStartMark().getLine() + 1;
+            checkUri(uri, line);
+            String query = uri.contains("?") ? uri.substring(uri.indexOf('?') + 1) : "";
+            checkApiCall(uri, line, "Enrich step", name -> java.util.Arrays.stream(query.split("&"))
+                    .filter(option -> option.startsWith(name + "="))
+                    .map(option -> option.substring(name.length() + 1)).findFirst());
+        }
+
+        private static ScalarNode expressionNode(Node value) {
+            if (value instanceof ScalarNode s) {
+                return s;
+            }
+            if (value instanceof MappingNode m) {
+                for (NodeTuple t : m.getValue()) {
+                    if (t.getKeyNode() instanceof ScalarNode k && k.getValue().equals("expression")
+                            && t.getValueNode() instanceof ScalarNode v) {
+                        return v;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private void checkApiCall(String rawUri, int line, String what,
+                java.util.function.Function<String, java.util.Optional<String>> option) {
+            String uri = quietlyResolved(rawUri.strip());
             if (!uri.equals(REST_OPENAPI) && !uri.startsWith(REST_OPENAPI + ":")) {
                 return;
             }
-            int line = uriNode.getStartMark().getLine() + 1;
             String path = uri.length() > REST_OPENAPI.length() ? uri.substring(REST_OPENAPI.length() + 1) : "";
             path = path.replaceFirst("\\?.*$", "");
             int hash = path.indexOf('#');
             String spec = hash >= 0 ? path.substring(0, hash) : path;
             String operation = hash >= 0 ? path.substring(hash + 1) : "";
             if (spec.isBlank()) {
-                spec = scalar(step, "parameters", "specificationUri").orElse("");
+                spec = option.apply("specificationUri").orElse("");
             }
             if (operation.isBlank()) {
-                operation = scalar(step, "parameters", "operationId").orElse("");
+                operation = option.apply("operationId").orElse("");
             }
             spec = quietlyResolved(spec.strip());
             operation = quietlyResolved(operation.strip());
@@ -315,19 +377,20 @@ public class FlowValidator {
                 // The incoming request's CamelHttpUri/CamelHttpPath headers would be added to the URL.
                 headersReported = true;
                 problems.add(new Problem(routeFile, line,
-                        "The incoming request's headers would change the URL this REST OpenApi step calls. Add a Remove Headers step with pattern * before it."));
+                        "The incoming request's headers would change the URL this %s calls. Add a Remove Headers step with pattern * before it."
+                                .formatted(what)));
             }
             var api = apis.forSpecificationUri(spec);
             if (api.isEmpty()) {
                 if (spec.isBlank() && operation.isBlank() && !apis.only()) {
                     // As the route ECHO makes for a new operation leaves it, for the user to pick.
                     problems.add(new Problem(routeFile, line, apis.apis().isEmpty()
-                            ? "This REST OpenApi step calls nothing yet. Set Specification Uri and Operation Id to the API operation it calls."
-                            : "This REST OpenApi step calls nothing yet. Set Specification Uri to one of: %s, and pick its Operation Id."
-                                    .formatted(approvedFiles())));
+                            ? "This %s calls nothing yet. Set Specification Uri and Operation Id to the API operation it calls.".formatted(what)
+                            : "This %s calls nothing yet. Set Specification Uri to one of: %s, and pick its Operation Id."
+                                    .formatted(what, approvedFiles())));
                 } else if (apis.only()) {
                     problems.add(new Problem(routeFile, line, (spec.isBlank()
-                            ? "This REST OpenApi step has no spec. "
+                            ? "This %s has no spec. ".formatted(what)
                             : "'%s' is not an approved API. ".formatted(spec))
                             + "Set Specification Uri to one of: %s.".formatted(approvedFiles())));
                 }
@@ -352,10 +415,10 @@ public class FlowValidator {
                                 .formatted(a.name(), operation, op.method(), op.path(),
                                         String.join(", ", a.allowedOperations()))));
             }
-            if (!a.hasHost() && scalar(step, "parameters", "host").map(String::isBlank).orElse(true)) {
+            if (!a.hasHost() && option.apply("host").map(String::isBlank).orElse(true)) {
                 problems.add(new Problem(routeFile, line,
-                        "%s's spec names no server, so set Host on this step, for example {{%s.host}} in application.properties."
-                                .formatted(a.name(), a.id())));
+                        "%s's spec names no server, so set Host on this %s, for example {{%s.host}} in application.properties."
+                                .formatted(a.name(), what, a.id())));
             }
         }
 

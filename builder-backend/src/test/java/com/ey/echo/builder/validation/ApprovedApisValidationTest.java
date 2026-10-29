@@ -101,7 +101,7 @@ class ApprovedApisValidationTest {
             - to:
                 uri: rest-openapi:inventory.openapi.json#getService
             """))).containsExactly(
-                "Inventory's spec names no server, so set Host on this step, for example {{inventory.host}} in application.properties.");
+                "Inventory's spec names no server, so set Host on this REST OpenApi step, for example {{inventory.host}} in application.properties.");
     }
 
     @Test
@@ -161,5 +161,61 @@ class ApprovedApisValidationTest {
             """;
         assertThat(problems(route)).containsExactly(
                 "The incoming request's headers would change the URL this REST OpenApi step calls. Add a Remove Headers step with pattern * before it.");
+    }
+
+    @Test
+    void anEnrichCallingAnAllowedOperationWithItsHostIsFine() {
+        assertThat(problems(call("""
+            - enrich:
+                simple:
+                  expression: rest-openapi:inventory.openapi.json#getService?host={{inventory.host}}
+            """))).isEmpty();
+        assertThat(problems(call("""
+            - enrich:
+                expression:
+                  constant:
+                    expression: rest-openapi:inventory.openapi.json#createService?host={{inventory.host}}
+            """))).isEmpty();
+    }
+
+    @Test
+    void anEnrichIsCheckedLikeARestOpenApiStep() {
+        assertThat(problems(call("""
+            - enrich:
+                simple:
+                  expression: rest-openapi:inventory.openapi.json#init
+            """))).containsExactly(
+                "Flows may not call Inventory's 'init' operation (POST /shutdown/init). Allowed: createService, getService.",
+                "Inventory's spec names no server, so set Host on this Enrich step, for example {{inventory.host}} in application.properties.");
+        assertThat(problems(call("""
+            - enrich:
+                simple:
+                  expression: rest-openapi:other.json#getService
+            """))).containsExactly(
+                "'other.json' is not an approved API. Set Specification Uri to one of: inventory.openapi.json.");
+    }
+
+    @Test
+    void anEnrichToHttpIsRefusedWhenOnlyApprovedApisMayBeCalled() {
+        assertThat(problems(call("""
+            - enrich:
+                simple:
+                  expression: http://localhost:9090/orders
+            """))).containsExactly(
+                "Flows may only call approved APIs (Inventory). Use a REST OpenApi step instead of http.");
+        assertThat(problems(validator(false), call("""
+            - enrich:
+                simple:
+                  expression: http://localhost:9090/orders
+            """))).isEmpty();
+    }
+
+    @Test
+    void anEnrichWithAComputedUriIsLeftToRunTime() {
+        assertThat(problems(call("""
+            - enrich:
+                simple:
+                  expression: rest-openapi:inventory.openapi.json#${header.op}
+            """))).isEmpty();
     }
 }

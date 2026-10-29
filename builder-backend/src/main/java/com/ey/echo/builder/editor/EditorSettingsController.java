@@ -28,8 +28,10 @@ public class EditorSettingsController {
     /**
      * The tags of an approved API's allowed operations, A to Z (case ignored), each with its allowed
      * operations; an operation with several tags is under each. Operations without a tag are in no tag.
+     * {@code host} is the Host placeholder when the spec names no server host, null otherwise (an
+     * Enrich step's rest-openapi URI then carries {@code ?host=}).
      */
-    public record ApiTags(String specificationUri, String name, List<Tag> tags) {}
+    public record ApiTags(String specificationUri, String name, String host, List<Tag> tags) {}
 
     public record Tag(String name, List<String> operations) {}
 
@@ -55,7 +57,11 @@ public class EditorSettingsController {
             return null;
         }
         var api = loaded.get(0);
-        return new RouteCall(api.fileName(), api.hasHost() ? null : "{{" + api.id() + ".host}}");
+        return new RouteCall(api.fileName(), hostOf(api));
+    }
+
+    private static String hostOf(ApiCatalog.Api api) {
+        return api.hasHost() ? null : "{{" + api.id() + ".host}}";
     }
 
     private static List<ApiTags> apiTags(ApiCatalog apis) {
@@ -64,7 +70,7 @@ public class EditorSettingsController {
             api.operations().values().stream().filter(ApiCatalog.Operation::allowed).forEach(op ->
                     op.tags().forEach(tag -> byTag.computeIfAbsent(tag, t -> new ArrayList<>()).add(op.id())));
             var tags = byTag.entrySet().stream().map(e -> new Tag(e.getKey(), List.copyOf(e.getValue()))).toList();
-            return new ApiTags(api.fileName(), api.name(), tags);
+            return new ApiTags(api.fileName(), api.name(), hostOf(api), tags);
         }).toList();
     }
 

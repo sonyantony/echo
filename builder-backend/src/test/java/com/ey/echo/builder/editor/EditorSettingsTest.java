@@ -76,6 +76,7 @@ class EditorSettingsTest {
         void tagsListTheirOperations() throws Exception {
             mvc.perform(get("/api/editor/settings").with(user("designer").roles("DESIGNER")))
                     .andExpect(jsonPath("$.apiTags[0].specificationUri").value("inventory.openapi.json"))
+                    .andExpect(jsonPath("$.apiTags[0].host").value("{{inventory.host}}"))
                     .andExpect(jsonPath("$.apiTags[0].tags[0].name").value("Shutdown controller"))
                     .andExpect(jsonPath("$.apiTags[0].tags[0].operations[0]").value("init"))
                     .andExpect(jsonPath("$.apiTags[0].tags[1].name").value("TMF638 Service Controller"))
