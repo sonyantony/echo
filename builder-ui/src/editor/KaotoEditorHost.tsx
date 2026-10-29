@@ -16,6 +16,7 @@ import { trackTabUnderline } from './tabUnderline';
 import { trackCanvasScrollbars } from './canvasScrollbars';
 import { fitRoute } from './canvasZoom';
 import { FitRouteButton, MaximizeCanvasButton } from './CanvasViewButtons';
+import { EnrichApiPicker } from './EnrichApiPicker';
 import { OperationTagFilter } from './OperationTagFilter';
 import type { ApiTags } from '../api/flows';
 import './KaotoEditorHost.css';
@@ -359,7 +360,12 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
           </KaotoTabMenu>,
           designSlot,
         )}
-      {editorElement && apiTags && apiTags.length > 0 && <OperationTagFilter container={editorElement} apis={apiTags} />}
+      {editorElement && apiTags && apiTags.length > 0 && (
+        <>
+          <OperationTagFilter container={editorElement} apis={apiTags} />
+          <EnrichApiPicker container={editorElement} apis={apiTags} />
+        </>
+      )}
       {canvasSlot && canvasToolbarActions && createPortal(canvasToolbarActions, canvasSlot)}
       {fitSlot && createPortal(<FitRouteButton routeSelected={!!selectedRoute} onClick={fitToCanvas} />, fitSlot)}
       {maximizeSlot && createPortal(<MaximizeCanvasButton maximized={maximized} onClick={toggleMaximized} />, maximizeSlot)}

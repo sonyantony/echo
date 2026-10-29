@@ -242,3 +242,20 @@ body.echo-canvas-maximized .pf-v6-c-page__main-container {
 .echo-kaoto-host--maximized .echo-kaoto-host__cover {
   display: none;
 }
+
+/* The Enrich step's approved API drop-downs (EnrichApiPicker), above Kaoto's Expression field.
+   Kaoto's form capitalizes its labels; the URI and the choice labels keep their own case. */
+.echo-enrich-api__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  padding: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--lg);
+}
+.echo-enrich-api__fields .pf-v6-c-radio__label,
+.echo-enrich-api__fields .pf-v6-c-helper-text {
+  text-transform: none;
+}
+.echo-enrich-api__uri {
+  font-family: var(--pf-t--global--font--family--mono);
+  overflow-wrap: anywhere;
+}
