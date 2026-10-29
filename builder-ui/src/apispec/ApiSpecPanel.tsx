@@ -627,9 +627,12 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
 
   useAutosave({
     intervalSeconds: settings.data?.autosaveSeconds,
-    dirty: dirty && !!name && id !== undefined,
+    dirty: dirty && id !== undefined,
     busy: saving || !!dialog,
-    save: () => name && saveUnder(withFormat(name, format), true),
+    // A spec not named yet is saved under the default name once it has a path: the routes made for
+    // its operations are on the canvas (and saved with the flow) already, and need it to be called.
+    save: () =>
+      (name || pathsOf(currentJson()).length > 0) && saveUnder(withFormat(name ?? defaultSpecBase(flowName), format), true),
   });
 
   if (spec.isError) {

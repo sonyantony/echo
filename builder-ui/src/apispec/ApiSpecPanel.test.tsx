@@ -396,6 +396,33 @@ describe('Openapi panel', () => {
     expect(onDirtyChange).not.toHaveBeenCalledWith(true);
   });
 
+  it('autosaves a spec not named yet under the default name once it has a path', async () => {
+    const { calls } = mockFetch({
+      'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 1 } },
+      'GET /api/flows/1': { status: 200, body: flow(null) },
+      'PUT /api/flows/1/api-spec/orders-api.yaml': { status: 200, body: flow('orders-api.yaml') },
+    });
+    const onDirtyChange = vi.fn();
+    renderPanel({ onDirtyChange });
+    await screen.findByTitle('OpenAPI editor');
+
+    // No path yet: nothing is written.
+    await waitFor(() => {
+      edit(screen.getByTitle('OpenAPI editor') as HTMLIFrameElement, edited);
+      expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(calls.filter((c) => c.method === 'PUT')).toEqual([]);
+
+    // A path (whose operation gets a route at once) is saved without asking for a name.
+    edit(screen.getByTitle('OpenAPI editor') as HTMLIFrameElement, { ...edited, paths: { '/orders': { get: { responses: {} } } } });
+    expect(await screen.findByText(/Autosaved at/, undefined, { timeout: 3000 })).toBeInTheDocument();
+    const put = calls.find((c) => c.method === 'PUT');
+    expect(put?.url).toBe('/api/flows/1/api-spec/orders-api.yaml');
+    expect(put?.body).toContain('/orders');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('on the untitled flow keeps the spec on screen and leaves Save to the flow', async () => {
     const { calls } = mockFetch({ 'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 1 } } });
     const onSaveFlow = vi.fn();
