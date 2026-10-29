@@ -31,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FlowController {
 
     private final FlowService service;
+    private final java.util.concurrent.ConcurrentMap<Long, Object> fileLocks = new java.util.concurrent.ConcurrentHashMap<>();
 
     public FlowController(FlowService service) {
         this.service = service;
@@ -110,7 +111,7 @@ public class FlowController {
     public ResponseEntity<Void> writeFile(
             @PathVariable long id, @PathVariable String path, @RequestBody(required = false) String content,
             Principal user) {
-        retryOnConflict(() -> service.writeFile(id, stripSlash(path), content == null ? "" : content, user.getName()));
+        saveFile(id, () -> service.writeFile(id, stripSlash(path), content == null ? "" : content, user.getName()));
         return ResponseEntity.noContent().build();
     }
 
@@ -150,23 +151,26 @@ public class FlowController {
 
     @DeleteMapping("/{id}/files/{*path}")
     public ResponseEntity<Void> deleteFile(@PathVariable long id, @PathVariable String path, Principal user) {
-        retryOnConflict(() -> service.deleteFile(id, stripSlash(path), user.getName()));
+        saveFile(id, () -> service.deleteFile(id, stripSlash(path), user.getName()));
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * Runs a file change again when another change to the same flow committed first. The editor
-     * saves several files at once (opening a DataMapper writes its .xsl and .kaoto together), and
-     * each save touches the flow's row, so the second one used to fail on the row's version.
+     * Changes one of flow id's files. The editor saves several files at once (opening a DataMapper
+     * writes its .xsl and .kaoto together) and each save updates the flow's row, so saves to one
+     * flow run one at a time; one that still meets another change of the flow (a rename, say) runs
+     * again rather than failing on the row's version.
      */
-    private static void retryOnConflict(Runnable change) {
-        for (int attempt = 1; ; attempt++) {
-            try {
-                change.run();
-                return;
-            } catch (ObjectOptimisticLockingFailureException e) {
-                if (attempt >= 5) {
-                    throw e;
+    private void saveFile(long id, Runnable change) {
+        synchronized (fileLocks.computeIfAbsent(id, key -> new Object())) {
+            for (int attempt = 1; ; attempt++) {
+                try {
+                    change.run();
+                    return;
+                } catch (ObjectOptimisticLockingFailureException e) {
+                    if (attempt >= 3) {
+                        throw e;
+                    }
                 }
             }
         }
