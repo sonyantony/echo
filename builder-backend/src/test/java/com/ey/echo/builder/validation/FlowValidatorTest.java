@@ -135,6 +135,33 @@ class FlowValidatorTest {
     }
 
     @Test
+    void dataMapperWithNothingMappedYetIsReported() {
+        // As Kaoto adds a DataMapper (and ECHO's route scaffold does): xslt-saxon with no file yet.
+        var route = """
+                - route:
+                    from:
+                      uri: direct:a
+                      steps:
+                        - step:
+                            id: kaoto-datamapper-a
+                            steps:
+                              - to:
+                                  uri: xslt-saxon
+                                  parameters:
+                                    failOnNullBody: false
+                """;
+        assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", route)).problems())
+                .extracting(Problem::message)
+                .containsExactly("A DataMapper step has no mapping yet. Open it in the DataMapper and map its fields.");
+        // ...and the rest of the flow is still checked.
+        var withKafka = route.replace("uri: direct:a", "uri: kafka:a");
+        assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", withKafka)).problems())
+                .extracting(Problem::message)
+                .anySatisfy(m -> assertThat(m).startsWith("The 'kafka' component"))
+                .hasSize(2);
+    }
+
+    @Test
     void placeholdersResolveFromTheFlowProperties() {
         var files = Map.of(
                 "flow.camel.yaml", read(FIXTURES.resolve("missing-mapping.camel.yaml")),

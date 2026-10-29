@@ -216,7 +216,7 @@ describe('operationIds', () => {
                   {
                     setHeaders: {
                       id: 'parameters-getCardsCardId-1',
-                      description: 'SetMethodParameters',
+                      description: 'Attention',
                       headers: [
                         { name: 'Accept', constant: 'application/json' },
                         { name: 'cardId', simple: '${variable.cardId}' },
@@ -226,9 +226,9 @@ describe('operationIds', () => {
                       ],
                     },
                   },
-                  { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.host}}' } } },
+                  { to: { id: 'call-getCardsCardId-1', description: 'Attention', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.host}}' } } },
                   { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
-                  { setBody: { id: 'label-getCardsCardId-1', simple: '"result": ${body}' } },
+                  { setBody: { id: 'label-getCardsCardId-1', description: 'Attention', simple: '"result": ${body}' } },
                 ],
               },
             },
@@ -236,6 +236,16 @@ describe('operationIds', () => {
         },
       },
       { setBody: { id: 'reply-getCardsCardId', simple: '{${body}}' } },
+      {
+        step: {
+          id: 'kaoto-datamapper-getCardsCardId',
+          description: 'Attention',
+          steps: [
+            { setBody: { id: 'kaoto-datamapper-set-body-getCardsCardId', expression: { simple: { expression: '${null}' } } } },
+            { to: { id: 'kaoto-datamapper-xslt-getCardsCardId', uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
+          ],
+        },
+      },
       {
         setHeaders: {
           id: 'reply-headers-getCardsCardId',
@@ -253,7 +263,7 @@ describe('operationIds', () => {
     // Camel needs a header in each Set Headers step: Authorization's token placeholder, and Accept.
     expect(bare[1].setHeaders.headers).toEqual([{ name: 'Authorization', simple: 'Bearer {{api.token}}' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[0].setHeaders.headers).toEqual([{ name: 'Accept', constant: 'application/json' }]);
-    expect(bare[2].multicast.steps[0].pipeline.steps[1].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: {} });
+    expect(bare[2].multicast.steps[0].pipeline.steps[1].to).toEqual({ id: 'call-postCards-1', description: 'Attention', uri: 'rest-openapi', parameters: {} });
   });
 
   it('adds the bean the multicasts join replies with, once', () => {
@@ -330,12 +340,28 @@ describe('operationIds', () => {
     expect(untouchedRoutes(added).size).toBe(0);
     expect(untouchedRoutes(made.replace('"result"', '"cards"')).size).toBe(0);
     expect(untouchedRoutes(made.replace('    description:', '    autoStartup: false\n    description:')).size).toBe(0);
+    // Routes made before the DataMapper and the Attention descriptions.
+    const doc = YAML.parse(made);
+    const steps = doc[0].route.from.steps;
+    doc[0].route.from.steps = steps.filter((s: { step?: unknown }) => !s.step);
+    const pipeline = steps.find((s: { multicast?: unknown }) => s.multicast).multicast.steps[0].pipeline.steps;
+    pipeline[0].setHeaders.description = 'SetMethodParameters';
+    delete pipeline[1].to.description;
+    delete pipeline[3].setBody.description;
+    const replyHeaders = YAML.stringify(doc, { lineWidth: 0 });
+    expect(replyHeaders).not.toContain('Attention');
+    expect(untouchedRoutes(replyHeaders)).toEqual(new Set(['getCardsId']));
+    expect(untouchedRoutes(made.replace('description: Attention', 'description: Done')).size).toBe(0);
+    // A parameter added later keeps such a route as it was made, with one more variable.
+    const synced = refreshRoutes(replyHeaders, [{ method: 'GET', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
+    expect(synced).toContain('variable-getCardsId-q');
+    expect(synced).not.toContain('Attention');
     // Routes made before the reply's Set Headers: a Set Header Content-Type only.
-    const contentTypeOnly = made.replace(
+    const contentTypeOnly = replyHeaders.replace(
       /( +)- setHeaders:\n\s+id: reply-headers-getCardsId[\s\S]*$/,
       '$1- setHeader:\n$1    id: content-type-getCardsId\n$1    name: Content-Type\n$1    constant: application/json\n',
     );
-    expect(contentTypeOnly).not.toBe(made);
+    expect(contentTypeOnly).not.toBe(replyHeaders);
     expect(untouchedRoutes(contentTypeOnly)).toEqual(new Set(['getCardsId']));
     expect(untouchedRoutes(contentTypeOnly.replace('constant: application/json\n', 'constant: text/plain\n')).size).toBe(0);
     // Routes made before the scaffold: a log step only.

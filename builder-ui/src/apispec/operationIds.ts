@@ -367,16 +367,27 @@ const JOIN_BEAN_YAML = YAML.stringify(
   { lineWidth: 0 },
 );
 
+/** What the user still has to fill in on a scaffold's step reads on the canvas. */
+export const ATTENTION = 'Attention';
+
 /**
- * The route as ECHO makes it, as data (routeForOperation's YAML). `before` makes it as routes made
- * before 2026-10-29 ended: a Set Header Content-Type only, without the 200 response code.
+ * How ECHO made its routes over time: `content-type` before 2026-10-29 (a Set Header Content-Type
+ * only, without the 200 response code), `reply-headers` until the DataMapper and the Attention
+ * descriptions came, `attention` now.
  */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, before = false) {
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention';
+
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['attention', 'reply-headers', 'content-type'];
+
+/** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'attention') {
   const callParameters: Record<string, string> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   if (call.host) callParameters.host = call.host;
   // Camel refuses a Set Headers step without a header, so each starts with one.
   const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || 'api';
+  const attention = era === 'attention';
+  const marked = attention ? { description: ATTENTION } : {};
   return {
     route: {
       id: `route-${operationId}`,
@@ -408,16 +419,16 @@ function scaffold(operationId: string, label: string, variables: string[], call:
                       {
                         setHeaders: {
                           id: `parameters-${operationId}-1`,
-                          description: 'SetMethodParameters',
+                          description: attention ? ATTENTION : 'SetMethodParameters',
                           headers: [
                             { name: 'Accept', constant: 'application/json' },
                             ...variables.map((name) => ({ name, simple: `\${variable.${name}}` })),
                           ],
                         },
                       },
-                      { to: { id: `call-${operationId}-1`, uri: 'rest-openapi', parameters: callParameters } },
+                      { to: { id: `call-${operationId}-1`, ...marked, uri: 'rest-openapi', parameters: callParameters } },
                       { convertBodyTo: { id: `to-string-${operationId}-1`, type: 'String' } },
-                      { setBody: { id: `label-${operationId}-1`, simple: '"result": ${body}' } },
+                      { setBody: { id: `label-${operationId}-1`, ...marked, simple: '"result": ${body}' } },
                     ],
                   },
                 },
@@ -425,7 +436,22 @@ function scaffold(operationId: string, label: string, variables: string[], call:
             },
           },
           { setBody: { id: `reply-${operationId}`, simple: '{${body}}' } },
-          before
+          // A Kaoto DataMapper as Kaoto adds one: the user maps the reply when they open it.
+          ...(attention
+            ? [
+                {
+                  step: {
+                    id: `kaoto-datamapper-${operationId}`,
+                    description: ATTENTION,
+                    steps: [
+                      { setBody: { id: `kaoto-datamapper-set-body-${operationId}`, expression: { simple: { expression: '${null}' } } } },
+                      { to: { id: `kaoto-datamapper-xslt-${operationId}`, uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
+                    ],
+                  },
+                },
+              ]
+            : []),
+          era === 'content-type'
             ? { setHeader: { id: `content-type-${operationId}`, name: 'Content-Type', constant: 'application/json' } }
             : {
                 // An explicit 200, so a status a downstream call left behind is not the reply's.
@@ -449,9 +475,10 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * makes it, so the user only picks the operation to call: a Set Variable for each of its parameters
  * (from the header Camel puts it in), Remove Headers *, Set Headers "SetAuthorizationHeaders"
  * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
- * after Set Headers "SetMethodParameters" (Accept, and a header per variable) and labelling its reply
- * "result", then the joined replies wrapped as a JSON object and Set Headers "SetResponseHeaders"
- * (Content-Type: application/json, CamelHttpResponseCode: 200).
+ * after Set Headers (Accept, and a header per variable) and labelling its reply "result", then the
+ * joined replies wrapped as a JSON object, a Kaoto DataMapper and Set Headers "SetResponseHeaders"
+ * (Content-Type: application/json, CamelHttpResponseCode: 200). The steps the user still has to
+ * work on (the pipeline's Set Headers, REST OpenApi and Set Body, and the DataMapper) read Attention.
  * The multicast joins replies with the joinWithComma bean (withJoinBean adds it to the flow).
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
@@ -503,7 +530,7 @@ export function withoutUnusedJoinBean(yaml: string): string {
 }
 
 /** The scaffold a route of ECHO's is, if it still is one: its variables and where its call points. */
-function asScaffold(route: YAMLMap, name: string): { variables: string[]; call: ApiCall } | undefined {
+function asScaffold(route: YAMLMap, name: string): { variables: string[]; call: ApiCall; era: ScaffoldEra } | undefined {
   const json = route.toJSON() as { description?: unknown; from?: { steps?: unknown[] } };
   const steps = Array.isArray(json.from?.steps) ? json.from.steps : [];
   const variables: string[] = [];
@@ -523,8 +550,9 @@ function asScaffold(route: YAMLMap, name: string): { variables: string[]; call: 
   // Step ids aside: a renamed operation's route keeps the ids it was made with.
   const withoutIds = (value: unknown) => JSON.stringify(value, (key, v) => (key === 'id' ? undefined : v));
   const made = withoutIds(json);
-  // Routes made before the response code was set count too.
-  return [false, true].some((before) => made === withoutIds(scaffold(name, label, variables, call, before).route)) ? { variables, call } : undefined;
+  // Routes made in earlier eras count too.
+  const era = SCAFFOLD_ERAS.find((e) => made === withoutIds(scaffold(name, label, variables, call, e).route));
+  return era ? { variables, call, era } : undefined;
 }
 
 /**
@@ -545,7 +573,7 @@ export function refreshRoutes(yaml: string, operations: RoutableOperation[]): st
     const variables = (op.parameters ?? []).map((p) => p.name);
     if (variables.join('\n') === was.variables.join('\n')) continue;
     const label = String(route!.get('description') ?? operationLabel(op));
-    (entry as YAMLMap).set('route', doc.createNode(scaffold(op.operationId, label, variables, was.call).route));
+    (entry as YAMLMap).set('route', doc.createNode(scaffold(op.operationId, label, variables, was.call, was.era).route));
     changed = true;
   }
   return changed ? doc.toString({ lineWidth: 0 }) : yaml;
