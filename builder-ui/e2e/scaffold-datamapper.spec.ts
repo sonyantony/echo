@@ -23,8 +23,10 @@ test('Configure opens the DataMapper of a scaffold route', async ({ page }) => {
 
   await designMenu(page, /^Design/);
   await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
-  // The DataMapper is the last step reading Attention.
-  await page.getByText('Attention', { exact: true }).last().click();
+  // The DataMapper is the step with the kaoto-datamapper id; it has a red circle until it is mapped.
+  const mapper = page.locator('g[data-id*="|route.from.steps.4.step:kaoto-datamapper"]').locator('.custom-node__container__image').first();
+  await expect(mapper.locator('.echo-step-problem')).toBeVisible();
+  await mapper.click();
   await page.getByText('Configure', { exact: true }).click();
   await expect(page.getByTestId('attach-schema-sourceBody-Body-button')).toBeVisible();
   const files = async () => (await (await page.request.get(`/api/flows/${id}`)).json()).files as string[];

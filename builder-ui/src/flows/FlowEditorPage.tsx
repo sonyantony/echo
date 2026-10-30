@@ -44,6 +44,7 @@ import {
   routableOperations,
   routeForOperation,
   withJoinBean,
+  withoutAttentionLabels,
   type ApiCall,
   type OperationRename,
   type RoutableOperation,
@@ -53,7 +54,7 @@ import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
-import { stepProblems, type StepProblems } from '../editor/stepProblems';
+import { scaffoldAttention, stepProblems, type StepProblems } from '../editor/stepProblems';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
 import { DownloadButtons, downloadMenuItems } from './downloads';
@@ -174,12 +175,22 @@ function FlowEditor() {
   /** Set when Save As moves to the new flow, so leaving this one does not ask about unsaved edits. */
   const leavingAfterSaveAs = useRef(false);
 
+  /** What the editor opens: the saved route, without the Attention labels red circles replaced. */
+  const initialRoute = useMemo(() => (route.data === undefined ? undefined : withoutAttentionLabels(route.data)), [route.data]);
+  /** The route on screen, for the red circles on scaffold steps still waiting for the user. */
+  const [routeYaml, setRouteYaml] = useState<string>();
   useEffect(() => {
     const yaml = route.data;
-    if (yaml === undefined) return;
+    if (yaml === undefined || initialRoute === undefined) return;
     savedYaml.current = yaml;
+    setRouteYaml(initialRoute);
+    // Labels taken off are saved with the next save, so problems' lines match what is on screen.
+    if (initialRoute !== yaml) {
+      latestYaml.current = initialRoute;
+      setDirty(true);
+    }
     setRestSettings((current) => current ?? readRestSettings(yaml));
-  }, [route.data]);
+  }, [route.data, initialRoute]);
 
   const reviewed = useRef(false);
   useEffect(() => {
@@ -201,6 +212,7 @@ function FlowEditor() {
 
   const onChange = useCallback((yaml: string) => {
     latestYaml.current = yaml;
+    setRouteYaml(yaml);
     setDirty(yaml !== savedYaml.current);
     const now = readRestSettings(yaml);
     setRestSettings((was) =>
@@ -309,6 +321,21 @@ function FlowEditor() {
       setValidating(false);
     }
   }, [dirty, id, save]);
+
+  /**
+   * The red circles on the canvas: a step's validation problems, or while it has none, what is left
+   * to do on a scaffold step (routeForOperation), as a problem without a line.
+   */
+  const circles = useMemo(() => {
+    const todo = routeYaml && routeFile ? scaffoldAttention(routeYaml) : new Map<string, string[]>();
+    const all = new Map(placed?.steps);
+    for (const [step, messages] of todo) {
+      // A problem inside the step (e.g. in a DataMapper's own steps) counts as the step's.
+      const hasProblems = [...all.keys()].some((key) => key === step || key.startsWith(`${step}.`));
+      if (!hasProblems) all.set(step, messages.map((message) => ({ file: routeFile!, message })));
+    }
+    return all;
+  }, [routeYaml, routeFile, placed]);
 
   // Problems are found in what was just saved, which is what the editor has, so their lines are its lines.
   useEffect(() => {
@@ -687,7 +714,7 @@ function FlowEditor() {
           key={`${id}:${routeFile}`}
           ref={editor}
           path={routeFile!}
-          initialContent={route.data ?? ''}
+          initialContent={initialRoute ?? ''}
           files={files}
           loadSpec={loadSpecForSchemas}
           apiTags={settings.data?.apiTags}
@@ -751,7 +778,7 @@ function FlowEditor() {
           }
           coverVisible={showSpec}
           onKaotoViewPicked={() => showView(false)}
-          stepProblems={placed?.steps}
+          stepProblems={circles}
         />
       </div>
 

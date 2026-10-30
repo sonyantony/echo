@@ -16,12 +16,18 @@ function badgeHost(node: Element): Element | undefined {
 /** "2 problems" */
 export const problemCount = (n: number) => `${n} problem${n === 1 ? '' : 's'}`;
 
+/** "2 things to do": what is left to do on a scaffold step, which has no line. */
+const toDoCount = (n: number) => `${n} thing${n === 1 ? '' : 's'} to do`;
+
+/** How a step's list is counted: problems, unless all of them are things left to do. */
+const countOf = (list: ValidationProblem[]) => (list.every((p) => !p.line) ? toDoCount : problemCount)(list.length);
+
 /** Where a problem is: the route file's line, or the file it is in. */
 export const problemPlace = (p: ValidationProblem) => `${p.file}${p.line ? `:${p.line}` : ''}`;
 
 /**
- * A red circle at the top right of each canvas step with validation problems, counting them; clicking
- * it opens a box with the step's problems. Kaoto draws the canvas, so the circles are added to its
+ * A red circle at the top right of each canvas step with validation problems (or, on a scaffold step,
+ * something left to do), counting them; clicking it opens a box with the step's problems. Kaoto draws the canvas, so the circles are added to its
  * nodes (again whenever it redraws them) and the box is anchored to the circle clicked.
  */
 export function StepProblemBadges({ container, problems }: { container: HTMLElement; problems: Map<string, ValidationProblem[]> }) {
@@ -61,8 +67,8 @@ export function StepProblemBadges({ container, problems }: { container: HTMLElem
         // Only real changes: the observer sees the badge's own text change.
         if (badge.textContent !== String(list.length)) badge.textContent = String(list.length);
         badge.dataset.step = node;
-        badge.setAttribute('aria-label', `${problemCount(list.length)} on ${label || 'this step'}`);
-        badge.title = `${problemCount(list.length)}: click to see ${list.length === 1 ? 'it' : 'them'}`;
+        badge.setAttribute('aria-label', `${countOf(list)} on ${label || 'this step'}`);
+        badge.title = `${countOf(list)}: click to see ${list.length === 1 ? 'it' : 'them'}`;
         badge.onclick = (event) => {
           event.stopPropagation();
           const target = event.currentTarget as HTMLElement;
@@ -90,14 +96,15 @@ export function StepProblemBadges({ container, problems }: { container: HTMLElem
       position="right"
       minWidth="20rem"
       maxWidth="32rem"
-      headerContent={`${problemCount(open.problems.length)}${open.step ? ` on ${open.step}` : ''}`}
+      headerContent={`${countOf(open.problems)}${open.step ? ` on ${open.step}` : ''}`}
       headerIcon={null}
       alertSeverityVariant="danger"
       bodyContent={
         <List data-testid="step-problems">
           {open.problems.map((p, i) => (
             <ListItem key={i}>
-              {p.message} <span className="echo-step-problem__place">({problemPlace(p)})</span>
+              {p.message}
+              {p.line ? <span className="echo-step-problem__place"> ({problemPlace(p)})</span> : null}
             </ListItem>
           ))}
         </List>

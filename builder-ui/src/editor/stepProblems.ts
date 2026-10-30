@@ -1,4 +1,4 @@
-import { isMap, isSeq, LineCounter, parseDocument, type Node } from 'yaml';
+import { isMap, isSeq, LineCounter, parseDocument, type Node, type YAMLMap } from 'yaml';
 import type { ValidationProblem } from '../api/flows';
 
 /**
@@ -24,6 +24,9 @@ interface Found {
   id: string;
   start: number;
   end: number;
+  /** The processor (e.g. `to`), and its settings: none for a branch or a route's `from`. */
+  processor?: string;
+  settings?: unknown;
 }
 
 /** Every canvas node in a route file, with the lines (1-based) it spans. */
@@ -32,9 +35,10 @@ function stepsIn(yaml: string): Found[] {
   const doc = parseDocument(yaml, { lineCounter: lines });
   if (doc.errors.length > 0 || !isSeq(doc.contents)) return [];
   const found: Found[] = [];
-  const add = (routeId: string, path: string, node: Node | null | undefined) => {
+  const add = (routeId: string, path: string, node: Node | null | undefined, processor?: string, settings?: unknown) => {
     if (!node?.range) return;
-    found.push({ id: `${routeId}|${path}`, start: lines.linePos(node.range[0]).line, end: lines.linePos(node.range[1]).line });
+    const step = { id: `${routeId}|${path}`, start: lines.linePos(node.range[0]).line, end: lines.linePos(node.range[1]).line };
+    found.push(processor ? { ...step, processor, settings: isMap(settings) ? (settings as YAMLMap).toJSON() : settings } : step);
   };
   // Walks a node's children, adding the processors of each `steps` list and the branches.
   const walk = (routeId: string, path: string, node: unknown) => {
@@ -52,7 +56,7 @@ function stepsIn(yaml: string): Found[] {
           const step = item.items[0];
           const name = String((step.key as { value?: unknown } | null)?.value ?? step.key);
           const stepPath = `${path}.steps.${i}.${name}`;
-          add(routeId, stepPath, item as Node);
+          add(routeId, stepPath, item as Node, name, step.value);
           walk(routeId, stepPath, step.value);
         });
       } else if (BRANCHES.has(key)) {
@@ -81,6 +85,50 @@ function stepsIn(yaml: string): Found[] {
     if (isMap(from)) walk(routeId, 'route.from', from);
   }
   return found;
+}
+
+/**
+ * What the user still has to do on the steps of ECHO's route scaffolds (routeForOperation), by step,
+ * while those steps are as ECHO made them: the canvas shows a red circle on each, as for a problem.
+ */
+export function scaffoldAttention(yaml: string): Map<string, string[]> {
+  const todo = new Map<string, string[]>();
+  for (const step of stepsIn(yaml)) {
+    const s = (step.settings ?? {}) as Record<string, unknown> & { id?: string; parameters?: Record<string, unknown> };
+    const id = typeof s.id === 'string' ? s.id : '';
+    let message: string | undefined;
+    if (step.processor === 'to' && /^call-/.test(id) && s.uri === 'rest-openapi' && !s.parameters?.operationId) {
+      message = s.parameters?.specificationUri
+        ? 'Pick the operation this step calls: Operation Id.'
+        : 'Pick the API and the operation this step calls: Specification Uri and Operation Id.';
+    } else if (step.processor === 'setHeaders' && /^parameters-.+-\d+$/.test(id) && madeHeaders(s.headers)) {
+      message =
+        'Match these headers to the operation this step\'s call picks: name each as the operation names its parameter, and add or remove rows as it needs. Any change marks this done.';
+    } else if (step.processor === 'setBody' && /^label-/.test(id) && s.simple === '"result": ${body}') {
+      message = 'Name this call\'s part of the reply: change "result" to a name for it.';
+    } else if (step.processor === 'step' && /^kaoto-datamapper-/.test(id) && !dataMapperFile(s.steps)) {
+      message = 'Map the reply: select this step, choose Configure and map its fields in the DataMapper.';
+    }
+    if (message) todo.set(step.id, [message]);
+  }
+  return todo;
+}
+
+/** Accept and a header per variable, as the scaffold makes them. */
+function madeHeaders(headers: unknown): boolean {
+  if (!Array.isArray(headers) || headers.length === 0) return false;
+  const [accept, ...rest] = headers as Record<string, unknown>[];
+  if (accept?.name !== 'Accept' || accept.constant !== 'application/json' || Object.keys(accept).length !== 2) return false;
+  return rest.every((h) => typeof h.name === 'string' && h.simple === `\${variable.${h.name}}` && Object.keys(h).length === 2);
+}
+
+/** Whether a DataMapper step's XSLT has a file yet: Kaoto names one when the DataMapper is opened. */
+function dataMapperFile(steps: unknown): boolean {
+  if (!Array.isArray(steps)) return true;
+  const xslt = steps
+    .map((s) => (s as { to?: { uri?: unknown; parameters?: { resourceUri?: unknown } } }).to)
+    .find((to) => typeof to?.uri === 'string' && /^xslt/.test(to.uri));
+  return !xslt || xslt.uri !== 'xslt-saxon' || !!xslt.parameters?.resourceUri;
 }
 
 /** Sorts the problems into those on a step of this route file and the others. */

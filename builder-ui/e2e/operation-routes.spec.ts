@@ -119,7 +119,12 @@ test('an uploaded spec gets a route per operation under its own ids; Add Route F
   // Its REST OpenApi step waits for the operation it calls: Publish says so.
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await publish.getByRole('button', { name: 'Publish' }).click();
-  await expect(page.getByText(/This REST OpenApi step calls nothing yet/)).toBeVisible();
+  // The problem is on that step: its red circle opens it.
+  await expect(page.getByTestId('validation-problems')).toBeVisible();
+  // The route may lie past the canvas's edge: the click goes to the circle itself.
+  await page.locator('g[data-id^="route-deleteCardsId|"][data-id$=".to"] .echo-step-problem').first().dispatchEvent('click');
+  await expect(page.getByTestId('step-problems')).toContainText('This REST OpenApi step calls nothing yet');
+  await page.keyboard.press('Escape');
   route = await (await page.request.get(routeFile)).text();
   await page.request.put(routeFile, { data: designed(route), headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf } });
   await page.reload();

@@ -101,8 +101,10 @@ itself keeps only what is designed, so the service always follows the spec's cur
   multicast with one pipeline: Set Headers and a REST OpenApi step whose operation the user picks,
   and a JSON reply, a Kaoto DataMapper for it and Set Headers "SetResponseHeaders", which sets
   Content-Type `application/json` and response code 200; see decision 0013). The steps the user
-  still has to work on read **Attention** on the canvas: the pipeline's Set Headers, REST OpenApi
-  and last Set Body, and the DataMapper (Validate reports it until something is mapped). Parameters
+  still has to work on get a red circle on the canvas, which opens what is left to do: the pipeline's
+  Set Headers (until its rows are changed), REST OpenApi (until an operation is picked) and last Set
+  Body (until "result" is renamed), and the DataMapper (until it is configured; Validate reports it
+  until something is mapped). Routes made while these steps read **Attention** lose that label when opened. Parameters
   added or removed later change its Set Variable steps while the route is still as ECHO made it. A
   method deleted there takes its route away without asking while the route is still as ECHO made
   it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user

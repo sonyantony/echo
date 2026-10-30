@@ -3,6 +3,7 @@ import { createFlow, designMenu, interfaceItem, interfaceMenu, login, uniqueName
 
 // Validate shows each problem on the step it is about: a red circle at the step's top right,
 // opening a box with its problems. Nothing is listed above the editor any more.
+// The steps of a scaffold route left to the user have one from the start, saying what to do.
 
 const shots = process.env.ECHO_E2E_SCREENSHOTS;
 
@@ -29,9 +30,21 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
   await page.getByRole('button', { name: 'Horizontal Layout' }).click();
   await page.getByRole('button', { name: 'Fit Route' }).click();
 
-  await page.getByRole('button', { name: 'Validate', exact: true }).click();
+  // Before any Validate, the steps left to the user have a red circle saying what to do.
   const badges = page.locator('.echo-step-problem');
-  await expect(badges).toHaveCount(2);
+  await expect(badges).toHaveCount(4);
+  const label = page.locator('g[data-id$="|route.from.steps.2.multicast.steps.0.pipeline.steps.3.setBody"] .echo-step-problem');
+  await label.click();
+  const todo = page.getByRole('dialog', { name: /1 thing to do on setBody/ });
+  await expect(todo).toContainText('Name this call\'s part of the reply: change "result" to a name for it.');
+  await page.waitForTimeout(500); // the box fades in
+  if (shots) await page.screenshot({ path: `${shots}/0-before-validate.png` });
+  await page.keyboard.press('Escape');
+  await expect(todo).toBeHidden();
+
+  await page.getByRole('button', { name: 'Validate', exact: true }).click();
+  await expect(page.getByTestId('validation-problems')).toBeVisible();
+  await expect(badges).toHaveCount(4);
   await expect(page.getByText(/problems? to fix before publishing/)).toBeHidden();
   const summary = page.getByTestId('validation-problems');
   await expect(summary).toHaveText('2 problems');
@@ -48,14 +61,16 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
   if (shots) await page.screenshot({ path: `${shots}/1-red-circles.png` });
 
   await mapper.click();
-  const box = page.getByRole('dialog', { name: /problem on Attention/ });
-  await expect(box).toContainText('1 problem on Attention');
+  const box = page.getByRole('dialog', { name: /1 problem on/ });
+  await expect(box).toContainText('1 problem on kaoto-datamapper');
   await expect(box.getByTestId('step-problems')).toContainText('A DataMapper step has no mapping yet');
+  await page.waitForTimeout(500);
   // Opening the box does not select the step (no step toolbar).
   await expect(page.getByTestId('step-toolbar')).toBeHidden();
   if (shots) await page.screenshot({ path: `${shots}/2-datamapper-problem.png` });
   await rest.click();
   await expect(box.getByTestId('step-problems')).toContainText('pick its Operation Id');
+  await page.waitForTimeout(500);
   if (shots) await page.screenshot({ path: `${shots}/3-rest-openapi-problem.png` });
   await page.keyboard.press('Escape');
   await expect(box).toBeHidden();
@@ -64,8 +79,13 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
   await summary.click();
   const all = page.getByRole('dialog', { name: /2 problems to fix before publishing/ });
   await expect(all).toContainText('They are on steps of the flow: click the red circle on a step to see its problems.');
+  await page.waitForTimeout(500);
   if (shots) await page.screenshot({ path: `${shots}/4-toolbar-count.png` });
   await all.getByRole('button', { name: 'Clear the problems' }).click();
-  await expect(badges).toHaveCount(0);
+  // The steps left to the user keep theirs: what to do, not Validate's problems.
+  await expect(badges).toHaveCount(4);
+  await mapper.click();
+  const mapperToDo = page.getByRole('dialog', { name: /1 thing to do on kaoto-datamapper/ });
+  await expect(mapperToDo.getByTestId('step-problems')).toContainText('Map the reply: select this step, choose Configure');
   await expect(summary).toBeHidden();
 });

@@ -1,4 +1,5 @@
-import { stepProblems } from './stepProblems';
+import { routeForOperation } from '../apispec/operationIds';
+import { scaffoldAttention, stepProblems } from './stepProblems';
 
 const yaml = [
   '- route:', //                                1
@@ -51,5 +52,34 @@ describe('stepProblems', () => {
     const problems = [at(4, 'application.properties'), at(null), at(99)];
     expect(stepProblems(problems, 'get-node.camel.yaml', yaml).other).toEqual(problems);
     expect(stepProblems([at(2)], 'get-node.camel.yaml', '- route: [').other).toHaveLength(1);
+  });
+});
+
+describe('scaffoldAttention', () => {
+  const made = routeForOperation(
+    { method: 'GET', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }] },
+    { specificationUri: 'blueplanet.openapi.json' },
+  );
+  const pipeline = 'route-getCardsId|route.from.steps.3.multicast.steps.0.pipeline';
+
+  it('marks the steps of a new scaffold the user still has to work on', () => {
+    const todo = scaffoldAttention(made);
+    expect([...todo.keys()]).toEqual([
+      `${pipeline}.steps.0.setHeaders`,
+      `${pipeline}.steps.1.to`,
+      `${pipeline}.steps.3.setBody`,
+      'route-getCardsId|route.from.steps.5.step',
+    ]);
+    expect(todo.get(`${pipeline}.steps.1.to`)).toEqual(['Pick the operation this step calls: Operation Id.']);
+  });
+
+  it('lets each go once the user has done it', () => {
+    const done = made
+      .replace('specificationUri: blueplanet.openapi.json', 'specificationUri: blueplanet.openapi.json\n                          operationId: getCard')
+      .replace('"result": ${body}', '"card": ${body}')
+      .replace('uri: xslt-saxon', 'uri: xslt-saxon:kaoto-datamapper-1.xsl');
+    expect([...scaffoldAttention(done).keys()]).toEqual([`${pipeline}.steps.0.setHeaders`]);
+    // Any change to the headers: here the id header renamed as the operation names it.
+    expect(scaffoldAttention(done.replace('- name: id\n', '- name: cardId\n')).size).toBe(0);
   });
 });

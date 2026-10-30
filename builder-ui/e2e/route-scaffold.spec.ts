@@ -41,17 +41,16 @@ test('a new method gets a scaffold route, and a query parameter added later gets
 
   let made = await steps();
   expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariable', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'step', 'setHeaders']);
-  // A DataMapper after the reply's Set Body, and every step the user has to work on reads Attention.
-  expect(made[5].step).toMatchObject({ description: 'Attention' });
+  // A DataMapper after the reply's Set Body. No step reads Attention: the canvas puts red circles on
+  // those the user has to work on.
+  expect(JSON.stringify(made)).not.toContain('Attention');
   expect(made[5].step.id).toMatch(/^kaoto-datamapper-/);
   expect(made[6].setHeaders).toMatchObject({ description: 'SetResponseHeaders' });
   expect(made[0].setVariable).toMatchObject({ name: 'orderId', simple: '${header.orderId}' });
   expect(made[2].setHeaders).toMatchObject({ description: 'SetAuthorizationHeaders' });
   const branch = made[3].multicast.steps![0].pipeline.steps!;
   expect(branch.map((s) => Object.keys(s)[0])).toEqual(['setHeaders', 'to', 'convertBodyTo', 'setBody']);
-  expect(branch[0].setHeaders).toMatchObject({ description: 'Attention' });
-  expect(branch[1].to).toMatchObject({ uri: 'rest-openapi', description: 'Attention' });
-  expect(branch[3].setBody).toMatchObject({ description: 'Attention' });
+  expect(branch[1].to).toMatchObject({ uri: 'rest-openapi' });
 
   // A query parameter added to the method: the route, still as ECHO made it, gets its variable.
   await editor.getByTitle('Add a new query parameter.').last().click();
@@ -66,5 +65,7 @@ test('a new method gets a scaffold route, and a query parameter added later gets
 
   await designMenu(page, /^Design/);
   await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
+  // The pipeline's Set Headers, REST OpenApi and Set Body, and the DataMapper.
+  await expect(page.locator('.echo-step-problem')).toHaveCount(4);
   if (shots) await page.screenshot({ path: `${shots}/1-scaffold-route.png` });
 });
