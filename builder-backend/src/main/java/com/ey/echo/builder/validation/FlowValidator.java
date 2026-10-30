@@ -506,6 +506,9 @@ public class FlowValidator {
                 if (!files.containsKey(resource)) {
                     problems.add(new Problem(routeFile, line,
                             "The mapping file '%s' is missing from the flow.".formatted(resource)));
+                } else if (resource.startsWith("kaoto-datamapper-") && !files.get(resource).contains("<xsl:template")) {
+                    // A DataMapper's file as Kaoto (or ECHO, attaching a schema) writes it before anything is mapped.
+                    problems.add(new Problem(routeFile, line, NOTHING_MAPPED));
                 }
             }
         }

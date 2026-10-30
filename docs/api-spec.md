@@ -98,13 +98,18 @@ itself keeps only what is designed, so the service always follows the spec's cur
 - **Routes follow the methods edited in Interface.** A method added there gets its route on the
   canvas at once (`direct:<operationId>` and a scaffold, as Add Route For Operation makes it: a
   Set Variable per parameter, Remove Headers `*`, Set Headers "SetAuthorizationHeaders", a
-  multicast with one pipeline: Set Headers, a Kaoto DataMapper for the request and a REST OpenApi
-  step whose operation the user picks, and a JSON reply, a Kaoto DataMapper for it and Set Headers
-  "SetResponseHeaders", which sets Content-Type `application/json` and response code 200; see
-  decision 0013). The steps the user still has to work on get a red circle on the canvas, which
+  multicast with one pipeline: Set Headers, for POST, PUT and PATCH a Kaoto DataMapper for the
+  request, and a REST OpenApi step whose operation the user picks, and a JSON reply, a Kaoto
+  DataMapper for it and Set Headers "SetResponseHeaders", which sets Content-Type `application/json`
+  and response code 200; see decision 0013). The DataMappers start from the spec's schemas: the
+  request DataMapper's source is the request body, and (for GET, POST, PUT and PATCH) the reply
+  DataMapper's target is the response (200, else another 2xx, else `default`). ECHO writes them as
+  the `openapi-*.schema.json` files Attach Schema makes, so they follow the spec on Save; a method
+  added before it has a body gets them when it does, while its route is still as ECHO made it.
+  The steps the user still has to work on get a red circle on the canvas, which
   opens what is left to do: the pipeline's Set Headers (until its rows are changed), DataMapper
-  (until it is configured), REST OpenApi (until an operation is picked) and last Set Body (until
-  "result" is renamed), and the reply's DataMapper (until it is configured). Validate reports each
+  (until something is mapped), REST OpenApi (until an operation is picked) and last Set Body (until
+  "result" is renamed), and the reply's DataMapper (until something is mapped). Validate reports each
   DataMapper, with a red circle on its step, until something is mapped. **Mark as done** in a circle's
   box takes a thing to do away for good (the step ids are kept in the flow's `.echo-done.json`); **Clear**
   takes Validate's problems on a step away until the next Validate. Routes made while these steps

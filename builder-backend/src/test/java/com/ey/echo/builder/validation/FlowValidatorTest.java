@@ -179,6 +179,17 @@ class FlowValidatorTest {
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(9, "A DataMapper step has no mapping yet. Open it in the DataMapper and map its fields."),
                         org.assertj.core.groups.Tuple.tuple(16, "A DataMapper step has no mapping yet. Open it in the DataMapper and map its fields."));
+        // A DataMapper whose file has nothing mapped yet (a schema attached, or opened and left).
+        var named = route.replace("uri: xslt-saxon", "uri: xslt-saxon:kaoto-datamapper-a.xsl");
+        assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", named,
+                        "kaoto-datamapper-a.xsl", "<xsl:stylesheet version=\"3.0\"><xsl:output method=\"xml\"/></xsl:stylesheet>"))
+                .problems())
+                .extracting(Problem::line, Problem::message)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(9,
+                        "A DataMapper step has no mapping yet. Open it in the DataMapper and map its fields."));
+        assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", named,
+                        "kaoto-datamapper-a.xsl", "<xsl:stylesheet><xsl:template match=\"/\"/></xsl:stylesheet>"))
+                .problems()).isEmpty();
         // ...and the rest of the flow is still checked.
         var withKafka = route.replace("uri: direct:a", "uri: kafka:a");
         assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", withKafka)).problems())
@@ -191,7 +202,7 @@ class FlowValidatorTest {
     void placeholdersResolveFromTheFlowProperties() {
         var files = Map.of(
                 "flow.camel.yaml", read(FIXTURES.resolve("missing-mapping.camel.yaml")),
-                "kaoto-datamapper-missing.xsl", "<xsl:stylesheet/>",
+                "kaoto-datamapper-missing.xsl", "<xsl:stylesheet><xsl:template match=\"/\"/></xsl:stylesheet>",
                 "application.properties", "downstream.url=kafka:topic");
         // The placeholder resolves, and the resolved component is then checked against the scope.
         assertThat(validator.validate("flow.camel.yaml", files).problems()).extracting(Problem::message)

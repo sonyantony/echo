@@ -15,6 +15,8 @@ import {
   type ApiCall,
   type RoutableOperation,
 } from '../apispec/operationIds';
+import { attachScaffoldSchemas, forgetScaffoldSchemas, mappedXslFiles } from '../datamapper/scaffoldSchemas';
+import type { FlowFiles } from '../editor/flowFiles';
 import type { KaotoEditorHandle } from '../editor/KaotoEditorHost';
 
 /** Operations an edit in Interface added and removed (ApiSpecPanel's onOperationsChanged). */
@@ -41,7 +43,8 @@ interface Asking {
  * says Remove Route. A removed route comes back as it was if the method does (undo).
  *
  * The routes change on the canvas like any edit: unsaved canvas work stays, and the flow is saved
- * with the next save or autosave.
+ * with the next save or autosave. The schemas the scaffolds' DataMappers start from (and their Kaoto
+ * metadata) are written to `files` straight away, and taken away with a route that goes quietly.
  *
  * @returns onOperationsChanged for ApiSpecPanel, and the Keep/Remove dialog to render
  */
@@ -49,6 +52,7 @@ export function useOperationRoutes(
   editor: RefObject<KaotoEditorHandle | null>,
   onMessage: (variant: 'success' | 'danger', text: string) => void,
   call?: ApiCall,
+  files?: FlowFiles,
 ) {
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
@@ -61,38 +65,56 @@ export function useOperationRoutes(
   const queue = useRef<Promise<void>>(Promise.resolve());
   const [asking, setAsking] = useState<Asking>();
 
-  /** Changes the canvas's YAML, one change after another (edits can come quicker than the canvas). */
-  const edit = useCallback((change: (yaml: string) => string) => {
-    queue.current = queue.current.then(async () => {
-      try {
-        if (!editor.current) return;
-        const yaml = await editor.current.getContent();
-        const next = change(yaml);
-        if (next !== yaml) await editor.current.setContent(next);
-      } catch (e) {
-        onMessageRef.current('danger', `Could not update the routes: ${(e as Error).message}`);
-      }
-    });
-  }, [editor]);
+  const filesRef = useRef(files);
+  filesRef.current = files;
+
+  /**
+   * Changes the canvas's YAML, one change after another (edits can come quicker than the canvas).
+   * change gets the DataMapper XSLT files that have mappings; then runs after the canvas has the change.
+   */
+  const edit = useCallback(
+    (change: (yaml: string, mapped: ReadonlySet<string>) => string, then?: (files: FlowFiles) => Promise<void>) => {
+      queue.current = queue.current.then(async () => {
+        try {
+          if (!editor.current) return;
+          const yaml = await editor.current.getContent();
+          const files = filesRef.current;
+          const next = change(yaml, files ? await mappedXslFiles(files) : new Set());
+          if (next !== yaml) await editor.current.setContent(next);
+          if (files && then) await then(files);
+        } catch (e) {
+          onMessageRef.current('danger', `Could not update the routes: ${(e as Error).message}`);
+        }
+      });
+    },
+    [editor],
+  );
 
   const onOperationsChanged = useCallback(({ added, removed, changed = [] }: OperationChanges) => {
     for (const op of removed) present.current.delete(op.operationId);
     for (const op of added) present.current.add(op.operationId);
-    edit((yaml) => {
+    // The scaffolds made or made again, whose DataMappers' schemas follow; those that went quietly.
+    let scaffolds: RoutableOperation[] = [];
+    let gone: string[] = [];
+    edit((yaml, mapped) => {
       const routes = directRoutes(yaml);
-      const untouched = untouchedRoutes(yaml);
-      const gone = removed.filter((op) => routes.has(op.operationId));
-      const quiet = gone.filter((op) => untouched.has(op.operationId));
-      const ask = gone.filter((op) => !untouched.has(op.operationId));
+      const untouched = untouchedRoutes(yaml, mapped);
+      const existing = removed.filter((op) => routes.has(op.operationId));
+      const quiet = existing.filter((op) => untouched.has(op.operationId));
+      const ask = existing.filter((op) => !untouched.has(op.operationId));
+      gone = quiet.map((op) => op.operationId);
+      scaffolds = changed.filter((op) => untouched.has(op.operationId));
       // A route kept for an operation that moved under the same id (an upload) shows where it is now.
       let next = relabelRoutes(withoutUnusedJoinBean(removeDirectRoutes(yaml, quiet.map((op) => op.operationId)).yaml), added);
-      next = refreshRoutes(next, changed);
+      next = refreshRoutes(next, changed, mapped);
       const made: RoutableOperation[] = [];
       for (const op of added) {
         if (directRoutes(next).has(op.operationId)) continue;
-        next = appendRoute(withJoinBean(next), removedRoutes.current.get(op.operationId) ?? routeForOperation(op, callRef.current));
+        const restored = removedRoutes.current.get(op.operationId);
+        next = appendRoute(withJoinBean(next), restored ?? routeForOperation(op, callRef.current));
         removedRoutes.current.delete(op.operationId);
         made.push(op);
+        if (!restored || untouchedRoutes(restored).has(op.operationId)) scaffolds.push(op);
       }
       if (made.length) onMessageRef.current('success', `Added a route for ${made.map(operationLabel).join(', ')}.`);
       if (ask.length) {
@@ -103,6 +125,9 @@ export function useOperationRoutes(
         }));
       }
       return next;
+    }, async (files) => {
+      await forgetScaffoldSchemas(files, gone);
+      await attachScaffoldSchemas(files, scaffolds);
     });
   }, [edit]);
 
@@ -112,11 +137,14 @@ export function useOperationRoutes(
     if (!remove) return;
     // One that came back while the dialog was open (undo) keeps its route.
     const ids = operations.map((op) => op.operationId).filter((id) => !present.current.has(id));
-    edit((yaml) => {
-      const result = removeDirectRoutes(yaml, ids);
-      result.removed.forEach((route, id) => removedRoutes.current.set(id, route));
-      return withoutUnusedJoinBean(result.yaml);
-    });
+    edit(
+      (yaml) => {
+        const result = removeDirectRoutes(yaml, ids);
+        result.removed.forEach((route, id) => removedRoutes.current.set(id, route));
+        return withoutUnusedJoinBean(result.yaml);
+      },
+      (files) => forgetScaffoldSchemas(files, ids),
+    );
   };
 
   const many = (asking?.operations.length ?? 0) > 1;

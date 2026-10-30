@@ -22,9 +22,10 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
   const path = `/${name.replace(/-/g, '')}`;
   await addPath.getByRole('textbox').fill(path);
   await addPath.getByRole('button', { name: 'Add' }).click();
-  await editor.locator('.operation-tab').getByText('Get', { exact: true }).click();
+  // A POST: its route also maps the request before the call.
+  await editor.locator('.operation-tab').getByText('Post', { exact: true }).click();
   await editor.getByRole('button', { name: 'Add Operation' }).click();
-  await expect(page.getByText(`Added a route for GET ${path}.`)).toBeVisible();
+  await expect(page.getByText(`Added a route for POST ${path}.`)).toBeVisible();
   await designMenu(page, /^Design/);
   await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
   await page.getByRole('button', { name: 'Horizontal Layout' }).click();

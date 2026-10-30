@@ -226,15 +226,6 @@ describe('operationIds', () => {
                       ],
                     },
                   },
-                  {
-                    step: {
-                      id: 'kaoto-datamapper-request-getCardsCardId-1',
-                      steps: [
-                        { setBody: { id: 'kaoto-datamapper-set-body-request-getCardsCardId-1', expression: { simple: { expression: '${null}' } } } },
-                        { to: { id: 'kaoto-datamapper-xslt-request-getCardsCardId-1', uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
-                      ],
-                    },
-                  },
                   { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}' } } },
                   { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
                   { setBody: { id: 'label-getCardsCardId-1', simple: '"result": ${body}' } },
@@ -273,6 +264,68 @@ describe('operationIds', () => {
     expect(bare[2].multicast.steps[0].pipeline.steps[0].setHeaders.headers).toEqual([{ name: 'Accept', constant: 'application/json' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[1].step.id).toBe('kaoto-datamapper-request-postCards-1');
     expect(bare[2].multicast.steps[0].pipeline.steps[2].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: {} });
+  });
+
+  it("starts a POST's DataMappers from its request body and its response, and attaches them once the spec has them", () => {
+    const spec = (withBodies: boolean) =>
+      JSON.stringify({
+        openapi: '3.0.3',
+        info: { title: 'Cards' },
+        components: { schemas: { Card: { type: 'object', properties: { name: { type: 'string' } } } } },
+        paths: {
+          '/cards': {
+            post: withBodies
+              ? {
+                  requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Card' } } } },
+                  responses: {
+                    '400': { content: { 'application/json': { schema: { type: 'object' } } } },
+                    '201': { content: { 'application/json': { schema: { $ref: '#/components/schemas/Card' } } } },
+                  },
+                }
+              : { responses: { '201': { description: 'Created' } } },
+            delete: { responses: { '200': { content: { 'application/json': { schema: { type: 'object' } } } } } },
+          },
+        },
+      });
+    const [post, del] = routableOperations(spec(true));
+    // The request body; the reply's 2xx response (no 200 here), not the 400.
+    expect(post.schemas?.request).toMatchObject({ title: 'POST /cards: Request body', properties: { name: { type: 'string' } } });
+    expect(post.schemas?.response).toMatchObject({ title: 'POST /cards: Response 201' });
+    expect(del.schemas).toBeUndefined();
+    const steps = YAML.parse(routeForOperation(post))[0].route.from.steps;
+    // The request's DataMapper reads the body as JSON (no Set Body ${null}); both name their XSLT file.
+    expect(steps[2].multicast.steps[0].pipeline.steps[1].step).toEqual({
+      id: 'kaoto-datamapper-request-postCards-1',
+      steps: [
+        {
+          to: {
+            id: 'kaoto-datamapper-xslt-request-postCards-1',
+            uri: 'xslt-saxon:kaoto-datamapper-request-postCards-1.xsl',
+            parameters: { failOnNullBody: false, useJsonBody: true },
+          },
+        },
+      ],
+    });
+    expect(steps[4].step.steps).toEqual([
+      { setBody: { id: 'kaoto-datamapper-set-body-postCards', expression: { simple: { expression: '${null}' } } } },
+      { to: { id: 'kaoto-datamapper-xslt-postCards', uri: 'xslt-saxon:kaoto-datamapper-postCards.xsl', parameters: { failOnNullBody: false } } },
+    ]);
+    // A DELETE gets no DataMapper before the call.
+    expect(routeForOperation(del)).not.toContain('kaoto-datamapper-request');
+
+    // Added in Interface before it had bodies: its route takes them when they come.
+    const [bare] = routableOperations(spec(false));
+    const made = routeForOperation(bare);
+    expect(made).not.toContain('xslt-saxon:');
+    expect(operationChanges([bare], [post]).changed).toEqual([post]);
+    const attached = refreshRoutes(made, [post]);
+    expect(attached).toBe(routeForOperation(post));
+    expect(untouchedRoutes(attached)).toEqual(new Set(['postCards']));
+    // Once one of its DataMappers has mappings it is somebody's work.
+    const mapped = new Set(['kaoto-datamapper-postCards.xsl']);
+    expect(untouchedRoutes(attached, mapped).size).toBe(0);
+    expect(refreshRoutes(attached, [bare], mapped)).toBe(attached);
+    expect(refreshRoutes(attached, [bare])).toBe(made);
   });
 
   it('adds the bean the multicasts join replies with, once', () => {
@@ -340,8 +393,10 @@ describe('operationIds', () => {
   });
 
   it('tells routes still as ECHO made them from ones somebody worked on', () => {
-    const made = routeForOperation({ method: 'GET', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }] });
+    const made = routeForOperation({ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }] });
     expect(untouchedRoutes(made)).toEqual(new Set(['getCardsId']));
+    // A GET's route had a DataMapper before the call too until schemas came.
+    expect(untouchedRoutes(made.replace('description: PUT /cards/{id}', 'description: GET /cards/{id}'))).toEqual(new Set(['getCardsId']));
     // A renamed operation's route keeps its step ids.
     expect(untouchedRoutes(made.replace('id: remove-headers-getCardsId', 'id: remove-headers-getCardId'))).toEqual(new Set(['getCardsId']));
     const added = made.replace(/( +)- removeHeaders:/, '$1- setBody:\n$1    constant: hi\n$1- removeHeaders:');
@@ -362,7 +417,7 @@ describe('operationIds', () => {
     expect(withoutAttentionLabels(labelled)).toBe(made);
     expect(withoutAttentionLabels(made)).toBe(made);
     // A step's own description of Attention elsewhere stays.
-    const own = made.replace('    description: GET /cards/{id}', '    description: Attention');
+    const own = made.replace('    description: PUT /cards/{id}', '    description: Attention');
     expect(withoutAttentionLabels(own)).toBe(own);
     // Routes made before the DataMapper before the call.
     const doc = YAML.parse(labelled);

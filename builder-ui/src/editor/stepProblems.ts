@@ -96,9 +96,14 @@ export interface ToDo {
 /**
  * What the user still has to do on the steps of ECHO's route scaffolds (routeForOperation), by step,
  * while those steps are as ECHO made them and the user has not marked them done (`done`, step ids):
- * the canvas shows a red circle on each, as for a problem.
+ * the canvas shows a red circle on each, as for a problem. A scaffold DataMapper ECHO gave a schema
+ * already has its XSLT file named; it is done once that file has mappings (in `mapped`, mappedXslFiles).
  */
-export function scaffoldAttention(yaml: string, done: ReadonlySet<string> = new Set()): Map<string, ToDo> {
+export function scaffoldAttention(
+  yaml: string,
+  done: ReadonlySet<string> = new Set(),
+  mapped?: ReadonlySet<string>,
+): Map<string, ToDo> {
   const todo = new Map<string, ToDo>();
   for (const step of stepsIn(yaml)) {
     const s = (step.settings ?? {}) as Record<string, unknown> & { id?: string; parameters?: Record<string, unknown> };
@@ -113,7 +118,7 @@ export function scaffoldAttention(yaml: string, done: ReadonlySet<string> = new 
         'Match these headers to the operation this step\'s call picks: name each as the operation names its parameter, and add or remove rows as it needs. Any change marks this done.';
     } else if (step.processor === 'setBody' && /^label-/.test(id) && s.simple === '"result": ${body}') {
       message = 'Name this call\'s part of the reply: change "result" to a name for it.';
-    } else if (step.processor === 'step' && /^kaoto-datamapper-/.test(id) && !dataMapperFile(s.steps)) {
+    } else if (step.processor === 'step' && /^kaoto-datamapper-/.test(id) && !mapperDone(step.id, id, s.steps, mapped)) {
       message = /^kaoto-datamapper-request-/.test(id)
         ? 'Map the request to what the called operation takes: select this step, choose Configure and map its fields in the DataMapper.'
         : 'Map the reply: select this step, choose Configure and map its fields in the DataMapper.';
@@ -131,13 +136,21 @@ function madeHeaders(headers: unknown): boolean {
   return rest.every((h) => typeof h.name === 'string' && h.simple === `\${variable.${h.name}}` && Object.keys(h).length === 2);
 }
 
-/** Whether a DataMapper step's XSLT has a file yet: Kaoto names one when the DataMapper is opened. */
-function dataMapperFile(steps: unknown): boolean {
+/**
+ * Whether a DataMapper step is done with: its XSLT has a file (Kaoto names one when the DataMapper is
+ * opened), and for a scaffold's DataMapper ECHO named the file of (`kaoto-datamapper-<id>.xsl`, a
+ * schema attached), that file has mappings. `node` is the step's canvas node, `id` its own.
+ */
+function mapperDone(node: string, id: string, steps: unknown, mapped: ReadonlySet<string> | undefined): boolean {
   if (!Array.isArray(steps)) return true;
   const xslt = steps
     .map((s) => (s as { to?: { uri?: unknown; parameters?: { resourceUri?: unknown } } }).to)
     .find((to) => typeof to?.uri === 'string' && /^xslt/.test(to.uri));
-  return !xslt || xslt.uri !== 'xslt-saxon' || !!xslt.parameters?.resourceUri;
+  if (!xslt || xslt.parameters?.resourceUri) return true;
+  if (xslt.uri === 'xslt-saxon') return false;
+  const route = node.slice(0, node.indexOf('|'));
+  const scaffold = /^kaoto-datamapper-request-.+-\d+$/.test(id) || (route.startsWith('route-') && id === `kaoto-datamapper-${route.slice(6)}`);
+  return !mapped || !scaffold || xslt.uri !== `xslt-saxon:${id}.xsl` || mapped.has(`${id}.xsl`);
 }
 
 /** Sorts the problems into those on a step of this route file and the others. */

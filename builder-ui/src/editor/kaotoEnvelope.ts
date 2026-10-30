@@ -1,5 +1,5 @@
 import type { KaotoEditorChannelApi } from '@kaoto/kaoto';
-import { KAOTO_METADATA_FILE, normalize, type FlowFiles } from './flowFiles';
+import { normalize, readKaotoMetadata, updateKaotoMetadata, type FlowFiles } from './flowFiles';
 
 export interface EnvelopeCallbacks {
   onReady(): void;
@@ -13,18 +13,6 @@ export interface EnvelopeCallbacks {
  * (in VS Code this is the extension). Here the host is the ECHO Builder page itself.
  */
 export function createEnvelopeContext(catalogUrl: string, files: FlowFiles, callbacks: EnvelopeCallbacks) {
-  const readMetadata = async (): Promise<Record<string, unknown>> => {
-    const raw = await files.read(KAOTO_METADATA_FILE);
-    if (!raw) return {};
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return {};
-    }
-  };
-
-  let metadataWrites: Promise<unknown> = Promise.resolve();
-
   const requests: Partial<Record<keyof KaotoEditorChannelApi, unknown>> = {
     getVSCodeKaotoSettings: async () => ({
       catalogUrl,
@@ -35,18 +23,13 @@ export function createEnvelopeContext(catalogUrl: string, files: FlowFiles, call
       nodeToolbarTrigger: 'onSelection',
     }),
     getCatalogURL: async () => catalogUrl,
-    getMetadata: async (key: string) => (await readMetadata())[key],
-    // One at a time: each rewrites the whole .kaoto file, so two at once would lose one's change.
-    setMetadata: (key: string, value: unknown) => {
-      const write = metadataWrites.then(async () => {
-        const metadata = await readMetadata();
+    getMetadata: async (key: string) => (await readKaotoMetadata(files))[key],
+    // One at a time, with ECHO's own changes (updateKaotoMetadata).
+    setMetadata: (key: string, value: unknown) =>
+      updateKaotoMetadata(files, (metadata) => {
         if (value === undefined) delete metadata[key];
         else metadata[key] = value;
-        await files.write(KAOTO_METADATA_FILE, JSON.stringify(metadata, null, 2));
-      });
-      metadataWrites = write.catch(() => undefined);
-      return write;
-    },
+      }),
     getResourcesContentByType: async () => [],
     getResourceContent: (path: string) => files.read(normalize(path)),
     isResourceExist: async (path: string) => (await files.read(normalize(path))) !== undefined,
