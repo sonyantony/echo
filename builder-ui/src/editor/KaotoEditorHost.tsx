@@ -58,6 +58,8 @@ export interface KaotoEditorHostProps {
   coverVisible?: boolean;
   /** Validation problems by the canvas step they are on (stepProblems): each such step gets a red circle opening them. */
   stepProblems?: Map<string, ValidationProblem[]>;
+  /** A circle's Clear / Mark As Done, with the stepProblems keys whose circle it closes. */
+  onDismissProblems?(steps: string[]): void;
   /** Called when one of Kaoto's views is picked on the tab line (a tab, or a menu standing in for one). */
   onKaotoViewPicked?(): void;
   /**
@@ -87,7 +89,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked, loadSpec, apiTags, stepProblems },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked, loadSpec, apiTags, stepProblems, onDismissProblems },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -370,7 +372,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
         </>
       )}
       {editorElement && stepProblems && stepProblems.size > 0 && (
-        <StepProblemBadges container={editorElement} problems={stepProblems} />
+        <StepProblemBadges container={editorElement} problems={stepProblems} onDismiss={onDismissProblems} />
       )}
       {canvasSlot && canvasToolbarActions && createPortal(canvasToolbarActions, canvasSlot)}
       {fitSlot && createPortal(<FitRouteButton routeSelected={!!selectedRoute} onClick={fitToCanvas} />, fitSlot)}

@@ -105,7 +105,9 @@ itself keeps only what is designed, so the service always follows the spec's cur
   opens what is left to do: the pipeline's Set Headers (until its rows are changed), DataMapper
   (until it is configured), REST OpenApi (until an operation is picked) and last Set Body (until
   "result" is renamed), and the reply's DataMapper (until it is configured). Validate reports each
-  DataMapper, with a red circle on its step, until something is mapped. Routes made while these steps
+  DataMapper, with a red circle on its step, until something is mapped. **Mark as done** in a circle's
+  box takes a thing to do away for good (the step ids are kept in the flow's `.echo-done.json`); **Clear**
+  takes Validate's problems on a step away until the next Validate. Routes made while these steps
   read **Attention** lose that label when opened. Parameters
   added or removed later change its Set Variable steps while the route is still as ECHO made it. A
   method deleted there takes its route away without asking while the route is still as ECHO made

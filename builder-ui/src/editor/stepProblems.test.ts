@@ -71,9 +71,14 @@ describe('scaffoldAttention', () => {
       `${pipeline}.steps.4.setBody`,
       'route-getCardsId|route.from.steps.5.step',
     ]);
-    expect(todo.get(`${pipeline}.steps.1.step`)![0]).toMatch(/^Map the request/);
-    expect(todo.get('route-getCardsId|route.from.steps.5.step')![0]).toMatch(/^Map the reply/);
-    expect(todo.get(`${pipeline}.steps.2.to`)).toEqual(['Pick the operation this step calls: Operation Id.']);
+    expect(todo.get(`${pipeline}.steps.1.step`)!.messages[0]).toMatch(/^Map the request/);
+    expect(todo.get('route-getCardsId|route.from.steps.5.step')!.messages[0]).toMatch(/^Map the reply/);
+    expect(todo.get(`${pipeline}.steps.2.to`)).toEqual({ stepId: 'call-getCardsId-1', messages: ['Pick the operation this step calls: Operation Id.'] });
+  });
+
+  it('leaves out the steps the user marked done', () => {
+    const todo = scaffoldAttention(made, new Set(['call-getCardsId-1', 'label-getCardsId-1']));
+    expect([...todo.values()].map((t) => t.stepId)).toEqual(['parameters-getCardsId-1', 'kaoto-datamapper-request-getCardsId-1', 'kaoto-datamapper-getCardsId']);
   });
 
   it('lets each go once the user has done it', () => {

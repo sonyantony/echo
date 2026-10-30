@@ -54,7 +54,8 @@ import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
-import { scaffoldAttention, stepProblems, type StepProblems } from '../editor/stepProblems';
+import { DONE_STEPS_FILE } from '../editor/flowFiles';
+import { scaffoldAttention, stepProblems, type StepProblems, type ToDo } from '../editor/stepProblems';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
 import { DownloadButtons, downloadMenuItems } from './downloads';
@@ -98,6 +99,20 @@ function FlowEditor() {
     queryKey: ['flow', id, 'route', routeFile],
     queryFn: () => flowsApi.readFile(id, routeFile!),
     enabled: !!routeFile,
+    staleTime: Infinity,
+  });
+  /** The scaffold steps the user marked done (DONE_STEPS_FILE): their red circles stay away. */
+  const doneSteps = useQuery({
+    queryKey: ['flow', id, 'done-steps'],
+    queryFn: async () => {
+      const text = await flowsApi.readFile(id, DONE_STEPS_FILE);
+      try {
+        const ids: unknown = text ? JSON.parse(text) : [];
+        return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : [];
+      } catch {
+        return [];
+      }
+    },
     staleTime: Infinity,
   });
   const settings = useQuery({ queryKey: ['editor-settings'], queryFn: editorSettings, staleTime: Infinity });
@@ -326,16 +341,45 @@ function FlowEditor() {
    * The red circles on the canvas: a step's validation problems, or while it has none, what is left
    * to do on a scaffold step (routeForOperation), as a problem without a line.
    */
+  const todo = useMemo(
+    () => (routeYaml && routeFile ? scaffoldAttention(routeYaml, new Set(doneSteps.data)) : new Map<string, ToDo>()),
+    [routeYaml, routeFile, doneSteps.data],
+  );
   const circles = useMemo(() => {
-    const todo = routeYaml && routeFile ? scaffoldAttention(routeYaml) : new Map<string, string[]>();
     const all = new Map(placed?.steps);
-    for (const [step, messages] of todo) {
+    for (const [step, { messages }] of todo) {
       // A problem inside the step (e.g. in a DataMapper's own steps) counts as the step's.
       const hasProblems = [...all.keys()].some((key) => key === step || key.startsWith(`${step}.`));
       if (!hasProblems) all.set(step, messages.map((message) => ({ file: routeFile!, message })));
     }
     return all;
-  }, [routeYaml, routeFile, placed]);
+  }, [todo, routeFile, placed]);
+
+  /**
+   * A circle's Clear or Mark As Done: Validate's problems on the steps go until the next Validate; a
+   * scaffold step marked done stays so, kept in the flow (DONE_STEPS_FILE) with the user's other edits.
+   */
+  const dismissCircle = useCallback(
+    async (steps: string[]) => {
+      if (placed && steps.some((step) => placed.steps.has(step))) {
+        const left = new Map(placed.steps);
+        steps.forEach((step) => left.delete(step));
+        setPlaced({ ...placed, steps: left });
+        return;
+      }
+      const ids = steps.map((step) => todo.get(step)?.stepId).filter((stepId): stepId is string => !!stepId);
+      if (ids.length === 0) return;
+      const next = [...new Set([...(doneSteps.data ?? []), ...ids])];
+      queryClient.setQueryData(['flow', id, 'done-steps'], next);
+      try {
+        await flowsApi.writeFile(id, DONE_STEPS_FILE, `${JSON.stringify(next, null, 2)}\n`);
+      } catch (e) {
+        setMessage({ variant: 'danger', text: `Could not keep it as done: ${(e as Error).message}` });
+        void queryClient.invalidateQueries({ queryKey: ['flow', id, 'done-steps'] });
+      }
+    },
+    [placed, todo, doneSteps.data, id, queryClient],
+  );
 
   // Problems are found in what was just saved, which is what the editor has, so their lines are its lines.
   useEffect(() => {
@@ -779,6 +823,7 @@ function FlowEditor() {
           coverVisible={showSpec}
           onKaotoViewPicked={() => showView(false)}
           stepProblems={circles}
+          onDismissProblems={dismissCircle}
         />
       </div>
 

@@ -1,4 +1,4 @@
-import { List, ListItem, Popover } from '@patternfly/react-core';
+import { Button, List, ListItem, Popover } from '@patternfly/react-core';
 import { useEffect, useRef, useState } from 'react';
 import type { ValidationProblem } from '../api/flows';
 import { stepNode } from './stepProblems';
@@ -30,8 +30,17 @@ export const problemPlace = (p: ValidationProblem) => `${p.file}${p.line ? `:${p
  * something left to do), counting them; clicking it opens a box with the step's problems. Kaoto draws the canvas, so the circles are added to its
  * nodes (again whenever it redraws them) and the box is anchored to the circle clicked.
  */
-export function StepProblemBadges({ container, problems }: { container: HTMLElement; problems: Map<string, ValidationProblem[]> }) {
-  const [open, setOpen] = useState<{ badge: HTMLElement; problems: ValidationProblem[]; step: string }>();
+export function StepProblemBadges({
+  container,
+  problems,
+  onDismiss,
+}: {
+  container: HTMLElement;
+  problems: Map<string, ValidationProblem[]>;
+  /** The box's Mark As Done (things to do) or Clear (problems): the steps (problems' keys) whose circle goes. */
+  onDismiss?(steps: string[]): void;
+}) {
+  const [open, setOpen] = useState<{ badge: HTMLElement; problems: ValidationProblem[]; step: string; steps: string[] }>();
   const openRef = useRef(open);
   openRef.current = open;
 
@@ -39,10 +48,12 @@ export function StepProblemBadges({ container, problems }: { container: HTMLElem
     const badges = new Map<string, HTMLButtonElement>();
     const update = () => {
       // Problems by the node shown for them: the step itself, or the closed container holding it.
-      const shown = new Map<string, { host: Element; problems: ValidationProblem[] }>();
+      const shown = new Map<string, { host: Element; problems: ValidationProblem[]; steps: string[] }>();
       for (const [step, list] of problems) {
         const found = stepNode(container, step, badgeHost);
-        if (found) shown.set(found.node, { host: found.host, problems: [...(shown.get(found.node)?.problems ?? []), ...list] });
+        if (!found) continue;
+        const was = shown.get(found.node);
+        shown.set(found.node, { host: found.host, problems: [...(was?.problems ?? []), ...list], steps: [...(was?.steps ?? []), step] });
       }
       for (const [node, badge] of badges) {
         if (!shown.has(node) || !badge.isConnected) {
@@ -50,7 +61,7 @@ export function StepProblemBadges({ container, problems }: { container: HTMLElem
           badges.delete(node);
         }
       }
-      for (const [node, { host, problems: list }] of shown) {
+      for (const [node, { host, problems: list, steps }] of shown) {
         let badge = badges.get(node);
         if (!badge) {
           badge = document.createElement('button');
@@ -72,7 +83,7 @@ export function StepProblemBadges({ container, problems }: { container: HTMLElem
         badge.onclick = (event) => {
           event.stopPropagation();
           const target = event.currentTarget as HTMLElement;
-          setOpen(openRef.current?.badge === target ? undefined : { badge: target, problems: list, step: label });
+          setOpen(openRef.current?.badge === target ? undefined : { badge: target, problems: list, step: label, steps });
         };
       }
       if (openRef.current && !openRef.current.badge.isConnected) setOpen(undefined);
@@ -108,6 +119,20 @@ export function StepProblemBadges({ container, problems }: { container: HTMLElem
             </ListItem>
           ))}
         </List>
+      }
+      footerContent={
+        onDismiss && (
+          <Button
+            variant="link"
+            isInline
+            onClick={() => {
+              onDismiss(open.steps);
+              setOpen(undefined);
+            }}
+          >
+            {open.problems.every((p) => !p.line) ? 'Mark as done' : 'Clear'}
+          </Button>
+        )
       }
       aria-label="Problems on this step"
     />

@@ -78,7 +78,7 @@ canvas (unsaved edits included).
 Choose **Validate** on the Flow Design toolbar. The Builder loads the flow with Camel and checks that it stays within
 the Version 1 scope (HTTP and JSON components, allowed expression languages, and existing
 DataMapper files). Each step with a problem gets a red circle at its top right counting them; click it to
-see them. A red "N problems" button next to Validate lists the problems no step shows (another file, or no
+see them (**Clear** in that box hides them until the next Validate). A red "N problems" button next to Validate lists the problems no step shows (another file, or no
 line), opening by itself when there are any, and **Clear the problems** removes the circles. A valid flow
 shows "The flow is valid."
 

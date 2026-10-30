@@ -72,8 +72,15 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
   await expect(box.getByTestId('step-problems')).toContainText('pick its Operation Id');
   await page.waitForTimeout(500);
   if (shots) await page.screenshot({ path: `${shots}/3-rest-openapi-problem.png` });
-  await page.keyboard.press('Escape');
+  // Clear takes that step's problems away until the next Validate: what is left to do shows again.
+  await box.getByRole('button', { name: 'Clear', exact: true }).click();
   await expect(box).toBeHidden();
+  await expect(summary).toHaveText('3 problems');
+  await rest.click();
+  const restToDo = page.getByRole('dialog', { name: /1 thing to do on rest-openapi/ });
+  await expect(restToDo.getByTestId('step-problems')).toContainText(/Pick the (API and the )?operation this step calls/);
+  await page.keyboard.press('Escape');
+  await expect(restToDo).toBeHidden();
 
   // The toolbar's count says where they are; Clear removes the circles.
   await summary.click();
@@ -88,4 +95,14 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
   const mapperToDo = page.getByRole('dialog', { name: /1 thing to do on kaoto-datamapper/ });
   await expect(mapperToDo.getByTestId('step-problems')).toContainText('Map the reply: select this step, choose Configure');
   await expect(summary).toBeHidden();
+  // Mark As Done takes a thing to do away for good: it stays away when the flow is opened again.
+  await page.waitForTimeout(500);
+  if (shots) await page.screenshot({ path: `${shots}/5-mark-as-done.png` });
+  await mapperToDo.getByRole('button', { name: 'Mark as done' }).click();
+  await expect(mapper).toHaveCount(0);
+  await expect(badges).toHaveCount(4);
+  await page.reload();
+  await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
+  await expect(badges).toHaveCount(4);
+  await expect(mapper).toHaveCount(0);
 });

@@ -87,12 +87,19 @@ function stepsIn(yaml: string): Found[] {
   return found;
 }
 
+/** What is left to do on one scaffold step: its YAML id (to mark it done by) and what to do. */
+export interface ToDo {
+  stepId: string;
+  messages: string[];
+}
+
 /**
  * What the user still has to do on the steps of ECHO's route scaffolds (routeForOperation), by step,
- * while those steps are as ECHO made them: the canvas shows a red circle on each, as for a problem.
+ * while those steps are as ECHO made them and the user has not marked them done (`done`, step ids):
+ * the canvas shows a red circle on each, as for a problem.
  */
-export function scaffoldAttention(yaml: string): Map<string, string[]> {
-  const todo = new Map<string, string[]>();
+export function scaffoldAttention(yaml: string, done: ReadonlySet<string> = new Set()): Map<string, ToDo> {
+  const todo = new Map<string, ToDo>();
   for (const step of stepsIn(yaml)) {
     const s = (step.settings ?? {}) as Record<string, unknown> & { id?: string; parameters?: Record<string, unknown> };
     const id = typeof s.id === 'string' ? s.id : '';
@@ -111,7 +118,7 @@ export function scaffoldAttention(yaml: string): Map<string, string[]> {
         ? 'Map the request to what the called operation takes: select this step, choose Configure and map its fields in the DataMapper.'
         : 'Map the reply: select this step, choose Configure and map its fields in the DataMapper.';
     }
-    if (message) todo.set(step.id, [message]);
+    if (message && !done.has(id)) todo.set(step.id, { stepId: id, messages: [message] });
   }
   return todo;
 }
