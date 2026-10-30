@@ -115,6 +115,8 @@ itself keeps only what is designed, so the service always follows the spec's cur
   (`echo.apis.specs[].name`, e.g. "BluePlanet Call" for Blue Planet), and once it picks an Operation
   Id, `<name>:<operationId>` ("BluePlanet:getResource"); it follows a change of operation and goes
   back to "<name> Call" when none is picked. A description the user gave stays.
+  The multicast is described "Parallel Processor" and its pipeline "<name> Call Path" ("BluePlanet
+  Call Path"), which becomes "<name> <operationId> Path" ("BluePlanet getResource Path") the same way.
   The reply DataMapper's source is then the multicast's joined replies, `{"<label>": <reply>, ...}`:
   an object with a property per pipeline whose call picks an operation with a response body (200,
   else another 2xx, else `default`), typed by that body (`api-replies-<operationId>.schema.json`,

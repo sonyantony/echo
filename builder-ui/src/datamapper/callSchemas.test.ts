@@ -217,19 +217,26 @@ describe("the request DataMapper's target follows the operation its call picks",
     const name = () => 'Inventory';
     const made = routeForOperation({ method: 'GET', path: '/orders', operationId: 'getOrders' }, { ...call, name: 'Inventory' });
     const description = (yaml: string) => YAML.parse(yaml)[0].route.from.steps[2].multicast.steps[0].pipeline.steps[1].to.description;
+    const path = (yaml: string) => YAML.parse(yaml)[0].route.from.steps[2].multicast.steps[0].pipeline.description;
     expect(description(made)).toBe('Inventory Call');
     expect(withCallDescriptions(made, () => ids, name)).toBe(made);
     const picked = withCallDescriptions(picking(made, 'createService'), () => ids, name);
     expect(description(picked)).toBe('Inventory:createService');
+    expect(path(picked)).toBe('Inventory createService Path');
     const replaced = withCallDescriptions(picked.replace('operationId: createService', 'operationId: deleteService'), () => ids, name);
     expect(description(replaced)).toBe('Inventory:deleteService');
+    expect(path(replaced)).toBe('Inventory deleteService Path');
     // Nothing picked any more.
-    expect(description(withCallDescriptions(replaced.replace(/\n +operationId: deleteService/, ''), () => ids, name))).toBe('Inventory Call');
+    const unpicked = withCallDescriptions(replaced.replace(/\n +operationId: deleteService/, ''), () => ids, name);
+    expect(description(unpicked)).toBe('Inventory Call');
+    expect(path(unpicked)).toBe('Inventory Call Path');
     // A step made without a description gets one once it picks an operation.
     const plain = routeForOperation({ method: 'GET', path: '/orders', operationId: 'getOrders' }, call);
-    expect(description(withCallDescriptions(picking(plain, 'createService'), () => ids, name))).toBe('Inventory:createService');
+    const plainPicked = withCallDescriptions(picking(plain, 'createService'), () => ids, name);
+    expect(description(plainPicked)).toBe('Inventory:createService');
+    expect(path(plainPicked)).toBe('Inventory createService Path');
     // A description the user gave stays.
-    const own = picked.replace('Inventory:createService', 'Fetch the service');
+    const own = picked.replace('Inventory:createService', 'Fetch the service').replace('Inventory createService Path', 'Service lookup');
     expect(withCallDescriptions(own.replace('operationId: createService', 'operationId: deleteService'), () => ids, name)).toBe(
       own.replace('operationId: createService', 'operationId: deleteService'),
     );

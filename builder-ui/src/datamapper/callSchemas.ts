@@ -1,5 +1,5 @@
 import YAML from 'yaml';
-import { callDescription } from '../apispec/operationIds';
+import { callDescription, pipelineDescription } from '../apispec/operationIds';
 import { updateKaotoMetadata, type FlowFiles } from '../editor/flowFiles';
 import { EMPTY_XSL, mappedXslFiles } from './scaffoldSchemas';
 import { makeJsonSchema, serializeSchema, specSchemaParts } from './specSchemas';
@@ -479,13 +479,15 @@ export function withJsonSources(yaml: string, json: ReadonlyMap<string, boolean>
 }
 
 const CALL_DESCRIPTION = /^(\S+)(?: Call|:(\S+))$/;
+const PIPELINE_DESCRIPTION = /^(\S+) (\S+) Path$/;
 
 /**
  * The route YAML with each scaffold call step (id call-*) described after the API and the operation it
  * picks: "BluePlanet Call" becomes "BluePlanet:getResource" once an Operation Id is picked, follows a
- * change of operation, and goes back to "BluePlanet Call" when none is picked. `apiName` gives the name
- * for a step without a description yet (apiStepName). A description the user gave stays. Unchanged
- * (the same string) otherwise.
+ * change of operation, and goes back to "BluePlanet Call" when none is picked. The scaffold pipeline
+ * (id pipeline-*) around it likewise: "BluePlanet Call Path" becomes "BluePlanet getResource Path".
+ * `apiName` gives the name for a step without a description yet (apiStepName). A description the user
+ * gave stays. Unchanged (the same string) otherwise.
  */
 export function withCallDescriptions(
   yaml: string,
@@ -496,27 +498,52 @@ export function withCallDescriptions(
   const doc = YAML.parseDocument(yaml);
   if (doc.errors.length) return yaml;
   let changed = false;
+  const describe = (node: YAML.YAMLMap, next: string) => {
+    if (node.get('description') !== next) {
+      node.set('description', next);
+      changed = true;
+    }
+  };
+  /** The API name a description of ECHO's starts with, if it is one: its operation part is "Call" or one of the spec's. */
+  const ours = (description: unknown, pattern: RegExp, uri: string | undefined, callWord?: string) => {
+    const m = pattern.exec(String(description));
+    if (!m) return undefined;
+    const op = m[2];
+    return op === undefined || op === callWord || (uri && operationIds(uri)?.has(op)) ? m[1] : undefined;
+  };
+  const callOf = (to: YAML.YAMLMap) => {
+    const parameters = to.get('parameters');
+    return {
+      operationId: YAML.isMap(parameters) ? text(parameters.get('operationId')) : undefined,
+      uri: YAML.isMap(parameters) ? text(parameters.get('specificationUri'))?.replace(/^classpath:/, '') : undefined,
+    };
+  };
+  const isCall = (node: unknown): boolean =>
+    YAML.isMap(node) && node.get('uri') === 'rest-openapi' && String(node.get('id') ?? '').startsWith('call-');
   YAML.visit(doc, {
-    Map(_, to) {
-      if (to.get('uri') !== 'rest-openapi' || !String(to.get('id') ?? '').startsWith('call-')) return;
-      const parameters = to.get('parameters');
-      const operationId = YAML.isMap(parameters) ? text(parameters.get('operationId')) : undefined;
-      const uri = YAML.isMap(parameters) ? text(parameters.get('specificationUri'))?.replace(/^classpath:/, '') : undefined;
-      const description = to.get('description');
-      let name: string | undefined;
-      if (description === undefined) {
-        name = uri && operationId ? apiName(uri) : undefined;
-      } else {
-        const m = CALL_DESCRIPTION.exec(String(description));
-        // "<name>:<x>" is ECHO's only when x is an operation of the spec the step calls.
-        if (m && (m[2] === undefined || (uri && operationIds(uri)?.has(m[2])))) name = m[1];
+    Map(_, map) {
+      if (isCall(map)) {
+        const { operationId, uri } = callOf(map);
+        const description = map.get('description');
+        const name =
+          description === undefined ? (uri && operationId ? apiName(uri) : undefined) : ours(description, CALL_DESCRIPTION, uri);
+        if (name) describe(map, callDescription(name, operationId));
+        return;
       }
-      if (!name) return;
-      const next = callDescription(name, operationId);
-      if (next !== description) {
-        to.set('description', next);
-        changed = true;
-      }
+      const pipeline = map.get('pipeline');
+      if (!YAML.isMap(pipeline) || !String(pipeline.get('id') ?? '').startsWith('pipeline-')) return;
+      const steps = pipeline.get('steps');
+      const to = YAML.isSeq(steps) ? steps.items.map((item) => (YAML.isMap(item) ? item.get('to') : undefined)).find(isCall) : undefined;
+      if (!YAML.isMap(to)) return;
+      const { operationId, uri } = callOf(to);
+      const description = pipeline.get('description');
+      const name =
+        description === undefined
+          ? uri && operationId
+            ? apiName(uri)
+            : undefined
+          : ours(description, PIPELINE_DESCRIPTION, uri, 'Call');
+      if (name) describe(pipeline, pipelineDescription(name, operationId));
     },
   });
   return changed ? doc.toString({ lineWidth: 0 }) : yaml;
