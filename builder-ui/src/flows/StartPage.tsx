@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { flowsApi } from '../api/flows';
 import { FlowFormModal } from './FlowFormModal';
-import { FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
+import { apiSpecPath, FLOWS_KEY, OPEN_FLOW_PATH, type OpenFlowState } from './FlowListPage';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { UploadFlowModal } from './UploadFlowModal';
 import './StartPage.css';
@@ -21,9 +21,9 @@ export function StartPage() {
   const [uploading, setUploading] = useState(false);
   const openFlowState: OpenFlowState = { from: '/' };
 
-  const openDraft = async (id: number) => {
+  const openDraft = async (id: number, path = `/flows/${id}`) => {
     await queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
-    navigate(`/flows/${id}`);
+    navigate(path);
   };
 
   return (
@@ -59,7 +59,11 @@ export function StartPage() {
           title="New flow"
           submitLabel="Create"
           onClose={() => setCreating(false)}
-          onSubmit={async (name, description) => openDraft((await flowsApi.create(name, description)).id)}
+          onSubmit={async (name, description) => {
+            // A new flow starts from its interface: Interface Specs > Design.
+            const { id } = await flowsApi.create(name, description);
+            await openDraft(id, apiSpecPath(id));
+          }}
         />
       )}
       {openingTemplate && (

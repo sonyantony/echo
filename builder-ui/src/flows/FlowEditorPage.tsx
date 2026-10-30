@@ -63,7 +63,7 @@ import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
 import { DownloadButtons, downloadMenuItems } from './downloads';
 import { FlowFormModal } from './FlowFormModal';
-import { FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
+import { apiSpecPath, FLOWS_KEY, OPEN_FLOW_PATH, rememberLastFlow, StatusLabel, type OpenFlowState } from './FlowListPage';
 import { HistoryModal, historyMenuItem } from './HistoryModal';
 import { OpenTemplateModal } from './OpenTemplateModal';
 import { PublishModal } from './PublishModal';
@@ -77,8 +77,6 @@ import { useAutosave } from './useAutosave';
 import { ValidationPanel, ValidationProblems } from './ValidationPanel';
 import './FlowEditorPage.css';
 
-/** The flow editor's address with the flow's API spec open in it. */
-export const apiSpecPath = (id: number) => `/flows/${id}/api`;
 /** The editor's address without the view part: moving between its views is not leaving it. */
 const editorPathOf = (pathname: string) => pathname.replace(/\/api$/, '');
 
@@ -598,12 +596,12 @@ function FlowEditor() {
   }
 
   /** Opens a draft just made by New Flow, Open Flow Template or Upload Flow (leaving this one asks about unsaved edits). */
-  const openNewDraft = async (newId: number) => {
+  const openNewDraft = async (newId: number, path = `/flows/${newId}`) => {
     setCreating(false);
     setOpeningTemplate(false);
     setUploading(false);
     await queryClient.invalidateQueries({ queryKey: FLOWS_KEY });
-    navigate(`/flows/${newId}`);
+    navigate(path);
   };
 
   /** Lets Cancel on the Open Flow page come back to this flow. */
@@ -949,7 +947,11 @@ function FlowEditor() {
           title="New flow"
           submitLabel="Create"
           onClose={() => setCreating(false)}
-          onSubmit={async (name, description) => openNewDraft((await flowsApi.create(name, description)).id)}
+          onSubmit={async (name, description) => {
+            // A new flow starts from its interface: Interface Specs > Design.
+            const { id: newId } = await flowsApi.create(name, description);
+            await openNewDraft(newId, apiSpecPath(newId));
+          }}
         />
       )}
       {openingTemplate && (
