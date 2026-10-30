@@ -5,7 +5,7 @@ where it runs and how it is promoted is up to you.
 
 | File | What |
 |---|---|
-| `build-flow.sh` | `camel export --runtime=spring-boot` → `mvn package` → image with Jib. Works in any CI. Adds the two dependencies export cannot see in the routes: `camel-openapi-validator` (request bodies checked against the spec when Client Request Validation is on) and the Swagger UI webjar (`<Base Path>/docs`). |
+| `build-flow.sh` | `camel export --runtime=spring-boot` → `mvn package` → image with Jib. Works in any CI. Adds the two dependencies export cannot see in the routes: `camel-openapi-validator` (request bodies checked against the spec when Client Request Validation is on) and the Swagger UI webjar (`<Base Path>/docs`). Also copies in EY ECHO's HTTP log (`runtime-template/java`, `docs/http-log.md`) with camel-http and platform-http. |
 | `K8sManifests.java` | Run by `build-flow.sh` for each app: writes its Kubernetes manifests (see below). |
 | `k8s.properties` | Your cluster's settings for those manifests (host, ingress class, TLS, namespace, ...). |
 | `BundleCheck.java` | Run by `build-flow.sh` in bundle mode: fails the build if flows clash (see below). |

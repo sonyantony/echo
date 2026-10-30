@@ -8,5 +8,8 @@ What every flow image is built with, so all flows run the same way:
   readiness probes, JSON logs). Each flow's own `application.properties` is appended after it
   and can override anything.
 
-`pipeline/build-flow.sh` reads both. Copy this folder and `pipeline/` into the root of your flow
+- `java/`: EY ECHO's HTTP log (every request and response, in and out, as JSON fields;
+  `docs/http-log.md`), copied into every app. The Builder's Run compiles the same class.
+
+`pipeline/build-flow.sh` reads all three. Copy this folder and `pipeline/` into the root of your flow
 repository.

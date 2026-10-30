@@ -18,6 +18,8 @@ WORKDIR /src/builder-backend
 COPY builder-backend/pom.xml ./
 RUN mvn -B -q dependency:go-offline
 COPY builder-backend/src ./src
+# The flow images' HTTP log, which the Builder's Run uses too.
+COPY runtime-template/java /src/runtime-template/java
 COPY --from=ui /src/builder-ui/dist /src/builder-ui/dist
 RUN mvn -B -q -Pwith-ui package -DskipTests
 

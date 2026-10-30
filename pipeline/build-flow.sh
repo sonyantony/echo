@@ -156,11 +156,21 @@ build_app() { # name, version, out, image-name
   printf '\n# Swagger UI webjar (build-flow.sh)\necho.swagger-ui.version=%s\n' "$SWAGGER_UI_VERSION" >> "$src/application.properties"
 
   echo "==> Exporting $name $version (Camel $CAMEL_VERSION, Spring Boot runtime)"
-  # Export finds components from the routes; these two it cannot see: the validator that checks
-  # request bodies against the spec (Client Request Validation) and Swagger UI.
+  # Export finds components from the routes; these it cannot see: the validator that checks
+  # request bodies against the spec (Client Request Validation), Swagger UI, and the http component
+  # and platform-http the HTTP log is written against.
   (cd "$src" && camel export ./* --runtime=spring-boot \
-    --dep="camel:openapi-validator,org.webjars:swagger-ui:$SWAGGER_UI_VERSION" \
+    --dep="camel:openapi-validator,org.webjars:swagger-ui:$SWAGGER_UI_VERSION,camel:http,camel:platform-http" \
     --quarkus-version="$QUARKUS_VERSION" --gav="com.ey.echo.flows:$name:$version" --directory="$app")
+
+  # EY ECHO's HTTP log (requests in and out, echo.http-log.* settings) goes in every app, as source
+  # (given to export, Camel JBang would compile it as routes).
+  mkdir -p "$app/src/main/java/com/ey/echo/runtime"
+  cp "$TEMPLATE"/java/com/ey/echo/runtime/*.java "$app/src/main/java/com/ey/echo/runtime/"
+  # Outside the app's package, so Spring Boot finds it as an auto-configuration.
+  mkdir -p "$app/src/main/resources/META-INF/spring"
+  echo com.ey.echo.runtime.HttpExchangeLogConfiguration \
+    >> "$app/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"
 
   echo "==> Building the app"
   (cd "$app" && mvn -B -q package -DskipTests)

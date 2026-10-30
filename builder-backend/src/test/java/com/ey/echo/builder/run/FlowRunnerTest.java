@@ -405,8 +405,73 @@ class FlowRunnerTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).isEqualTo("{\"orderId\":\"A100\",\"fulfilmentId\":\"FUL-A100\",\"status\":\"ACCEPTED\"}");
         assertThat(downstreamCalls).singleElement().asString().startsWith("POST /fulfilment {\"reference\":\"A100\"");
+        awaitLog(run, "Response out: 200");
+        assertThat(run.logAfter(0)).extracting(FlowRun.LogLine::message)
+                .anySatisfy(m -> assertThat(m).startsWith("Request in: POST http://localhost:18081/orders"))
+                .anySatisfy(m -> assertThat(m).startsWith("Call out [").contains("POST " + downstreamUrl("/fulfilment")))
+                .anySatisfy(m -> assertThat(m).startsWith("Call answered [").contains(" 200 POST "));
+    }
+
+    @Test
+    void logsRequestsInAndOutWithSecretsMasked() throws Exception {
+        var files = Map.of(
+                "spec.camel.yaml", """
+                        - route:
+                            from:
+                              uri: platform-http:/orders
+                              steps:
+                                - removeHeaders: {pattern: "*"}
+                                - setHeader: {name: Authorization, simple: "Bearer {{fulfilment.token}}"}
+                                - setHeader: {name: Content-Type, constant: application/json}
+                                - to:
+                                    uri: rest-openapi:fulfilment.json#createFulfilment
+                                    parameters:
+                                      host: "{{fulfilment.base-url}}"
+                        """,
+                "fulfilment.json", """
+                        {"openapi": "3.0.3", "info": {"title": "Fulfilment", "version": "1"},
+                         "paths": {"/fulfilment": {"post": {"operationId": "createFulfilment",
+                           "requestBody": {"content": {"application/json": {"schema": {"type": "object"}}}},
+                           "responses": {"200": {"description": "ok"}}}}}}
+                        """,
+                "application.properties", "fulfilment.base-url=" + downstreamUrl("") + "\nfulfilment.token=s3cr3t-value");
+
+        var run = runner.start(1, "spec", "spec.camel.yaml", files, "designer");
+        var response = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + run.port + "/orders?mode=fast"))
+                        .header("Content-Type", "application/json").header("X-Correlation-ID", "corr-1")
+                        .header("Cookie", "session=abc")
+                        .POST(HttpRequest.BodyPublishers.ofString("{\"reference\":\"A100\",\"note\":\"s3cr3t-value\"}")).build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        awaitLog(run, "Response out: 200");
+
+        var lines = run.logAfter(0).stream().map(FlowRun.LogLine::message).toList();
+        assertThat(String.join("\n", lines)).doesNotContain("s3cr3t-value").doesNotContain("session=abc");
+        assertThat(lines).filteredOn(m -> m.startsWith("Request in: POST ")).singleElement().asString()
+                .contains("/orders?mode=fast").contains("cookie: ****").contains("\"note\":\"****\"");
+        assertThat(lines).filteredOn(m -> m.startsWith("Call out [")).singleElement().asString()
+                .contains("POST " + downstreamUrl("/fulfilment"))
+                .contains("Authorization: Bearer ****")
+                .contains("X-Correlation-ID: corr-1")
+                .contains("{\"reference\":\"A100\"");
+        assertThat(lines).filteredOn(m -> m.startsWith("Call answered [")).singleElement().asString()
+                .contains("200 POST " + downstreamUrl("/fulfilment")).contains("FUL-A100");
+        assertThat(lines).filteredOn(m -> m.startsWith("Response out: 200 to POST")).singleElement().asString()
+                .contains("FUL-A100");
+    }
+
+    @Test
+    void httpLogCanBeTurnedOffForAFlow() throws Exception {
+        var files = folder(ORDERS);
+        files.put("application.properties", "fulfilment.url=" + downstreamUrl("/fulfilment")
+                + "\necho.http-log.enabled=false");
+
+        var run = runner.start(1, "orders", "orders.camel.yaml", files, "designer");
+        post(run.port, "/orders", Files.readString(ORDERS.resolve("sample-request.json")));
+
         awaitLog(run, "Done in");
-        assertThat(run.logAfter(0)).extracting(FlowRun.LogLine::message).contains("Request: POST /orders");
+        assertThat(run.logAfter(0)).extracting(FlowRun.LogLine::message).contains("Request: POST /orders")
+                .noneMatch(m -> m.startsWith("Call out"));
     }
 
     @Test
@@ -438,10 +503,12 @@ class FlowRunnerTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(downstreamCalls).containsExactlyInAnyOrder(
                 "POST /one {\"hello\":\"world\"}", "POST /two {\"hello\":\"world\"}");
-        awaitLog(run, "Done in");
+        awaitLog(run, "Response out:");
         assertThat(run.logAfter(0)).extracting(FlowRun.LogLine::message)
                 .contains("got {\"hello\":\"world\"}")
-                .filteredOn(m -> m.startsWith("Request:")).hasSize(1);
+                .filteredOn(m -> m.startsWith("Request in:")).hasSize(1);
+        assertThat(run.logAfter(0)).extracting(FlowRun.LogLine::message)
+                .filteredOn(m -> m.startsWith("Call answered [")).hasSize(2);
     }
 
     @Test
@@ -464,6 +531,27 @@ class FlowRunnerTest {
         // The incoming request's headers redirect the call unless they are removed first.
         awaitLog(run, "Tip: add a Remove Headers step");
         assertThat(run.logAfter(0)).extracting(FlowRun.LogLine::level).contains("ERROR");
+        assertThat(run.logAfter(0)).extracting(FlowRun.LogLine::message)
+                .filteredOn(m -> m.startsWith("Response out: 500 to POST")).hasSize(1);
+    }
+
+    @Test
+    void logsACallThatGotNoAnswer() throws Exception {
+        String yaml = """
+                - route:
+                    from:
+                      uri: platform-http:/refused
+                      steps:
+                        - removeHeaders: {pattern: "*"}
+                        - to: {uri: "http://localhost:1/nothing-here"}
+                """;
+        var run = runner.start(3, "refused", "refused.camel.yaml", Map.of("refused.camel.yaml", yaml), "designer");
+
+        assertThat(post(run.port, "/refused", "{}").statusCode()).isEqualTo(500);
+        awaitLog(run, "Response out: 500");
+        var lines = run.logAfter(0).stream().map(FlowRun.LogLine::message).toList();
+        assertThat(lines).anySatisfy(m -> assertThat(m).startsWith("Call out [").contains("POST http://localhost:1/nothing-here"));
+        assertThat(lines).anySatisfy(m -> assertThat(m).startsWith("Call failed [").contains("http://localhost:1/nothing-here"));
     }
 
     @Test
