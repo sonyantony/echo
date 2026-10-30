@@ -95,6 +95,11 @@ echo:
     idle-minutes: 30
     # How users reach the run ports, without the port (shown in the editor).
     public-url: http://localhost
+  # HTTP log of runs (docs/http-log.md); a flow's own echo.http-log.* settings win. Defaults shown.
+  # http-log:
+  #   enabled: true
+  #   bodies: true
+  #   max-body: 8192
   apis:
     # Approved downstream APIs (OpenAPI or Swagger 2.0 specs) that flows call with REST OpenApi
     # steps, set per install (docs/apis.md). only: true also rejects plain http/https steps.

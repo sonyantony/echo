@@ -2,6 +2,7 @@ package com.ey.echo.builder.run;
 
 import com.ey.echo.builder.flow.RestFromSpec;
 import com.ey.echo.builder.run.FlowRun.Endpoint;
+import com.ey.echo.runtime.HttpExchangeLog;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.StringReader;
@@ -17,12 +18,14 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePropertyKey;
 import org.apache.camel.component.platform.http.PlatformHttpEndpoint;
@@ -41,6 +44,9 @@ import org.apache.camel.support.PluginHelper;
 import org.apache.camel.support.ResourceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -62,11 +68,23 @@ public class FlowRunner {
 
     private final RunProperties properties;
     private final Clock clock;
+    /** The Builder's own settings (echo.http-log.* defaults for runs). */
+    private final Function<String, String> settings;
     private final Map<Long, FlowRun> runs = new ConcurrentHashMap<>();
 
     public FlowRunner(RunProperties properties, Clock clock) {
+        this(properties, clock, name -> null);
+    }
+
+    @Autowired
+    public FlowRunner(RunProperties properties, Clock clock, Environment environment) {
+        this(properties, clock, environment::getProperty);
+    }
+
+    FlowRunner(RunProperties properties, Clock clock, Function<String, String> settings) {
         this.properties = properties;
         this.clock = clock;
+        this.settings = settings;
     }
 
     public boolean enabled() {
@@ -166,6 +184,17 @@ public class FlowRunner {
         http.setBindPort(run.port);
         camel.addService(new VertxPlatformHttpServer(http));
 
+        // The HTTP log every flow image writes (requests in and out), also shown in the run panel. The
+        // flow's echo.http-log.* settings win over the Builder's.
+        var httpLog = new HttpExchangeLog(HttpExchangeLog.Settings.from(
+                name -> props.getProperty(name, settings.apply(name))), run.flowName);
+        var values = new HashMap<String, String>();
+        props.stringPropertyNames().forEach(name -> values.put(name, props.getProperty(name)));
+        httpLog.secretValues(values);
+        httpLog.sink(entry -> run.log(entry.level() == Level.WARN ? "WARN" : "INFO", entry.text()));
+        httpLog.attach(camel);
+        boolean httpLogged = httpLog.settings().enabled();
+
         // What the flow logs (log steps and the log component) and each request, for the run panel.
         camel.getCamelContextExtension().addLogListener(new LogListener() {
             @Override
@@ -198,6 +227,13 @@ public class FlowRunner {
                     return;
                 }
                 switch (event) {
+                    // With the HTTP log on, its records say this (and more).
+                    case ExchangeCreatedEvent e when httpLogged -> {
+                        // logged by the HTTP log
+                    }
+                    case ExchangeCompletedEvent e when httpLogged -> {
+                        // logged by the HTTP log
+                    }
                     case ExchangeCreatedEvent e -> run.log("INFO", "Request: %s %s".formatted(
                             exchange.getIn().getHeader(Exchange.HTTP_METHOD, "", String.class),
                             exchange.getIn().getHeader(Exchange.HTTP_URI, "", String.class)));
