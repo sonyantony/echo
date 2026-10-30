@@ -153,6 +153,32 @@ class FlowValidatorTest {
         assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", route)).problems())
                 .extracting(Problem::message)
                 .containsExactly("A DataMapper step has no mapping yet. Open it in the DataMapper and map its fields.");
+        // Each one is reported, at its own step: Camel stops at the first.
+        var two = """
+                - route:
+                    from:
+                      uri: direct:a
+                      steps:
+                        - step:
+                            id: kaoto-datamapper-b
+                            steps:
+                              - to:
+                                  uri: xslt-saxon
+                                  parameters:
+                                    failOnNullBody: false
+                        - step:
+                            id: kaoto-datamapper-a
+                            steps:
+                              - to:
+                                  uri: xslt-saxon
+                                  parameters:
+                                    failOnNullBody: false
+                """;
+        assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", two)).problems())
+                .extracting(Problem::line, Problem::message)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(9, "A DataMapper step has no mapping yet. Open it in the DataMapper and map its fields."),
+                        org.assertj.core.groups.Tuple.tuple(16, "A DataMapper step has no mapping yet. Open it in the DataMapper and map its fields."));
         // ...and the rest of the flow is still checked.
         var withKafka = route.replace("uri: direct:a", "uri: kafka:a");
         assertThat(validator.validate("flow.camel.yaml", Map.of("flow.camel.yaml", withKafka)).problems())

@@ -98,9 +98,11 @@ public class FlowValidator {
         if (problems.stream().anyMatch(p -> !p.message().equals(NOTHING_MAPPED))) {
             return ValidationResult.of(problems);
         }
+        // Camel stops at the first one; the walk reports each DataMapper with nothing mapped at its step.
+        boolean nothingMapped = problems.removeIf(p -> p.message().equals(NOTHING_MAPPED));
 
         var flowProperties = loadProperties(files.get("application.properties"), problems);
-        try (var checker = new ScopeChecker(routeFile, files, flowProperties, problems)) {
+        try (var checker = new ScopeChecker(routeFile, files, flowProperties, problems, nothingMapped)) {
             checker.walk(root, null);
         }
         return ValidationResult.of(problems);
@@ -145,12 +147,16 @@ public class FlowValidator {
         private boolean fromPlatformHttp;
         private boolean headersRemoved;
         private boolean headersReported;
+        // Camel found a DataMapper with nothing mapped: each xslt step without a file is reported.
+        private final boolean nothingMapped;
 
-        ScopeChecker(String routeFile, Map<String, String> files, Properties flowProperties, List<Problem> problems) {
+        ScopeChecker(String routeFile, Map<String, String> files, Properties flowProperties, List<Problem> problems,
+                boolean nothingMapped) {
             this.routeFile = routeFile;
             this.files = files;
             this.flowProperties = flowProperties;
             this.problems = problems;
+            this.nothingMapped = nothingMapped;
             camel.build();
         }
 
@@ -490,6 +496,9 @@ public class FlowValidator {
                         "Flows may only call approved APIs (%s). Use a REST OpenApi step instead of %s."
                                 .formatted(approvedNames(), scheme)));
                 return;
+            }
+            if (XSLT_COMPONENTS.contains(scheme) && colon < 0 && nothingMapped) {
+                problems.add(new Problem(routeFile, line, NOTHING_MAPPED));
             }
             if (XSLT_COMPONENTS.contains(scheme) && colon > 0) {
                 String resource = uri.substring(colon + 1).replaceFirst("\\?.*$", "")
