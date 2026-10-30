@@ -2,27 +2,43 @@ import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
 import { routeForOperation } from '../apispec/operationIds';
 import { InMemoryFlowFiles, KAOTO_METADATA_FILE } from '../editor/flowFiles';
-import { attachCallTargets, calledSpecs, mapperCalls, operationIdsOf, withCallLabels, withXsltFile } from './callSchemas';
+import {
+  attachCallTargets,
+  attachReplySources,
+  calledSpecs,
+  mapperCalls,
+  operationIdsOf,
+  replyMappers,
+  withCallLabels,
+  withJsonSources,
+  withXsltFile,
+} from './callSchemas';
 import { attachScaffoldSchemas } from './scaffoldSchemas';
 
 /** The approved API: createService takes a body, deleteService none. */
 const inventory = {
   openapi: '3.0.3',
   info: { title: 'Inventory' },
-  components: { schemas: { NewService: { type: 'object', properties: { serviceName: { type: 'string' } } } } },
+  components: {
+    schemas: {
+      NewService: { type: 'object', properties: { serviceName: { type: 'string' } } },
+      Service: { type: 'object', properties: { id: { type: 'string' }, owner: { $ref: '#/components/schemas/Party' } } },
+      Party: { type: 'object', properties: { name: { type: 'string' } } },
+    },
+  },
   paths: {
     '/services': {
       post: {
         operationId: 'createService',
         requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/NewService' } } } },
-        responses: { '201': { description: 'Created' } },
+        responses: { '201': { description: 'Created', content: { 'application/json': { schema: { $ref: '#/components/schemas/Service' } } } } },
       },
     },
     '/services/{id}': {
       put: {
         operationId: 'replaceService',
         requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { state: { type: 'string' } } } } } },
-        responses: { '200': { description: 'OK' } },
+        responses: { '200': { description: 'OK', content: { 'application/json': { schema: { type: 'object', properties: { state: { type: 'string' } } } } } } },
       },
       delete: { operationId: 'deleteService', responses: { '204': { description: 'Gone' } } },
     },
@@ -123,5 +139,75 @@ describe("the request DataMapper's target follows the operation its call picks",
     expect(withCallLabels(named.replace('operationId: replaceService', 'operationId: createService'), () => ids)).toBe(
       named.replace('operationId: replaceService', 'operationId: createService'),
     );
+  });
+
+  it("gives the reply's DataMapper the joined replies as its source, under their labels", async () => {
+    const get = { method: 'GET', path: '/orders', operationId: 'getOrders' };
+    const REPLY = 'kaoto-datamapper-getOrders';
+    const made = routeForOperation(get, call);
+    const ids = new Set(operationIdsOf(inventory));
+    const picked = withCallLabels(picking(made, 'createService'), () => ids);
+    expect(replyMappers(picked)).toEqual([
+      { stepId: REPLY, xslt: undefined, calls: [{ label: 'createService', specificationUri: 'inventory.openapi.json', operationId: 'createService' }] },
+    ]);
+    const files = new InMemoryFlowFiles();
+    // Nothing picked: nothing to read.
+    expect(await attachReplySources(files, made, loadSpec)).toEqual({ unnamed: [], json: new Map() });
+    // The DataMapper as Kaoto adds one: its XSLT file is named first.
+    const first = await attachReplySources(files, picked, loadSpec);
+    expect(first).toEqual({ unnamed: [REPLY], json: new Map() });
+    const named = withXsltFile(picked, first.unnamed);
+    const second = await attachReplySources(files, named, loadSpec);
+    expect(second).toEqual({ unnamed: [], json: new Map([[REPLY, true]]) });
+    expect((await metadata(files))[REPLY].sourceBody).toEqual({
+      type: 'JSON Schema',
+      filePath: ['api-replies-getOrders.schema.json'],
+      fieldTypeOverrides: [],
+    });
+    const schema = JSON.parse((await files.read('api-replies-getOrders.schema.json'))!);
+    expect(schema).toMatchObject({
+      type: 'object',
+      properties: { createService: { type: 'object', properties: { id: { type: 'string' }, owner: { $ref: '#/$defs/createService.Party' } } } },
+      $defs: { 'createService.Party': { properties: { name: { type: 'string' } } } },
+    });
+
+    // Read as JSON, as Kaoto has it with a JSON source.
+    const json = withJsonSources(named, second.json);
+    const mapper = () => YAML.parse(json)[0].route.from.steps[4].step.steps;
+    expect(mapper()).toEqual([{ to: expect.objectContaining({ uri: `xslt-saxon:${REPLY}.xsl`, parameters: { failOnNullBody: false, useJsonBody: true } }) }]);
+    expect(withJsonSources(json, second.json)).toBe(json);
+
+    // A second pipeline calling replaceService: a property for each.
+    const doc = YAML.parse(json);
+    const pipelines = doc[0].route.from.steps[2].multicast.steps;
+    const other = JSON.parse(JSON.stringify(pipelines[0]).replace('createService', 'replaceService'));
+    pipelines.push(other);
+    const two = withCallLabels(YAML.stringify(doc), () => ids);
+    await attachReplySources(files, two, loadSpec);
+    expect(Object.keys(JSON.parse((await files.read('api-replies-getOrders.schema.json'))!).properties)).toEqual(['createService', 'replaceService']);
+
+    // No operation picked any more: the source goes, and the body is not read as JSON.
+    const none = await attachReplySources(files, made.replace('uri: xslt-saxon\n', `uri: xslt-saxon:${REPLY}.xsl\n`), loadSpec);
+    expect(none.json).toEqual(new Map([[REPLY, false]]));
+    expect((await metadata(files))[REPLY].sourceBody.type).toBe('Primitive');
+    const back = YAML.parse(withJsonSources(json, none.json))[0].route.from.steps[4].step.steps;
+    expect(back[0].setBody.expression.simple.expression).toBe('${null}');
+    expect(back[1].to.parameters).toEqual({ failOnNullBody: false });
+  });
+
+  it("leaves a reply DataMapper with mappings, or the user's own source, as they are", async () => {
+    const REPLY = 'kaoto-datamapper-getOrders';
+    const named = withXsltFile(
+      withCallLabels(picking(routeForOperation({ method: 'GET', path: '/orders', operationId: 'getOrders' }, call), 'createService'), () => new Set(['createService'])),
+      [REPLY],
+    );
+    const files = new InMemoryFlowFiles({ [KAOTO_METADATA_FILE]: JSON.stringify({ [REPLY]: { sourceBody: { type: 'JSON Schema', filePath: ['mine.json'] } } }) });
+    expect((await attachReplySources(files, named, loadSpec)).json).toEqual(new Map());
+    expect((await metadata(files))[REPLY].sourceBody.filePath).toEqual(['mine.json']);
+
+    await files.write(KAOTO_METADATA_FILE, '{}');
+    await files.write(`${REPLY}.xsl`, '<xsl:stylesheet><xsl:template match="/"/></xsl:stylesheet>');
+    await attachReplySources(files, named, loadSpec);
+    expect(await metadata(files)).toEqual({});
   });
 });
