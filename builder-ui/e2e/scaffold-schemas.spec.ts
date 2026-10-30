@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createFlow, designMenu, interfaceMenu, login, uniqueName } from './helpers';
+import { createFlow, designMenu, fileMenu, interfaceMenu, login, uniqueName } from './helpers';
 
 // A POST's scaffold route maps its request before the call: that DataMapper starts from the request
 // body's schema, and the reply's DataMapper from the response's. Both keep their red circle until
@@ -67,4 +67,50 @@ test("a POST's DataMappers start from its request body and its response", async 
   await expect(page.getByText('orderNumber').first()).toBeVisible();
   await expect(page.getByText('[@key = status]').first()).toBeVisible();
   if (shots) await page.screenshot({ path: `${shots}/3-reply-target.png` });
+});
+
+test("the request DataMapper's target is the request body of the operation its call picks", async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await login(page);
+  const name = uniqueName('calltarget');
+  await createFlow(page, name, '', { route: false });
+  const id = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
+  const chooser = page.waitForEvent('filechooser');
+  await interfaceMenu(page, /^Upload/);
+  await (await chooser).setFiles({ name: 'orders-api.yaml', mimeType: 'application/yaml', buffer: Buffer.from(spec(name)) });
+  await expect(page.getByText('Added a route for POST /orders.')).toBeVisible();
+  await fileMenu(page, /^Save(?! As)/);
+  await expect(page.getByText('Saved.')).toBeVisible();
+
+  // The REST OpenApi step picks the inventory API's createService (as the step's form would).
+  const routeFile = `/api/flows/${id}/files/${name}.camel.yaml`;
+  const route = await (await page.request.get(routeFile)).text();
+  const picked = route.replace(/( +)uri: rest-openapi\n( +)parameters: \{\}\n/, '$1uri: rest-openapi\n$2parameters:\n$2  specificationUri: inventory.openapi.json\n$2  operationId: createService\n');
+  expect(picked).not.toBe(route);
+  const xsrf = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
+  await page.request.put(routeFile, { data: picked, headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf } });
+  await page.reload();
+
+  const metadata = async () => JSON.parse((await (await page.request.get(`/api/flows/${id}/files/.kaoto`)).text()) || '{}');
+  await expect.poll(async () => (await metadata())['kaoto-datamapper-request-postOrders-1']?.targetBody?.filePath).toEqual([
+    'api-inventory-createService-request.schema.json',
+  ]);
+
+  await designMenu(page, /^Design/);
+  await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Horizontal Layout' }).click();
+  await page.getByRole('button', { name: 'Fit Route' }).click();
+  // The call's reply is labelled after the operation, so its Set Body has nothing left to do.
+  const label = page.locator('g[data-id$="|route.from.steps.2.multicast.steps.0.pipeline.steps.4.setBody"]').locator('.custom-node__container__image').first();
+  await expect(label).toBeVisible();
+  await expect(label.locator('.echo-step-problem')).toHaveCount(0);
+  await fileMenu(page, /^Save(?! As)/);
+  await expect(page.getByText('Saved.')).toBeVisible();
+  expect(await (await page.request.get(routeFile)).text()).toContain('simple: \'"createService": ${body}\'');
+  if (shots) await page.screenshot({ path: `${shots}/5-reply-labelled.png` });
+  await openMapper(page, 'route.from.steps.2.multicast.steps.0.pipeline.steps.1.step');
+  // Source: this flow's request; target: what createService takes.
+  await expect(page.getByText('customerName').first()).toBeVisible();
+  await expect(page.getByText('[@key = @type]').first()).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/4-request-target.png` });
 });

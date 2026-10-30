@@ -8,7 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Editor settings for the UI; only signed-in users open the editor, so this needs a login. */
@@ -43,10 +46,12 @@ public class EditorSettingsController {
     public record RouteCall(String specificationUri, String host) {}
 
     private final EditorSettings settings;
+    private final ApiCatalog apis;
 
     public EditorSettingsController(EditorProperties properties, RunProperties run, JiraProperties jira,
             ObjectProvider<AiProvider> ai, ApiCatalog apis) {
         AiProvider engine = ai.getIfAvailable();
+        this.apis = apis;
         this.settings = new EditorSettings(properties.autosaveSeconds(), run.enabled(), jira.active(),
                 engine == null ? null : engine.describe(), routeCall(apis), apiTags(apis));
     }
@@ -77,5 +82,18 @@ public class EditorSettingsController {
     @GetMapping("/api/editor/settings")
     public EditorSettings settings() {
         return settings;
+    }
+
+    /**
+     * An approved API's spec (OpenAPI 3 JSON) by the file name REST OpenApi steps use, e.g.
+     * {@code blueplanet.openapi.json}: the editor attaches the body of the operation a step calls to
+     * the DataMapper before it.
+     */
+    @GetMapping(value = "/api/editor/apis/{fileName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> apiSpec(@PathVariable String fileName) {
+        return apis.forSpecificationUri(fileName)
+                .filter(api -> api.content() != null)
+                .map(api -> ResponseEntity.ok(api.content()))
+                .orElse(ResponseEntity.notFound().build());
     }
 }

@@ -338,6 +338,10 @@ export interface ApiTags {
 
 export const editorSettings = () => api<EditorSettings>('/api/editor/settings');
 
+/** An approved API's spec (OpenAPI 3 JSON) by the file name REST OpenApi steps use, e.g. blueplanet.openapi.json. */
+export const approvedApiSpec = (fileName: string) =>
+  api<Record<string, unknown>>(`/api/editor/apis/${encodeURIComponent(fileName)}`);
+
 /** A platform-http endpoint of a running flow; methods is empty when any method is accepted. */
 export interface RunEndpoint {
   path: string;

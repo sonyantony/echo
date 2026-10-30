@@ -106,6 +106,11 @@ itself keeps only what is designed, so the service always follows the spec's cur
   DataMapper's target is the response (200, else another 2xx, else `default`). ECHO writes them as
   the `openapi-*.schema.json` files Attach Schema makes, so they follow the spec on Save; a method
   added before it has a body gets them when it does, while its route is still as ECHO made it.
+  Once the REST OpenApi step picks an Operation Id of an approved API, the request DataMapper's
+  target is that operation's request body (`api-<api>-<operationId>-request.schema.json`); it
+  follows a change of operation while nothing is mapped, and a target the user attached stays.
+  The pipeline's Set Body then labels the reply with the operation's id (`"createService": ${body}`
+  instead of `"result": ${body}`), following a change of operation unless the user named it.
   The steps the user still has to work on get a red circle on the canvas, which
   opens what is left to do: the pipeline's Set Headers (until its rows are changed), DataMapper
   (until something is mapped), REST OpenApi (until an operation is picked) and last Set Body (until

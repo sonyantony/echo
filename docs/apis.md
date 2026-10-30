@@ -61,7 +61,8 @@ multicast. A Set Headers step "SetAuthorizationHeaders" before the multicast set
 `Authorization: Bearer {{<id>.token}}`, and one just before the call sets a header per variable
 (`id` from `${variable.id}`) plus `Accept`, followed (for POST, PUT and PATCH) by a DataMapper
 where the request body, its source schema already attached from the flow's spec, is mapped to the
-body the called operation takes. With exactly one approved API, its Specification Uri
+body the called operation takes: once the Operation Id is picked, that operation's request body
+(from the approved spec, served to the editor at `/api/editor/apis/<file>`) becomes its target. With exactly one approved API, its Specification Uri
 (and Host placeholder) are filled in; pick the Operation Id, then adjust the Set Headers rows to the
 parameters it takes. Every step that needs the user (that Set Headers, the DataMapper before the
 call, the REST OpenApi step, the pipeline's last Set Body and the DataMapper after the reply) has a
