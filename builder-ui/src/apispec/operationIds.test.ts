@@ -170,15 +170,15 @@ describe('operationIds', () => {
   });
 
   it('describes the call step after the approved API it calls, and still knows the route as its scaffold', () => {
-    const op = { method: 'GET', path: '/cards', operationId: 'getCards', parameters: [{ name: 'limit', in: 'query' }] };
+    const op = { method: 'GET', path: '/cards', operationId: 'getCards', parameters: [{ name: 'limit', in: 'query' as const }] };
     const call = { specificationUri: 'blueplanet.openapi.json', name: apiStepName('Blue Planet') };
     const yaml = routeForOperation(op, call);
     const step = YAML.parse(yaml)[0].route.from.steps[3].multicast.steps[0].pipeline.steps[1].to;
     expect(step).toMatchObject({ id: 'call-getCards-1', description: 'BluePlanet Call', uri: 'rest-openapi' });
     expect(untouchedRoutes(yaml)).toEqual(new Set(['getCards']));
     // Refreshed for a new parameter, it keeps its description.
-    const refreshed = refreshRoutes(yaml, [{ ...op, parameters: [...op.parameters, { name: 'status', in: 'query' }] }]);
-    expect(refreshed).toBe(routeForOperation({ ...op, parameters: [...op.parameters, { name: 'status', in: 'query' }] }, call));
+    const refreshed = refreshRoutes(yaml, [{ ...op, parameters: [...op.parameters, { name: 'status', in: 'query' as const }] }]);
+    expect(refreshed).toBe(routeForOperation({ ...op, parameters: [...op.parameters, { name: 'status', in: 'query' as const }] }, call));
     // Routes made before the description still count.
     expect(untouchedRoutes(routeForOperation(op, { specificationUri: 'blueplanet.openapi.json' }))).toEqual(new Set(['getCards']));
   });
