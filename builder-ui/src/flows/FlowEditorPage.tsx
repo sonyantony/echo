@@ -53,6 +53,7 @@ import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
+import { stepProblems, type StepProblems } from '../editor/stepProblems';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
 import { DownloadButtons, downloadMenuItems } from './downloads';
@@ -68,7 +69,7 @@ import { SaveAsModal } from './SaveAsModal';
 import { UploadFlowModal } from './UploadFlowModal';
 import { useOperationRoutes } from './useOperationRoutes';
 import { useAutosave } from './useAutosave';
-import { ValidationPanel } from './ValidationPanel';
+import { ValidationPanel, ValidationProblems } from './ValidationPanel';
 import './FlowEditorPage.css';
 
 /** The flow editor's address with the flow's API spec open in it. */
@@ -130,6 +131,9 @@ function FlowEditor() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ variant: 'success' | 'warning' | 'danger'; text: string }>();
   const [validation, setValidation] = useState<ValidationResult>();
+  /** The problems of `validation` sorted onto the canvas steps they are on, and the others. */
+  const [placed, setPlaced] = useState<StepProblems & { of: ValidationResult; n: number }>();
+  const placedCount = useRef(0);
   const [validating, setValidating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -305,6 +309,22 @@ function FlowEditor() {
       setValidating(false);
     }
   }, [dirty, id, save]);
+
+  // Problems are found in what was just saved, which is what the editor has, so their lines are its lines.
+  useEffect(() => {
+    if (!validation || validation.valid || !routeFile) {
+      setPlaced(undefined);
+      return;
+    }
+    let current = true;
+    void (async () => {
+      const yaml = (await editor.current?.getContent()) ?? '';
+      if (current) setPlaced({ ...stepProblems(validation.problems, routeFile, yaml), of: validation, n: ++placedCount.current });
+    })();
+    return () => {
+      current = false;
+    };
+  }, [validation, routeFile]);
 
   /**
    * Runs what is on screen inside the Builder: unsaved edits are saved and the draft validated first.
@@ -604,6 +624,14 @@ function FlowEditor() {
       >
         Validate
       </Button>
+      {placed && (
+        <ValidationProblems
+          key={placed.n}
+          problems={placed.of.problems}
+          other={placed.other}
+          onClear={() => setValidation(undefined)}
+        />
+      )}
       <RestSettingChecks settings={restSettings} hasSpec={!!flow.data.apiSpec} toggle={toggleRestSetting} />
       <Button
         variant="primary"
@@ -723,6 +751,7 @@ function FlowEditor() {
           }
           coverVisible={showSpec}
           onKaotoViewPicked={() => showView(false)}
+          stepProblems={placed?.steps}
         />
       </div>
 

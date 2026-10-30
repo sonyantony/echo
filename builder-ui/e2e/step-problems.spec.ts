@@ -1,0 +1,71 @@
+import { expect, test } from '@playwright/test';
+import { createFlow, designMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
+
+// Validate shows each problem on the step it is about: a red circle at the step's top right,
+// opening a box with its problems. Nothing is listed above the editor any more.
+
+const shots = process.env.ECHO_E2E_SCREENSHOTS;
+
+test('Validate puts a red circle on each step with problems, opening them', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await login(page);
+  const name = uniqueName('badges');
+  await createFlow(page, name, '', { route: false });
+  // A method's scaffold route has steps left for the user: a REST OpenApi step without its
+  // operation and a DataMapper without mappings.
+  await interfaceMenu(page, /^Design/);
+  const editor = page.frameLocator('iframe[title="OpenAPI editor"]');
+  await interfaceItem(page, 'Paths');
+  await editor.getByText('Add a path').click();
+  const addPath = editor.getByRole('dialog', { name: 'Add Path' });
+  const path = `/${name.replace(/-/g, '')}`;
+  await addPath.getByRole('textbox').fill(path);
+  await addPath.getByRole('button', { name: 'Add' }).click();
+  await editor.locator('.operation-tab').getByText('Get', { exact: true }).click();
+  await editor.getByRole('button', { name: 'Add Operation' }).click();
+  await expect(page.getByText(`Added a route for GET ${path}.`)).toBeVisible();
+  await designMenu(page, /^Design/);
+  await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Horizontal Layout' }).click();
+  await page.getByRole('button', { name: 'Fit Route' }).click();
+
+  await page.getByRole('button', { name: 'Validate', exact: true }).click();
+  const badges = page.locator('.echo-step-problem');
+  await expect(badges).toHaveCount(2);
+  await expect(page.getByText(/problems? to fix before publishing/)).toBeHidden();
+  const summary = page.getByTestId('validation-problems');
+  await expect(summary).toHaveText('2 problems');
+  // The circles are on the REST OpenApi step in the multicast and on the DataMapper.
+  const rest = page.locator('g[data-id$="|route.from.steps.2.multicast.steps.0.pipeline.steps.1.to"] .echo-step-problem');
+  const mapper = page.locator('g[data-id$="|route.from.steps.4.step:kaoto-datamapper"] .echo-step-problem');
+  await expect(rest).toHaveText('1');
+  await expect(mapper).toHaveText('1');
+  // At the top right of the step's icon.
+  const icon = (await page.locator('g[data-id$="|route.from.steps.4.step:kaoto-datamapper"] .custom-node__container__image').boundingBox())!;
+  const circle = (await mapper.boundingBox())!;
+  expect(circle.x + circle.width / 2).toBeGreaterThan(icon.x + icon.width - 4);
+  expect(circle.y + circle.height / 2).toBeLessThan(icon.y + 4);
+  if (shots) await page.screenshot({ path: `${shots}/1-red-circles.png` });
+
+  await mapper.click();
+  const box = page.getByRole('dialog', { name: /problem on Attention/ });
+  await expect(box).toContainText('1 problem on Attention');
+  await expect(box.getByTestId('step-problems')).toContainText('A DataMapper step has no mapping yet');
+  // Opening the box does not select the step (no step toolbar).
+  await expect(page.getByTestId('step-toolbar')).toBeHidden();
+  if (shots) await page.screenshot({ path: `${shots}/2-datamapper-problem.png` });
+  await rest.click();
+  await expect(box.getByTestId('step-problems')).toContainText('pick its Operation Id');
+  if (shots) await page.screenshot({ path: `${shots}/3-rest-openapi-problem.png` });
+  await page.keyboard.press('Escape');
+  await expect(box).toBeHidden();
+
+  // The toolbar's count says where they are; Clear removes the circles.
+  await summary.click();
+  const all = page.getByRole('dialog', { name: /2 problems to fix before publishing/ });
+  await expect(all).toContainText('They are on steps of the flow: click the red circle on a step to see its problems.');
+  if (shots) await page.screenshot({ path: `${shots}/4-toolbar-count.png` });
+  await all.getByRole('button', { name: 'Clear the problems' }).click();
+  await expect(badges).toHaveCount(0);
+  await expect(summary).toBeHidden();
+});

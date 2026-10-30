@@ -12,13 +12,14 @@ import { captureKaotoDiagram, saveFile, tidyDiagram } from './diagramImage';
 import { createEnvelopeContext } from './kaotoEnvelope';
 import { disabledRouteCss, disabledRouteIds } from './disabledRoutes';
 import { selectedRouteCss, selectedRouteGroupId } from './selectedRoute';
+import { StepProblemBadges } from './StepProblemBadges';
 import { trackTabUnderline } from './tabUnderline';
 import { trackCanvasScrollbars } from './canvasScrollbars';
 import { fitRoute } from './canvasZoom';
 import { FitRouteButton, MaximizeCanvasButton } from './CanvasViewButtons';
 import { EnrichApiPicker } from './EnrichApiPicker';
 import { OperationTagFilter } from './OperationTagFilter';
-import type { ApiTags } from '../api/flows';
+import type { ApiTags, ValidationProblem } from '../api/flows';
 import './KaotoEditorHost.css';
 
 export interface KaotoEditorHandle {
@@ -55,6 +56,8 @@ export interface KaotoEditorHostProps {
    */
   cover?: ReactNode;
   coverVisible?: boolean;
+  /** Validation problems by the canvas step they are on (stepProblems): each such step gets a red circle opening them. */
+  stepProblems?: Map<string, ValidationProblem[]>;
   /** Called when one of Kaoto's views is picked on the tab line (a tab, or a menu standing in for one). */
   onKaotoViewPicked?(): void;
   /**
@@ -84,7 +87,7 @@ interface KaotoEditor {
  * React root to keep it independent from the Builder's own router.
  */
 export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProps>(function KaotoEditorHost(
-  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked, loadSpec, apiTags },
+  { path, initialContent, files, onChange, catalogUrl = '/api/camel-catalog/index.json', tabBarActions, tabBarStart, tabBarMenus, canvasToolbarActions, designMenuItems, cover, coverVisible, onKaotoViewPicked, loadSpec, apiTags, stepProblems },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -365,6 +368,9 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
           <OperationTagFilter container={editorElement} apis={apiTags} />
           <EnrichApiPicker container={editorElement} apis={apiTags} />
         </>
+      )}
+      {editorElement && stepProblems && stepProblems.size > 0 && (
+        <StepProblemBadges container={editorElement} problems={stepProblems} />
       )}
       {canvasSlot && canvasToolbarActions && createPortal(canvasToolbarActions, canvasSlot)}
       {fitSlot && createPortal(<FitRouteButton routeSelected={!!selectedRoute} onClick={fitToCanvas} />, fitSlot)}
