@@ -226,6 +226,16 @@ describe('operationIds', () => {
                       ],
                     },
                   },
+                  {
+                    step: {
+                      id: 'kaoto-datamapper-request-getCardsCardId-1',
+                      description: 'Attention',
+                      steps: [
+                        { setBody: { id: 'kaoto-datamapper-set-body-request-getCardsCardId-1', expression: { simple: { expression: '${null}' } } } },
+                        { to: { id: 'kaoto-datamapper-xslt-request-getCardsCardId-1', uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
+                      ],
+                    },
+                  },
                   { to: { id: 'call-getCardsCardId-1', description: 'Attention', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}' } } },
                   { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
                   { setBody: { id: 'label-getCardsCardId-1', description: 'Attention', simple: '"result": ${body}' } },
@@ -263,7 +273,8 @@ describe('operationIds', () => {
     // Camel needs a header in each Set Headers step: Authorization's token placeholder, and Accept.
     expect(bare[1].setHeaders.headers).toEqual([{ name: 'Authorization', simple: 'Bearer {{api.token}}' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[0].setHeaders.headers).toEqual([{ name: 'Accept', constant: 'application/json' }]);
-    expect(bare[2].multicast.steps[0].pipeline.steps[1].to).toEqual({ id: 'call-postCards-1', description: 'Attention', uri: 'rest-openapi', parameters: {} });
+    expect(bare[2].multicast.steps[0].pipeline.steps[1].step.id).toBe('kaoto-datamapper-request-postCards-1');
+    expect(bare[2].multicast.steps[0].pipeline.steps[2].to).toEqual({ id: 'call-postCards-1', description: 'Attention', uri: 'rest-openapi', parameters: {} });
   });
 
   it('adds the bean the multicasts join replies with, once', () => {
@@ -340,11 +351,21 @@ describe('operationIds', () => {
     expect(untouchedRoutes(added).size).toBe(0);
     expect(untouchedRoutes(made.replace('"result"', '"cards"')).size).toBe(0);
     expect(untouchedRoutes(made.replace('    description:', '    autoStartup: false\n    description:')).size).toBe(0);
-    // Routes made before the DataMapper and the Attention descriptions.
+    // Routes made before the DataMapper before the call.
     const doc = YAML.parse(made);
     const steps = doc[0].route.from.steps;
+    const multicast = steps.find((s: { multicast?: unknown }) => s.multicast).multicast.steps[0].pipeline;
+    multicast.steps = multicast.steps.filter((s: { step?: unknown }) => !s.step);
+    const replyMapper = YAML.stringify(doc, { lineWidth: 0 });
+    expect(replyMapper).not.toContain('kaoto-datamapper-request');
+    expect(untouchedRoutes(replyMapper)).toEqual(new Set(['getCardsId']));
+    // ...which a parameter added later keeps as they were made.
+    const kept = refreshRoutes(replyMapper, [{ method: 'GET', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
+    expect(kept).toContain('variable-getCardsId-q');
+    expect(kept).not.toContain('kaoto-datamapper-request');
+    // Routes made before the DataMapper and the Attention descriptions.
     doc[0].route.from.steps = steps.filter((s: { step?: unknown }) => !s.step);
-    const pipeline = steps.find((s: { multicast?: unknown }) => s.multicast).multicast.steps[0].pipeline.steps;
+    const pipeline = multicast.steps;
     pipeline[0].setHeaders.description = 'SetMethodParameters';
     delete pipeline[1].to.description;
     delete pipeline[3].setBody.description;

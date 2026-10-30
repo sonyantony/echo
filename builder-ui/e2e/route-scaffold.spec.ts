@@ -48,10 +48,13 @@ test('a new method gets a scaffold route, and a query parameter added later gets
   expect(made[0].setVariable).toMatchObject({ name: 'orderId', simple: '${header.orderId}' });
   expect(made[2].setHeaders).toMatchObject({ description: 'SetAuthorizationHeaders' });
   const branch = made[3].multicast.steps![0].pipeline.steps!;
-  expect(branch.map((s) => Object.keys(s)[0])).toEqual(['setHeaders', 'to', 'convertBodyTo', 'setBody']);
+  expect(branch.map((s) => Object.keys(s)[0])).toEqual(['setHeaders', 'step', 'to', 'convertBodyTo', 'setBody']);
   expect(branch[0].setHeaders).toMatchObject({ description: 'Attention' });
-  expect(branch[1].to).toMatchObject({ uri: 'rest-openapi', description: 'Attention' });
-  expect(branch[3].setBody).toMatchObject({ description: 'Attention' });
+  // A DataMapper just before the call, for the request the called operation takes.
+  expect(branch[1].step).toMatchObject({ description: 'Attention' });
+  expect(branch[1].step.id).toMatch(/^kaoto-datamapper-request-/);
+  expect(branch[2].to).toMatchObject({ uri: 'rest-openapi', description: 'Attention' });
+  expect(branch[4].setBody).toMatchObject({ description: 'Attention' });
 
   // A query parameter added to the method: the route, still as ECHO made it, gets its variable.
   await editor.getByTitle('Add a new query parameter.').last().click();
