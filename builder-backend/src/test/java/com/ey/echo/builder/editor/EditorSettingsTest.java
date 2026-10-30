@@ -83,6 +83,16 @@ class EditorSettingsTest {
                     .andExpect(jsonPath("$.apiTags[0].tags[1].operations[0]").value("createService"))
                     .andExpect(jsonPath("$.apiTags[0].tags[1].operations[1]").value("getService"));
         }
+
+        @Test
+        void servesTheSpecByItsFileName() throws Exception {
+            mvc.perform(get("/api/editor/apis/inventory.openapi.json").with(user("designer").roles("DESIGNER")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.openapi").exists())
+                    .andExpect(jsonPath("$.paths").exists());
+            mvc.perform(get("/api/editor/apis/other.openapi.json").with(user("designer").roles("DESIGNER")))
+                    .andExpect(status().isNotFound());
+        }
     }
 
     @Nested
