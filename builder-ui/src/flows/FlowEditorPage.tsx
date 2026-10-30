@@ -57,7 +57,7 @@ import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHo
 import { useDismissMenu } from '../editor/menuDismiss';
 import { DONE_STEPS_FILE, type FlowFiles } from '../editor/flowFiles';
 import { attachScaffoldSchemas, mappedXslFiles } from '../datamapper/scaffoldSchemas';
-import { attachCallTargets, calledSpecs, operationIdsOf, withCallLabels, withXsltFile } from '../datamapper/callSchemas';
+import { attachCallTargets, attachReplySources, calledSpecs, operationIdsOf, withCallLabels, withJsonSources, withXsltFile } from '../datamapper/callSchemas';
 import { scaffoldAttention, stepProblems, type StepProblems, type ToDo } from '../editor/stepProblems';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
@@ -365,8 +365,10 @@ function FlowEditor() {
   );
   /**
    * Once a scaffold's REST OpenApi step picks an operation (callSchemas), a moment after the route
-   * changes: its request DataMapper takes that operation's request body as its target, and the
-   * Set Body after it labels the reply with the operation's id instead of "result".
+   * changes: its request DataMapper takes that operation's request body as its target, the
+   * Set Body after it labels the reply with the operation's id instead of "result", and the reply's
+   * DataMapper takes the joined replies (one property per label, typed by its operation's response)
+   * as its source.
    */
   const callTargets = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
@@ -378,15 +380,18 @@ function FlowEditor() {
             queryClient
               .fetchQuery({ queryKey: ['approved-api', uri], queryFn: () => approvedApiSpec(uri), staleTime: Infinity })
               .catch(() => undefined);
-          const unnamed = await attachCallTargets(files, routeYaml, loadSpec);
           const ids = new Map<string, Set<string>>();
           for (const uri of calledSpecs(routeYaml)) {
             const spec = await loadSpec(uri);
             if (spec) ids.set(uri, new Set(operationIdsOf(spec)));
           }
+          const labels = (uri: string) => ids.get(uri);
+          const unnamed = await attachCallTargets(files, routeYaml, loadSpec);
+          // The reply's DataMapper reads the replies under the labels they are about to get.
+          const replies = await attachReplySources(files, withCallLabels(routeYaml, labels), loadSpec);
           if (!editor.current) return;
           const yaml = await editor.current.getContent();
-          const next = withCallLabels(withXsltFile(yaml, unnamed), (uri) => ids.get(uri));
+          const next = withJsonSources(withCallLabels(withXsltFile(yaml, [...unnamed, ...replies.unnamed]), labels), replies.json);
           if (next !== yaml) await editor.current.setContent(next);
         } catch (e) {
           setMessage({ variant: 'danger', text: `Could not attach the called operation's schema: ${(e as Error).message}` });

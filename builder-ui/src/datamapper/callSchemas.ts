@@ -232,3 +232,247 @@ export function operationIdsOf(spec: Json): string[] {
   }
   return ids;
 }
+
+/** A scaffold's reply DataMapper (the one after the multicast) and the calls of the multicast's pipelines. */
+export interface ReplyMapper {
+  stepId: string;
+  /** The DataMapper's XSLT file, when its step names one. */
+  xslt?: string;
+  /** Each pipeline's reply label (`"<label>": ${body}`) and the operation its REST OpenApi step picks. */
+  calls: { label: string; specificationUri?: string; operationId?: string }[];
+}
+
+const REPLY_MAPPER = /^kaoto-datamapper-(?!request-).+$/;
+
+const xsltOf = (step: Json) =>
+  (Array.isArray(step.steps) ? step.steps : [])
+    .map((s) => (isObject(s) && isObject(s.to) ? text(s.to.uri) : undefined))
+    .find((uri) => uri?.startsWith('xslt-saxon:'))
+    ?.slice('xslt-saxon:'.length);
+
+/** The labelled calls of a multicast's pipelines (a step list each, or a step of its own). */
+function pipelineCalls(multicast: Json): ReplyMapper['calls'] {
+  const calls: ReplyMapper['calls'] = [];
+  for (const branch of Array.isArray(multicast.steps) ? multicast.steps : []) {
+    const pipeline = isObject(branch) && isObject(branch.pipeline) ? branch.pipeline : undefined;
+    const steps: unknown[] = pipeline && Array.isArray(pipeline.steps) ? pipeline.steps : [branch];
+    let call: Json | undefined;
+    for (const step of steps) {
+      if (!isObject(step)) continue;
+      if (isObject(step.to) && step.to.uri === 'rest-openapi') call = isObject(step.to.parameters) ? step.to.parameters : {};
+      const label = isObject(step.setBody) ? LABEL.exec(String(step.setBody.simple ?? ''))?.[1] : undefined;
+      if (label !== undefined) {
+        calls.push({
+          label,
+          specificationUri: call && text(call.specificationUri)?.replace(/^classpath:/, ''),
+          operationId: call && text(call.operationId),
+        });
+        call = undefined;
+      }
+    }
+  }
+  return calls;
+}
+
+/** The scaffolds' reply DataMappers in the route YAML, each with the multicast before it. */
+export function replyMappers(yaml: string): ReplyMapper[] {
+  let doc: unknown;
+  try {
+    doc = YAML.parse(yaml);
+  } catch {
+    return [];
+  }
+  const found: ReplyMapper[] = [];
+  const visit = (node: unknown) => {
+    if (Array.isArray(node)) {
+      let multicast: Json | undefined;
+      for (const item of node) {
+        if (isObject(item) && isObject(item.multicast)) multicast = item.multicast;
+        const step = isObject(item) && isObject(item.step) ? item.step : undefined;
+        if (multicast && step && typeof step.id === 'string' && REPLY_MAPPER.test(step.id)) {
+          found.push({ stepId: step.id, xslt: xsltOf(step), calls: pipelineCalls(multicast) });
+          multicast = undefined;
+        }
+        visit(item);
+      }
+    } else if (isObject(node)) {
+      Object.values(node).forEach(visit);
+    }
+  };
+  visit(doc);
+  return found;
+}
+
+/** api-replies-getOrders.schema.json for the reply DataMapper kaoto-datamapper-getOrders. */
+export function replySchemaName(stepId: string): string {
+  return `${CALL_SCHEMA_PREFIX}replies-${stepId.replace(/^kaoto-datamapper-/, '').replace(/[^A-Za-z0-9_.-]+/g, '-')}.schema.json`;
+}
+
+/** The response body schema of an operation: 200, else another 2xx, else default. */
+function responseSchema(spec: Json, operationId: string): Json | undefined {
+  const responses = specSchemaParts(spec).filter((p) => p.operationId === operationId && p.part === 'response');
+  const part =
+    responses.find((p) => p.status === '200') ??
+    responses.find((p) => /^2\d\d$/.test(p.status ?? '')) ??
+    responses.find((p) => p.status === 'default');
+  return part ? makeJsonSchema(spec, part) : undefined;
+}
+
+/**
+ * The schema of the multicast's joined replies, `{"<label>": <reply>, ...}`: an object with a
+ * property per labelled pipeline whose call picks an operation with a response body, typed by that
+ * body. Each reply's $defs are kept under its label. Undefined when no pipeline has one.
+ */
+export async function repliesSchema(
+  calls: ReplyMapper['calls'],
+  loadSpec: (specificationUri: string) => Promise<Json | undefined>,
+): Promise<Json | undefined> {
+  const properties: Json = {};
+  const defs: Json = {};
+  for (const { label, specificationUri, operationId } of calls) {
+    if (!specificationUri || !operationId) continue;
+    const spec = await loadSpec(specificationUri);
+    const schema = spec && responseSchema(spec, operationId);
+    if (!schema) continue;
+    const prefix = `${label.replace(/[^A-Za-z0-9_.-]+/g, '-')}.`;
+    const body = JSON.parse(JSON.stringify(schema).replaceAll('"#/$defs/', `"#/$defs/${prefix}`)) as Json;
+    const $defs = body.$defs;
+    for (const key of ['$schema', 'title', '$defs', 'x-echo-openapi']) delete body[key];
+    properties[label] = body;
+    for (const [name, def] of Object.entries(isObject($defs) ? $defs : {})) defs[`${prefix}${name}`] = def;
+  }
+  if (!Object.keys(properties).length) return undefined;
+  return {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    title: 'Replies of the calls',
+    type: 'object',
+    properties,
+    ...(Object.keys(defs).length ? { $defs: defs } : {}),
+  };
+}
+
+const sourceFile = (metadata: unknown): string | undefined => {
+  const path = (metadata as { sourceBody?: { filePath?: unknown } } | undefined)?.sourceBody?.filePath;
+  return Array.isArray(path) && typeof path[0] === 'string' ? path[0] : undefined;
+};
+
+/**
+ * Sets the source of each scaffold reply DataMapper with nothing mapped to the schema of the
+ * multicast's joined replies (repliesSchema), as api-replies-<operationId>.schema.json, following
+ * the operations the calls pick and the labels; with none, the source goes back to none. A source
+ * the user attached stays theirs.
+ *
+ * @returns `unnamed`: reply DataMappers with a schema to take but no XSLT file named yet
+ *   (withXsltFile); `json`: whether each DataMapper whose source ECHO set reads the body as JSON
+ *   now (withJsonSources).
+ */
+export async function attachReplySources(
+  files: FlowFiles,
+  yaml: string,
+  loadSpec: (specificationUri: string) => Promise<Json | undefined>,
+): Promise<{ unnamed: string[]; json: Map<string, boolean> }> {
+  const unnamed: string[] = [];
+  const json = new Map<string, boolean>();
+  const mappers = replyMappers(yaml);
+  if (!mappers.length) return { unnamed, json };
+  const mapped = await mappedXslFiles(files);
+  const names = await files.list();
+  const specs = new Map<string, Promise<Json | undefined>>();
+  const load = (uri: string) => {
+    if (!specs.has(uri)) specs.set(uri, loadSpec(uri).catch(() => undefined));
+    return specs.get(uri)!;
+  };
+  const sources = new Map<string, { xslt: string; file?: string }>();
+  for (const mapper of mappers) {
+    if (mapper.xslt && mapped.has(mapper.xslt)) continue;
+    const schema = await repliesSchema(mapper.calls, load);
+    if (!mapper.xslt) {
+      if (schema) unnamed.push(mapper.stepId);
+      continue;
+    }
+    let file: string | undefined;
+    if (schema) {
+      file = replySchemaName(mapper.stepId);
+      const content = serializeSchema(schema);
+      if ((await files.read(file)) !== content) await files.write(file, content);
+    }
+    sources.set(mapper.stepId, { xslt: mapper.xslt, file });
+  }
+  for (const { xslt } of sources.values()) {
+    if (!names.includes(xslt)) await files.write(xslt, EMPTY_XSL);
+  }
+  await updateKaotoMetadata(files, (metadata) => {
+    for (const [stepId, { xslt, file }] of sources) {
+      const was = metadata[stepId];
+      const current = sourceFile(was);
+      // A source the user attached stays theirs.
+      if (current && !current.startsWith(CALL_SCHEMA_PREFIX)) continue;
+      if (file || current) json.set(stepId, !!file);
+      if (current === file) continue;
+      metadata[stepId] = {
+        xsltPath: xslt,
+        sourceParameters: {},
+        targetBody: document(),
+        namespaceMap: {},
+        ...(isObject(was) ? was : {}),
+        sourceBody: document(file),
+      };
+    }
+  });
+  return { unnamed, json };
+}
+
+/**
+ * The route YAML with these DataMappers reading the body as JSON or not, as Kaoto sets them when a
+ * source schema is attached or taken off: with a JSON source, no Set Body ${null} before the XSLT and
+ * useJsonBody: true on it; without, the other way round. Unchanged (the same string) otherwise.
+ */
+export function withJsonSources(yaml: string, json: ReadonlyMap<string, boolean>): string {
+  if (!json.size) return yaml;
+  const doc = YAML.parseDocument(yaml);
+  if (doc.errors.length) return yaml;
+  let changed = false;
+  YAML.visit(doc, {
+    Map(_, map) {
+      const step = map.get('step');
+      const id = YAML.isMap(step) ? String(step.get('id')) : '';
+      const on = json.get(id);
+      if (on === undefined || !YAML.isMap(step)) return;
+      const steps = step.get('steps');
+      if (!YAML.isSeq(steps)) return;
+      const nullIndex = steps.items.findIndex((item) => {
+        const setBody = YAML.isMap(item) ? item.get('setBody') : undefined;
+        return YAML.isMap(setBody) && String(setBody.get('id') ?? '').startsWith('kaoto-datamapper-set-body') && JSON.stringify(setBody.toJSON()).includes('${null}');
+      });
+      const to = steps.items.map((item) => (YAML.isMap(item) ? item.get('to') : undefined)).find((t) => YAML.isMap(t) && String(t.get('uri')).startsWith('xslt-saxon'));
+      if (!YAML.isMap(to)) return;
+      let parameters = to.get('parameters');
+      if (!YAML.isMap(parameters)) {
+        parameters = doc.createNode({});
+        to.set('parameters', parameters);
+      }
+      const params = parameters as YAML.YAMLMap;
+      if (on) {
+        if (nullIndex >= 0) {
+          steps.items.splice(nullIndex, 1);
+          changed = true;
+        }
+        if (params.get('useJsonBody') !== true) {
+          params.set('useJsonBody', true);
+          changed = true;
+        }
+      } else {
+        if (nullIndex < 0) {
+          const suffix = id.replace(/^kaoto-datamapper-/, '');
+          steps.items.unshift(doc.createNode({ setBody: { id: `kaoto-datamapper-set-body-${suffix}`, expression: { simple: { expression: '${null}' } } } }));
+          changed = true;
+        }
+        if (params.has('useJsonBody')) {
+          params.delete('useJsonBody');
+          changed = true;
+        }
+      }
+    },
+  });
+  return changed ? doc.toString({ lineWidth: 0 }) : yaml;
+}

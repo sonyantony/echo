@@ -69,7 +69,7 @@ test("a POST's DataMappers start from its request body and its response", async 
   if (shots) await page.screenshot({ path: `${shots}/3-reply-target.png` });
 });
 
-test("the request DataMapper's target is the request body of the operation its call picks", async ({ page }) => {
+test("the picked operation sets the request DataMapper's target and the reply DataMapper's source", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await login(page);
   const name = uniqueName('calltarget');
@@ -113,4 +113,15 @@ test("the request DataMapper's target is the request body of the operation its c
   await expect(page.getByText('customerName').first()).toBeVisible();
   await expect(page.getByText('[@key = @type]').first()).toBeVisible();
   if (shots) await page.screenshot({ path: `${shots}/4-request-target.png` });
+  await designMenu(page, /^Design/);
+
+  // The reply's DataMapper reads the joined replies: createService's under its label.
+  await expect.poll(async () => (await metadata())['kaoto-datamapper-postOrders']?.sourceBody?.filePath).toEqual(['api-replies-postOrders.schema.json']);
+  const route2 = await (await page.request.get(routeFile)).text();
+  expect(route2).toContain('useJsonBody: true');
+  await openMapper(page, 'route.from.steps.4.step');
+  await expect(page.getByText('[@key = createService]').first()).toBeVisible();
+  await expect(page.getByText('[@key = state]').first()).toBeVisible();
+  await expect(page.getByText('orderNumber').first()).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/6-reply-source.png` });
 });

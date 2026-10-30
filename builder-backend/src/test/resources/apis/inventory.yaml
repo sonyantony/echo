@@ -19,6 +19,10 @@ paths:
       responses:
         "201":
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
   /v1/service/{id}:
     get:
       tags: [TMF638 Service Controller]
@@ -48,4 +52,11 @@ components:
         '@type':
           type: string
         name:
+          type: string
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        state:
           type: string

@@ -111,6 +111,12 @@ itself keeps only what is designed, so the service always follows the spec's cur
   follows a change of operation while nothing is mapped, and a target the user attached stays.
   The pipeline's Set Body then labels the reply with the operation's id (`"createService": ${body}`
   instead of `"result": ${body}`), following a change of operation unless the user named it.
+  The reply DataMapper's source is then the multicast's joined replies, `{"<label>": <reply>, ...}`:
+  an object with a property per pipeline whose call picks an operation with a response body (200,
+  else another 2xx, else `default`), typed by that body (`api-replies-<operationId>.schema.json`,
+  each reply's `$defs` kept under `<label>.`). ECHO reads the body as JSON for it (no Set Body
+  `${null}`, `useJsonBody: true`, as Kaoto sets it), follows picks, labels and added pipelines while
+  nothing is mapped, and goes back to no source when nothing is picked; a source the user attached stays.
   The steps the user still has to work on get a red circle on the canvas, which
   opens what is left to do: the pipeline's Set Headers (until its rows are changed), DataMapper
   (until something is mapped), REST OpenApi (until an operation is picked) and last Set Body (until
