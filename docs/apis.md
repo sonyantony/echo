@@ -63,8 +63,8 @@ multicast. A Set Headers step "SetAuthorizationHeaders" before the multicast set
 to the body the called operation takes. With exactly one approved API, its Specification Uri
 (and Host placeholder) are filled in; pick the Operation Id, then adjust the Set Headers rows to the
 parameters it takes. Every step that needs the user (that Set Headers, the DataMapper before the
-call, the REST OpenApi step, the pipeline's last Set Body and the DataMapper after the reply) reads
-Attention on the canvas.
+call, the REST OpenApi step, the pipeline's last Set Body and the DataMapper after the reply) has a
+red circle on the canvas saying what to do.
 
 The step is saved as:
 

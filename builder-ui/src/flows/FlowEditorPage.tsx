@@ -44,6 +44,7 @@ import {
   routableOperations,
   routeForOperation,
   withJoinBean,
+  withoutAttentionLabels,
   type ApiCall,
   type OperationRename,
   type RoutableOperation,
@@ -53,6 +54,8 @@ import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
+import { DONE_STEPS_FILE } from '../editor/flowFiles';
+import { scaffoldAttention, stepProblems, type StepProblems, type ToDo } from '../editor/stepProblems';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
 import { DownloadButtons, downloadMenuItems } from './downloads';
@@ -68,7 +71,7 @@ import { SaveAsModal } from './SaveAsModal';
 import { UploadFlowModal } from './UploadFlowModal';
 import { useOperationRoutes } from './useOperationRoutes';
 import { useAutosave } from './useAutosave';
-import { ValidationPanel } from './ValidationPanel';
+import { ValidationPanel, ValidationProblems } from './ValidationPanel';
 import './FlowEditorPage.css';
 
 /** The flow editor's address with the flow's API spec open in it. */
@@ -96,6 +99,20 @@ function FlowEditor() {
     queryKey: ['flow', id, 'route', routeFile],
     queryFn: () => flowsApi.readFile(id, routeFile!),
     enabled: !!routeFile,
+    staleTime: Infinity,
+  });
+  /** The scaffold steps the user marked done (DONE_STEPS_FILE): their red circles stay away. */
+  const doneSteps = useQuery({
+    queryKey: ['flow', id, 'done-steps'],
+    queryFn: async () => {
+      const text = await flowsApi.readFile(id, DONE_STEPS_FILE);
+      try {
+        const ids: unknown = text ? JSON.parse(text) : [];
+        return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : [];
+      } catch {
+        return [];
+      }
+    },
     staleTime: Infinity,
   });
   const settings = useQuery({ queryKey: ['editor-settings'], queryFn: editorSettings, staleTime: Infinity });
@@ -130,6 +147,9 @@ function FlowEditor() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ variant: 'success' | 'warning' | 'danger'; text: string }>();
   const [validation, setValidation] = useState<ValidationResult>();
+  /** The problems of `validation` sorted onto the canvas steps they are on, and the others. */
+  const [placed, setPlaced] = useState<StepProblems & { of: ValidationResult; n: number }>();
+  const placedCount = useRef(0);
   const [validating, setValidating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -170,12 +190,22 @@ function FlowEditor() {
   /** Set when Save As moves to the new flow, so leaving this one does not ask about unsaved edits. */
   const leavingAfterSaveAs = useRef(false);
 
+  /** What the editor opens: the saved route, without the Attention labels red circles replaced. */
+  const initialRoute = useMemo(() => (route.data === undefined ? undefined : withoutAttentionLabels(route.data)), [route.data]);
+  /** The route on screen, for the red circles on scaffold steps still waiting for the user. */
+  const [routeYaml, setRouteYaml] = useState<string>();
   useEffect(() => {
     const yaml = route.data;
-    if (yaml === undefined) return;
+    if (yaml === undefined || initialRoute === undefined) return;
     savedYaml.current = yaml;
+    setRouteYaml(initialRoute);
+    // Labels taken off are saved with the next save, so problems' lines match what is on screen.
+    if (initialRoute !== yaml) {
+      latestYaml.current = initialRoute;
+      setDirty(true);
+    }
     setRestSettings((current) => current ?? readRestSettings(yaml));
-  }, [route.data]);
+  }, [route.data, initialRoute]);
 
   const reviewed = useRef(false);
   useEffect(() => {
@@ -197,6 +227,7 @@ function FlowEditor() {
 
   const onChange = useCallback((yaml: string) => {
     latestYaml.current = yaml;
+    setRouteYaml(yaml);
     setDirty(yaml !== savedYaml.current);
     const now = readRestSettings(yaml);
     setRestSettings((was) =>
@@ -305,6 +336,66 @@ function FlowEditor() {
       setValidating(false);
     }
   }, [dirty, id, save]);
+
+  /**
+   * The red circles on the canvas: a step's validation problems, or while it has none, what is left
+   * to do on a scaffold step (routeForOperation), as a problem without a line.
+   */
+  const todo = useMemo(
+    () => (routeYaml && routeFile ? scaffoldAttention(routeYaml, new Set(doneSteps.data)) : new Map<string, ToDo>()),
+    [routeYaml, routeFile, doneSteps.data],
+  );
+  const circles = useMemo(() => {
+    const all = new Map(placed?.steps);
+    for (const [step, { messages }] of todo) {
+      // A problem inside the step (e.g. in a DataMapper's own steps) counts as the step's.
+      const hasProblems = [...all.keys()].some((key) => key === step || key.startsWith(`${step}.`));
+      if (!hasProblems) all.set(step, messages.map((message) => ({ file: routeFile!, message })));
+    }
+    return all;
+  }, [todo, routeFile, placed]);
+
+  /**
+   * A circle's Clear or Mark As Done: Validate's problems on the steps go until the next Validate; a
+   * scaffold step marked done stays so, kept in the flow (DONE_STEPS_FILE) with the user's other edits.
+   */
+  const dismissCircle = useCallback(
+    async (steps: string[]) => {
+      if (placed && steps.some((step) => placed.steps.has(step))) {
+        const left = new Map(placed.steps);
+        steps.forEach((step) => left.delete(step));
+        setPlaced({ ...placed, steps: left });
+        return;
+      }
+      const ids = steps.map((step) => todo.get(step)?.stepId).filter((stepId): stepId is string => !!stepId);
+      if (ids.length === 0) return;
+      const next = [...new Set([...(doneSteps.data ?? []), ...ids])];
+      queryClient.setQueryData(['flow', id, 'done-steps'], next);
+      try {
+        await flowsApi.writeFile(id, DONE_STEPS_FILE, `${JSON.stringify(next, null, 2)}\n`);
+      } catch (e) {
+        setMessage({ variant: 'danger', text: `Could not keep it as done: ${(e as Error).message}` });
+        void queryClient.invalidateQueries({ queryKey: ['flow', id, 'done-steps'] });
+      }
+    },
+    [placed, todo, doneSteps.data, id, queryClient],
+  );
+
+  // Problems are found in what was just saved, which is what the editor has, so their lines are its lines.
+  useEffect(() => {
+    if (!validation || validation.valid || !routeFile) {
+      setPlaced(undefined);
+      return;
+    }
+    let current = true;
+    void (async () => {
+      const yaml = (await editor.current?.getContent()) ?? '';
+      if (current) setPlaced({ ...stepProblems(validation.problems, routeFile, yaml), of: validation, n: ++placedCount.current });
+    })();
+    return () => {
+      current = false;
+    };
+  }, [validation, routeFile]);
 
   /**
    * Runs what is on screen inside the Builder: unsaved edits are saved and the draft validated first.
@@ -604,6 +695,14 @@ function FlowEditor() {
       >
         Validate
       </Button>
+      {placed && (
+        <ValidationProblems
+          key={placed.n}
+          problems={placed.of.problems}
+          other={placed.other}
+          onClear={() => setValidation(undefined)}
+        />
+      )}
       <RestSettingChecks settings={restSettings} hasSpec={!!flow.data.apiSpec} toggle={toggleRestSetting} />
       <Button
         variant="primary"
@@ -659,7 +758,7 @@ function FlowEditor() {
           key={`${id}:${routeFile}`}
           ref={editor}
           path={routeFile!}
-          initialContent={route.data ?? ''}
+          initialContent={initialRoute ?? ''}
           files={files}
           loadSpec={loadSpecForSchemas}
           apiTags={settings.data?.apiTags}
@@ -723,6 +822,8 @@ function FlowEditor() {
           }
           coverVisible={showSpec}
           onKaotoViewPicked={() => showView(false)}
+          stepProblems={circles}
+          onDismissProblems={dismissCircle}
         />
       </div>
 

@@ -13,6 +13,9 @@ export interface FlowFiles {
 /** Kaoto stores its metadata (e.g. DataMapper schema attachments) as JSON in this file. */
 export const KAOTO_METADATA_FILE = '.kaoto';
 
+/** The ids of the scaffold steps the user marked done (a JSON list), whose red circles stay away. */
+export const DONE_STEPS_FILE = '.echo-done.json';
+
 /** In-memory implementation, used by tests and the editor playground. */
 export class InMemoryFlowFiles implements FlowFiles {
   readonly files = new Map<string, string>();

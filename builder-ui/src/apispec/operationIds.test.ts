@@ -17,6 +17,7 @@ import {
   specOperations,
   untouchedRoutes,
   withJoinBean,
+  withoutAttentionLabels,
   withoutUnusedJoinBean,
 } from './operationIds';
 
@@ -216,7 +217,6 @@ describe('operationIds', () => {
                   {
                     setHeaders: {
                       id: 'parameters-getCardsCardId-1',
-                      description: 'Attention',
                       headers: [
                         { name: 'Accept', constant: 'application/json' },
                         { name: 'cardId', simple: '${variable.cardId}' },
@@ -229,16 +229,15 @@ describe('operationIds', () => {
                   {
                     step: {
                       id: 'kaoto-datamapper-request-getCardsCardId-1',
-                      description: 'Attention',
                       steps: [
                         { setBody: { id: 'kaoto-datamapper-set-body-request-getCardsCardId-1', expression: { simple: { expression: '${null}' } } } },
                         { to: { id: 'kaoto-datamapper-xslt-request-getCardsCardId-1', uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
                       ],
                     },
                   },
-                  { to: { id: 'call-getCardsCardId-1', description: 'Attention', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}' } } },
+                  { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}' } } },
                   { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
-                  { setBody: { id: 'label-getCardsCardId-1', description: 'Attention', simple: '"result": ${body}' } },
+                  { setBody: { id: 'label-getCardsCardId-1', simple: '"result": ${body}' } },
                 ],
               },
             },
@@ -249,7 +248,6 @@ describe('operationIds', () => {
       {
         step: {
           id: 'kaoto-datamapper-getCardsCardId',
-          description: 'Attention',
           steps: [
             { setBody: { id: 'kaoto-datamapper-set-body-getCardsCardId', expression: { simple: { expression: '${null}' } } } },
             { to: { id: 'kaoto-datamapper-xslt-getCardsCardId', uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
@@ -274,7 +272,7 @@ describe('operationIds', () => {
     expect(bare[1].setHeaders.headers).toEqual([{ name: 'Authorization', simple: 'Bearer {{api.token}}' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[0].setHeaders.headers).toEqual([{ name: 'Accept', constant: 'application/json' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[1].step.id).toBe('kaoto-datamapper-request-postCards-1');
-    expect(bare[2].multicast.steps[0].pipeline.steps[2].to).toEqual({ id: 'call-postCards-1', description: 'Attention', uri: 'rest-openapi', parameters: {} });
+    expect(bare[2].multicast.steps[0].pipeline.steps[2].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: {} });
   });
 
   it('adds the bean the multicasts join replies with, once', () => {
@@ -351,8 +349,23 @@ describe('operationIds', () => {
     expect(untouchedRoutes(added).size).toBe(0);
     expect(untouchedRoutes(made.replace('"result"', '"cards"')).size).toBe(0);
     expect(untouchedRoutes(made.replace('    description:', '    autoStartup: false\n    description:')).size).toBe(0);
+    expect(made).not.toContain('Attention');
+    // Routes made while the steps left to the user read Attention, before red circles; once the
+    // labels are taken off (withoutAttentionLabels) they are routes as made now.
+    const labelled = made.replace(
+      /^( +)id: (parameters-getCardsId-1|kaoto-datamapper-request-getCardsId-1|call-getCardsId-1|label-getCardsId-1|kaoto-datamapper-getCardsId)\n/gm,
+      '$1id: $2\n$1description: Attention\n',
+    );
+    expect(labelled.match(/description: Attention/g)).toHaveLength(5);
+    expect(untouchedRoutes(labelled)).toEqual(new Set(['getCardsId']));
+    expect(untouchedRoutes(labelled.replace('description: Attention', 'description: Done')).size).toBe(0);
+    expect(withoutAttentionLabels(labelled)).toBe(made);
+    expect(withoutAttentionLabels(made)).toBe(made);
+    // A step's own description of Attention elsewhere stays.
+    const own = made.replace('    description: GET /cards/{id}', '    description: Attention');
+    expect(withoutAttentionLabels(own)).toBe(own);
     // Routes made before the DataMapper before the call.
-    const doc = YAML.parse(made);
+    const doc = YAML.parse(labelled);
     const steps = doc[0].route.from.steps;
     const multicast = steps.find((s: { multicast?: unknown }) => s.multicast).multicast.steps[0].pipeline;
     multicast.steps = multicast.steps.filter((s: { step?: unknown }) => !s.step);
@@ -372,7 +385,6 @@ describe('operationIds', () => {
     const replyHeaders = YAML.stringify(doc, { lineWidth: 0 });
     expect(replyHeaders).not.toContain('Attention');
     expect(untouchedRoutes(replyHeaders)).toEqual(new Set(['getCardsId']));
-    expect(untouchedRoutes(made.replace('description: Attention', 'description: Done')).size).toBe(0);
     // A parameter added later keeps such a route as it was made, with one more variable.
     const synced = refreshRoutes(replyHeaders, [{ method: 'GET', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
     expect(synced).toContain('variable-getCardsId-q');
