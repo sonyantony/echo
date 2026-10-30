@@ -9,6 +9,7 @@ import {
   mapperCalls,
   operationIdsOf,
   replyMappers,
+  withCallDescriptions,
   withCallLabels,
   withJsonSources,
   withXsltFile,
@@ -209,5 +210,28 @@ describe("the request DataMapper's target follows the operation its call picks",
     await files.write(`${REPLY}.xsl`, '<xsl:stylesheet><xsl:template match="/"/></xsl:stylesheet>');
     await attachReplySources(files, named, loadSpec);
     expect(await metadata(files)).toEqual({});
+  });
+
+  it('describes the call step "<API>:<operationId>" once it picks one, following a change of operation', () => {
+    const ids = new Set(operationIdsOf(inventory));
+    const name = () => 'Inventory';
+    const made = routeForOperation({ method: 'GET', path: '/orders', operationId: 'getOrders' }, { ...call, name: 'Inventory' });
+    const description = (yaml: string) => YAML.parse(yaml)[0].route.from.steps[2].multicast.steps[0].pipeline.steps[1].to.description;
+    expect(description(made)).toBe('Inventory Call');
+    expect(withCallDescriptions(made, () => ids, name)).toBe(made);
+    const picked = withCallDescriptions(picking(made, 'createService'), () => ids, name);
+    expect(description(picked)).toBe('Inventory:createService');
+    const replaced = withCallDescriptions(picked.replace('operationId: createService', 'operationId: deleteService'), () => ids, name);
+    expect(description(replaced)).toBe('Inventory:deleteService');
+    // Nothing picked any more.
+    expect(description(withCallDescriptions(replaced.replace(/\n +operationId: deleteService/, ''), () => ids, name))).toBe('Inventory Call');
+    // A step made without a description gets one once it picks an operation.
+    const plain = routeForOperation({ method: 'GET', path: '/orders', operationId: 'getOrders' }, call);
+    expect(description(withCallDescriptions(picking(plain, 'createService'), () => ids, name))).toBe('Inventory:createService');
+    // A description the user gave stays.
+    const own = picked.replace('Inventory:createService', 'Fetch the service');
+    expect(withCallDescriptions(own.replace('operationId: createService', 'operationId: deleteService'), () => ids, name)).toBe(
+      own.replace('operationId: createService', 'operationId: deleteService'),
+    );
   });
 });

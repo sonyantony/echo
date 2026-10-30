@@ -107,6 +107,8 @@ test("the picked operation sets the request DataMapper's target and the reply Da
   await fileMenu(page, /^Save(?! As)/);
   await expect(page.getByText('Saved.')).toBeVisible();
   expect(await (await page.request.get(routeFile)).text()).toContain('simple: \'"createService": ${body}\'');
+  // The call step is described after the API and the operation it picks.
+  expect(await (await page.request.get(routeFile)).text()).toContain('description: inventory:createService');
   if (shots) await page.screenshot({ path: `${shots}/5-reply-labelled.png` });
   await openMapper(page, 'route.from.steps.2.multicast.steps.0.pipeline.steps.1.step');
   // Source: this flow's request; target: what createService takes.

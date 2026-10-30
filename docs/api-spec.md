@@ -111,6 +111,10 @@ itself keeps only what is designed, so the service always follows the spec's cur
   follows a change of operation while nothing is mapped, and a target the user attached stays.
   The pipeline's Set Body then labels the reply with the operation's id (`"createService": ${body}`
   instead of `"result": ${body}`), following a change of operation unless the user named it.
+  The REST OpenApi step is described after the approved API it calls, its name without spaces
+  (`echo.apis.specs[].name`, e.g. "BluePlanet Call" for Blue Planet), and once it picks an Operation
+  Id, `<name>:<operationId>` ("BluePlanet:getResource"); it follows a change of operation and goes
+  back to "<name> Call" when none is picked. A description the user gave stays.
   The reply DataMapper's source is then the multicast's joined replies, `{"<label>": <reply>, ...}`:
   an object with a property per pipeline whose call picks an operation with a response body (200,
   else another 2xx, else `default`), typed by that body (`api-replies-<operationId>.schema.json`,

@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+import { callDescription } from '../apispec/operationIds';
 import { updateKaotoMetadata, type FlowFiles } from '../editor/flowFiles';
 import { EMPTY_XSL, mappedXslFiles } from './scaffoldSchemas';
 import { makeJsonSchema, serializeSchema, specSchemaParts } from './specSchemas';
@@ -471,6 +472,50 @@ export function withJsonSources(yaml: string, json: ReadonlyMap<string, boolean>
           params.delete('useJsonBody');
           changed = true;
         }
+      }
+    },
+  });
+  return changed ? doc.toString({ lineWidth: 0 }) : yaml;
+}
+
+const CALL_DESCRIPTION = /^(\S+)(?: Call|:(\S+))$/;
+
+/**
+ * The route YAML with each scaffold call step (id call-*) described after the API and the operation it
+ * picks: "BluePlanet Call" becomes "BluePlanet:getResource" once an Operation Id is picked, follows a
+ * change of operation, and goes back to "BluePlanet Call" when none is picked. `apiName` gives the name
+ * for a step without a description yet (apiStepName). A description the user gave stays. Unchanged
+ * (the same string) otherwise.
+ */
+export function withCallDescriptions(
+  yaml: string,
+  operationIds: (specificationUri: string) => ReadonlySet<string> | undefined,
+  apiName: (specificationUri: string) => string | undefined,
+): string {
+  if (!yaml.includes('rest-openapi')) return yaml;
+  const doc = YAML.parseDocument(yaml);
+  if (doc.errors.length) return yaml;
+  let changed = false;
+  YAML.visit(doc, {
+    Map(_, to) {
+      if (to.get('uri') !== 'rest-openapi' || !String(to.get('id') ?? '').startsWith('call-')) return;
+      const parameters = to.get('parameters');
+      const operationId = YAML.isMap(parameters) ? text(parameters.get('operationId')) : undefined;
+      const uri = YAML.isMap(parameters) ? text(parameters.get('specificationUri'))?.replace(/^classpath:/, '') : undefined;
+      const description = to.get('description');
+      let name: string | undefined;
+      if (description === undefined) {
+        name = uri && operationId ? apiName(uri) : undefined;
+      } else {
+        const m = CALL_DESCRIPTION.exec(String(description));
+        // "<name>:<x>" is ECHO's only when x is an operation of the spec the step calls.
+        if (m && (m[2] === undefined || (uri && operationIds(uri)?.has(m[2])))) name = m[1];
+      }
+      if (!name) return;
+      const next = callDescription(name, operationId);
+      if (next !== description) {
+        to.set('description', next);
+        changed = true;
       }
     },
   });

@@ -388,6 +388,18 @@ export function directRoutes(yaml: string): Map<string, boolean> {
 export interface ApiCall {
   specificationUri?: string;
   host?: string;
+  /** The approved API's name without spaces (apiStepName), e.g. BluePlanet: the call step reads "BluePlanet Call". */
+  name?: string;
+}
+
+/** An approved API's name as its REST OpenApi steps are described: without spaces, "Blue Planet" -> "BluePlanet". */
+export function apiStepName(name: string): string {
+  return name.replace(/\s+/g, '');
+}
+
+/** The description of a REST OpenApi step calling the API named `name`: "BluePlanet Call", or "BluePlanet:getResource" once it picks an operation. */
+export function callDescription(name: string, operationId?: string): string {
+  return operationId ? `${name}:${operationId}` : `${name} Call`;
 }
 
 /** The bean the routes' multicasts join their replies with (docs/decisions/0013). */
@@ -534,7 +546,15 @@ function scaffold(operationId: string, label: string, variables: string[], call:
                       },
                       // The user maps the request to what the called operation takes.
                       ...(requestMapper ? [dataMapper(`request-${operationId}-1`, attention, schemas && attached.request ? 'source' : undefined)] : []),
-                      { to: { id: `call-${operationId}-1`, ...marked, uri: 'rest-openapi', parameters: callParameters } },
+                      {
+                        to: {
+                          id: `call-${operationId}-1`,
+                          ...marked,
+                          ...(!attention && call.name ? { description: callDescription(call.name) } : {}),
+                          uri: 'rest-openapi',
+                          parameters: callParameters,
+                        },
+                      },
                       { convertBodyTo: { id: `to-string-${operationId}-1`, type: 'String' } },
                       { setBody: { id: `label-${operationId}-1`, ...marked, simple: '"result": ${body}' } },
                     ],
@@ -570,7 +590,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * makes it, so the user only picks the operation to call: a Set Variable for each of its parameters
  * (from the header Camel puts it in), Remove Headers *, Set Headers "SetAuthorizationHeaders"
  * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
- * after Set Headers (Accept, and a header per variable) and, for POST, PUT and PATCH, a Kaoto
+ * (described "<API name> Call" when the call names an approved API, call.name) after Set Headers (Accept, and a header per variable) and, for POST, PUT and PATCH, a Kaoto
  * DataMapper for the request, and labelling its reply "result", then the joined replies wrapped as a
  * JSON object, a Kaoto DataMapper and Set Headers "SetResponseHeaders" (Content-Type:
  * application/json, CamelHttpResponseCode: 200). The DataMappers start from the operation's schemas
@@ -662,9 +682,11 @@ function asScaffold(
   }
   const callStep = JSON.stringify(json).match(/"uri":"rest-openapi","parameters":(\{[^{}]*\})/);
   const parameters = callStep ? (JSON.parse(callStep[1]) as Record<string, unknown>) : {};
+  const described = JSON.stringify(json).match(/"description":"(\S+) Call","uri":"rest-openapi"/);
   const call: ApiCall = {
     specificationUri: typeof parameters.specificationUri === 'string' ? parameters.specificationUri : undefined,
     host: typeof parameters.host === 'string' ? parameters.host : undefined,
+    ...(described ? { name: described[1] } : {}),
   };
   const label = typeof json.description === 'string' ? json.description : '';
   // Step ids aside: a renamed operation's route keeps the ids it was made with.

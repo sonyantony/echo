@@ -46,6 +46,7 @@ import {
   routeForOperation,
   withJoinBean,
   withoutAttentionLabels,
+  apiStepName,
   type ApiCall,
   type OperationRename,
   type RoutableOperation,
@@ -57,7 +58,7 @@ import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHo
 import { useDismissMenu } from '../editor/menuDismiss';
 import { DONE_STEPS_FILE, type FlowFiles } from '../editor/flowFiles';
 import { attachScaffoldSchemas, mappedXslFiles } from '../datamapper/scaffoldSchemas';
-import { attachCallTargets, attachReplySources, calledSpecs, operationIdsOf, withCallLabels, withJsonSources, withXsltFile } from '../datamapper/callSchemas';
+import { attachCallTargets, attachReplySources, calledSpecs, operationIdsOf, withCallDescriptions, withCallLabels, withJsonSources, withXsltFile } from '../datamapper/callSchemas';
 import { scaffoldAttention, stepProblems, type StepProblems, type ToDo } from '../editor/stepProblems';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
@@ -190,9 +191,21 @@ function FlowEditor() {
   const renaming = useRef<Promise<void>>(undefined);
   // Methods added in Interface get a route at once; deleted ones ask about theirs.
   const routeCall = settings.data?.routeCall;
+  const apiTags = settings.data?.apiTags;
+  /** The name REST OpenApi steps calling an approved API are described with (apiStepName). */
+  const apiNameOf = useCallback(
+    (uri: string) => {
+      const api = apiTags?.find((a) => a.specificationUri === uri);
+      return apiStepName(api?.name || uri.replace(/\.openapi\.json$/, ''));
+    },
+    [apiTags],
+  );
   const apiCall = useMemo<ApiCall>(
-    () => (routeCall ? { specificationUri: routeCall.specificationUri, host: routeCall.host ?? undefined } : {}),
-    [routeCall],
+    () =>
+      routeCall
+        ? { specificationUri: routeCall.specificationUri, host: routeCall.host ?? undefined, name: apiNameOf(routeCall.specificationUri) }
+        : {},
+    [routeCall, apiNameOf],
   );
   const operationRoutes = useOperationRoutes(editor, (variant, text) => setMessage({ variant, text }), apiCall, files);
   /** Client Request Validation and Enable CORS, as the route on screen has them (Flow menu). */
@@ -366,7 +379,8 @@ function FlowEditor() {
   /**
    * Once a scaffold's REST OpenApi step picks an operation (callSchemas), a moment after the route
    * changes: its request DataMapper takes that operation's request body as its target, the
-   * Set Body after it labels the reply with the operation's id instead of "result", and the reply's
+   * Set Body after it labels the reply with the operation's id instead of "result", the step itself is
+   * described "<API>:<operationId>" instead of "<API> Call", and the reply's
    * DataMapper takes the joined replies (one property per label, typed by its operation's response)
    * as its source.
    */
@@ -391,7 +405,11 @@ function FlowEditor() {
           const replies = await attachReplySources(files, withCallLabels(routeYaml, labels), loadSpec);
           if (!editor.current) return;
           const yaml = await editor.current.getContent();
-          const next = withJsonSources(withCallLabels(withXsltFile(yaml, [...unnamed, ...replies.unnamed]), labels), replies.json);
+          const next = withCallDescriptions(
+            withJsonSources(withCallLabels(withXsltFile(yaml, [...unnamed, ...replies.unnamed]), labels), replies.json),
+            labels,
+            apiNameOf,
+          );
           if (next !== yaml) await editor.current.setContent(next);
         } catch (e) {
           setMessage({ variant: 'danger', text: `Could not attach the called operation's schema: ${(e as Error).message}` });
@@ -399,7 +417,7 @@ function FlowEditor() {
       });
     }, 800);
     return () => clearTimeout(timer);
-  }, [routeYaml, files, queryClient]);
+  }, [routeYaml, files, queryClient, apiNameOf]);
 
   const circles = useMemo(() => {
     const all = new Map(placed?.steps);
