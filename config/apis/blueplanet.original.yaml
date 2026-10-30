@@ -1,0 +1,3487 @@
+openapi: 3.0.1
+info:
+  title: TMF API
+servers:
+- url: /blueplanet-inventory-tmf-api
+security:
+- bearer-jwt:
+  - read
+  - write
+tags:
+- name: Lumen Custom Logical Route API Controller
+  description: APIs for generating logical routes for Lumen resources
+paths:
+  /bpmn/workflow/definitions/suspend:
+    put:
+      tags:
+      - BPMN
+      - Workflow
+      - Bpmn workflow definition operations
+      description: Suspends given workflow definitions
+      operationId: suspendDefinitions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowDefinitionSuspendActivateRequest"
+        required: true
+      responses:
+        "204":
+          description: Success
+          content:
+            application/json: {}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /bpmn/workflow/definitions/activate:
+    put:
+      tags:
+      - BPMN
+      - Workflow
+      - Bpmn workflow definition operations
+      description: Activates given workflow definitions
+      operationId: activateDefinitions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowDefinitionSuspendActivateRequest"
+        required: true
+      responses:
+        "204":
+          description: Success
+          content:
+            application/json: {}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /v1/service:
+    get:
+      tags:
+      - TMF638 Service Controller
+      summary: lists all services based on query parameters
+      operationId: getServices
+      parameters:
+      - name: name
+        in: query
+        description: "Service Name(Eg: ~'L3VPN.*')"
+      - name: offset
+        in: query
+        description: Service offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DefaultServiceResponse"
+        "206":
+          description: Partial Content
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DefaultServiceResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    post:
+      tags:
+      - TMF638 Service Controller
+      summary: creates a service
+      operationId: createService
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Service Creation Request"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultServiceResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - TMF638 Service Controller
+      operationId: deleteServices
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /v1/service/async:
+    get:
+      tags:
+      - TMF638 Service Controller
+      summary: lists all services based on query parameters asynchronously
+      operationId: getServicesAsync
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    post:
+      tags:
+      - TMF638 Service Controller
+      summary: creates a service asynchronously
+      operationId: createServiceAsync
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Service Creation Request"
+        required: true
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /shutdown/status:
+    post:
+      tags:
+      - Shutdown controller
+      operationId: status
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KafkaStatusResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /shutdown/init:
+    post:
+      tags:
+      - Shutdown controller
+      operationId: init
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /shutdown/cleanup:
+    post:
+      tags:
+      - Shutdown controller
+      operationId: cleanup
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/{resourceType}:
+    get:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Retrieve a list of resources for a specific type
+      operationId: getResources
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: query
+        description: Name
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    post:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Creates a resource
+      operationId: createResource
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DefaultResourceCreateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/resource:
+    get:
+      tags:
+      - TMF639 Resource Untyped Controller
+      description: Retrieve list of all resources
+      operationId: getResources_1
+      parameters:
+      - name: name
+        in: query
+        description: Name
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    post:
+      tags:
+      - TMF639 Resource Untyped Controller
+      operationId: createResource_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DefaultResourceCreateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /onboard/tmf/asset:
+    post:
+      tags:
+      - onboard-controller
+      operationId: onboardAssetRepo
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Create a number range
+      operationId: createRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LumenRange"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Delete a number range
+      operationId: deleteRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeType}/available:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Get Next available value of range
+      operationId: getNextNumberFromRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeType
+        in: path
+        description: Range Type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReserveAvailableNumberRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RangeValue"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeType}/allocate:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Allocate Next available value of range
+      operationId: allocateNextNumberFromRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeType
+        in: path
+        description: Range Type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocateValueRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LumenRange"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeId}/reserve/value:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Reserve specific value of range
+      operationId: reserveSpecificNumberFromRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReserveSpecificValueRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeId}/moveRange:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Move a number range from Organization to Service
+      operationId: moveRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LumenMoveRelationshipRequestVO"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeId}/deallocate/value:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Allocate specific value of range
+      operationId: deallocateSpecificNumberFromRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocateSpecificValueRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LumenRange"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeId}/allocate/value:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Allocate specific value of range
+      operationId: allocateSpecificNumberFromRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocateSpecificValueRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LumenRange"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeId}/allocate/subrange:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Allocate subrange of range
+      operationId: allocateSubrangeFromRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocateSubrangeRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LumenRangeReservationResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/global/reserve/value:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Reserve value from global range
+      operationId: reserveNumberFromRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GlobalRangeReserveRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/global/deallocate/value:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Deallocate value from global range
+      operationId: deallocateNumberFromGlobalRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GlobalRangeDeallocateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlobalLumenRangeResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/global/available:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: 'Get Next available value from global range and reserve '
+      operationId: getNextNumberFromGlobalRangeAndReserve
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GlobalRangeReserveNextNumberRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/global/allocate:
+    post:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Allocate Next available value from global range
+      operationId: allocateNextNumberFromRange_1
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GlobalRangeAllocateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlobalLumenRangeResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /devices:
+    post:
+      tags:
+      - Lumen Device Template API Controller
+      description: Create Device from Templates
+      operationId: createDeviceFromTemplate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeviceFromTemplateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceFromTemplateResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /dataLoaderEvent/{resourceType}/{id}:
+    post:
+      tags:
+      - Lumen Data Loader Event Controller
+      description: Trigger Data Loader for a resource
+      operationId: triggerDataLoadEvent
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: expandScope
+        in: query
+        description: Whether related scope should be expanded
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /v1/service/{id}:
+    get:
+      tags:
+      - TMF638 Service Controller
+      summary: Retrieves the service with an ID
+      operationId: getService
+      parameters:
+      - name: id
+        in: path
+        description: Service ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultServiceResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - TMF638 Service Controller
+      summary: Deletes the service with an ID
+      operationId: deleteService
+      parameters:
+      - name: id
+        in: path
+        description: Service ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    patch:
+      tags:
+      - TMF638 Service Controller
+      summary: Patches the service data with an ID
+      operationId: updateService
+      parameters:
+      - name: id
+        in: path
+        description: Service ID
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DefaultServiceUpdateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultServiceResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/{resourceType}/{id}:
+    get:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Retrieve resource with a type and an ID
+      operationId: getResource
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - TMF639 Resource Typed Controller
+      operationId: deleteResource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    patch:
+      tags:
+      - TMF639 Resource Typed Controller
+      operationId: updateResource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DefaultResourceUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/resource/{id}:
+    get:
+      tags:
+      - TMF639 Resource Untyped Controller
+      description: Retrieve a resource of any type with an ID
+      operationId: getResource_1
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    delete:
+      tags:
+      - TMF639 Resource Untyped Controller
+      operationId: deleteResource_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+    patch:
+      tags:
+      - TMF639 Resource Untyped Controller
+      operationId: updateResource_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DefaultResourceUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeId}:
+    patch:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Create a number range
+      operationId: editRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LumenRange"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /versionInfo:
+    get:
+      tags:
+      - Lumen Version Info API Controller
+      description: Get DonRiver version and revision from classpath manifests
+      operationId: getVersionInfo
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionInfo"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /v1/service/async/{id}:
+    get:
+      tags:
+      - TMF638 Service Controller
+      summary: Retrieves the service with an ID asynchronously
+      operationId: getServiceAsync
+      parameters:
+      - name: id
+        in: path
+        description: Service ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "202":
+          description: Accepted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/{resourceType}/async:
+    get:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Retrieve a list of resources for a specific type asynchronously
+      operationId: getResourcesAsync
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: query
+        description: Name
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/{resourceType}/async/{id}:
+    get:
+      tags:
+      - TMF639 Resource Typed Controller
+      description: Retrieve resource with a type and an ID asynchronously
+      operationId: getResourceAsync
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/resource/async:
+    get:
+      tags:
+      - TMF639 Resource Untyped Controller
+      description: Retrieve list of all resources asynchronously
+      operationId: getResourcesAsync_1
+      parameters:
+      - name: name
+        in: query
+        description: Name
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /resourceInventoryManagement/resource/async/{id}:
+    get:
+      tags:
+      - TMF639 Resource Untyped Controller
+      description: Retrieve a resource of any type with an ID asynchronously
+      operationId: getResourceAsync_1
+      parameters:
+      - name: id
+        in: path
+        description: Resource ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeId}/number/{value}:
+    get:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Get list of objects related to the number
+      operationId: getRelatedObjectsByValue
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      - name: value
+        in: path
+        description: Value
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RelatedObject"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/{rangeId}/associations:
+    get:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Get list of associated objects
+      operationId: getAssociatedObjects
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      - name: childInventoryObjectType
+        in: query
+        description: filtering by Child Object type name
+        required: false
+        schema:
+          type: string
+      - name: parentRangeType
+        in: query
+        description: filtering by parent range type
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssociatedObjectInfo"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/ranges:
+    get:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Get All Ranges of resource
+      operationId: getAllNumberRanges
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: fullName
+        in: query
+        description: Full Name
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LumenRange"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/ranges/{rangeId}:
+    get:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Get Range of resource
+      operationId: getNumberRange
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LumenRange"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/ranges/{rangeId}/allocated:
+    get:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Get Allocated values of range
+      operationId: getAllocatedNumbers
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      - name: rangeId
+        in: path
+        description: Range Id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LumenRangeIndex"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/{resourceId}/assignedNumbers:
+    get:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Get list of numbers assigned to the object
+      operationId: getAssignedNumbers
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: resourceId
+        in: path
+        description: Resource Id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssignedNumberInfo"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumenNumbers/{resourceType}/global:
+    get:
+      tags:
+      - Lumen Custom Numbers API Controller
+      description: Get global ranges
+      operationId: getGlobalRanges
+      parameters:
+      - name: resourceType
+        in: path
+        description: Resource Type
+        required: true
+        schema:
+          type: string
+      - name: rangeName
+        in: query
+        description: filtering by name
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GlobalRange"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /lumen/ingestionframework/refresh-datasource-listeners:
+    get:
+      tags:
+      - ingestionframework
+      operationId: refreshDataSourceListeners
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /logicalRoute/{resourceId}:
+    get:
+      tags:
+      - Lumen Custom Logical Route API Controller
+      summary: Generate logical route
+      description: Generates the logical route for the given resource ID
+      operationId: generateLogicalRoute
+      parameters:
+      - name: resourceId
+        in: path
+        description: Unique identifier of the resource
+        required: true
+        schema:
+          type: string
+        example: 8509d7fe-d0a8-49e7-b062-4000293eca7b
+      responses:
+        "200":
+          description: Logical route generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogicalRouteResponse"
+        "404":
+          description: Not Found
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+  /healthcheck/status:
+    get:
+      tags:
+      - TMF Health Check Controller
+      operationId: getStatus
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: integer
+                format: int32
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /generateName/Service:
+    get:
+      tags:
+      - Lumen Name Generation API Controller
+      description: Get name generation for Service
+      operationId: getGenerateNameService
+      parameters:
+      - name: serviceGenerateNameRequest
+        in: query
+        description: Service name generation details
+        required: true
+        schema:
+          $ref: "#/components/schemas/ServiceGenerateNameRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NameResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /generateName/PhysicalConnection:
+    get:
+      tags:
+      - Lumen Name Generation API Controller
+      description: Get name generation for PhysicalConnection
+      operationId: getGenerateNamePhysicalConnection
+      parameters:
+      - name: physicalConnectionGenerateNameRequest
+        in: query
+        description: PhysicalConnection name generation details
+        required: true
+        schema:
+          $ref: "#/components/schemas/PhysicalConnectionGenerateNameRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NameResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /generateName/LogicalConnection:
+    get:
+      tags:
+      - Lumen Name Generation API Controller
+      description: Get name generation for LogicalConnection
+      operationId: getGenerateNameLogicalConnection
+      parameters:
+      - name: logicalConnectionGenerateNameRequest
+        in: query
+        description: LogicalConnection name generation details
+        required: true
+        schema:
+          $ref: "#/components/schemas/LogicalConnectionGenerateNameRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NameResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /generateName/Device:
+    get:
+      tags:
+      - Lumen Name Generation API Controller
+      description: Get name generation for Device
+      operationId: getGenerateNameDevice
+      parameters:
+      - name: deviceGenerateNameRequest
+        in: query
+        description: Device name generation details
+        required: true
+        schema:
+          $ref: "#/components/schemas/DeviceGenerateNameRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceNameResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /devices/templates:
+    get:
+      tags:
+      - Lumen Device Template API Controller
+      description: Get All Device Templates
+      operationId: getAllDeviceTemplates
+      parameters:
+      - name: templateId
+        in: query
+        description: filtering by id
+        required: false
+        schema:
+          type: string
+      - name: templateName
+        in: query
+        description: filtering by name
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeviceTemplate"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /catalogManagement/ResourceFunctionSpec:
+    get:
+      tags:
+      - TMF634 Resource Catalog Controller
+      description: lists all resource specifications based on query parameters
+      operationId: getAllResourcesSpec
+      parameters:
+      - name: '@baseType'
+        in: query
+        description: "Base type of the Resource specification.  Eg: PhysicalResourceSpec,VirtualResourceSpec,LogicalResourceSpec"
+      - name: category
+        in: query
+        description: "Category to which Resource specification belongs. Eg: Rack,Device,Card"
+      - name: lifecycleStatus
+        in: query
+        description: Used to indicate the current lifecycle status of the resource
+          specification
+      - name: offset
+        in: query
+        description: Offset
+      - name: limit
+        in: query
+        description: Limit
+      responses:
+        "206":
+          description: Partial Content
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Specification"
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Specification"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /catalogManagement/ResourceFunctionSpec/{id}:
+    get:
+      tags:
+      - TMF634 Resource Catalog Controller
+      description: Retrieve a resource specification from the catalog by an ID
+      operationId: getResourceSpecById
+      parameters:
+      - name: id
+        in: path
+        description: Specification ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /bpmn/workflow/definitions/{processDefinitionId}/xml:
+    get:
+      tags:
+      - BPMN
+      - Workflow
+      - Bpmn workflow definition operations
+      description: Get workflow definition diagram xml
+      operationId: getDefinitionDiagramXml
+      parameters:
+      - name: processDefinitionId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json: {}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /bpmn/workflow/definitions/statistics:
+    get:
+      tags:
+      - BPMN
+      - Workflow
+      - Bpmn workflow definition operations
+      description: Get workflow definition statistics
+      operationId: getDefinitionsStatistics
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json: {}
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+  /bpmn/running:
+    get:
+      tags:
+      - bpmnApplication
+      operationId: isRunning
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: boolean
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+components:
+  schemas:
+    WorkflowDefinitionSuspendActivateRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+        includeProcessInstances:
+          type: boolean
+    Characteristic:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: object
+        valueType:
+          type: string
+        '@schemaLocation':
+          type: string
+    Note:
+      type: object
+      properties:
+        author:
+          type: string
+        date:
+          type: string
+          format: date-time
+        text:
+          type: string
+    Place:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+    RelatedParty:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+        '@type':
+          type: string
+        '@referredType':
+          type: string
+    RelatedService:
+      type: object
+      properties:
+        href:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        state:
+          type: string
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/Characteristic"
+        '@type':
+          type: string
+    Service Creation Request:
+      required:
+      - '@type'
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+          - initial
+          - feasibilityChecked
+          - designed
+          - reserving
+          - reserved
+          - reservingFailed
+          - inactive
+          - activating
+          - active
+          - failed
+          - terminated
+          - unknown
+          - Cancelled
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/Characteristic"
+        note:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/Note"
+        name:
+          type: string
+          writeOnly: true
+        category:
+          type: string
+          writeOnly: true
+        serviceOrder:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/ServiceOrder"
+        relatedParty:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/RelatedParty"
+        isServiceEnabled:
+          type: boolean
+          writeOnly: true
+        serviceType:
+          type: string
+          writeOnly: true
+        serviceRelationship:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/ServiceRelationship"
+        serviceSpecification:
+          $ref: "#/components/schemas/ServiceSpecification"
+        isStateful:
+          type: boolean
+          writeOnly: true
+        hasStarted:
+          type: boolean
+          writeOnly: true
+        place:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/Place"
+        '@baseType':
+          type: string
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+      description: Data required for Service creation
+    ServiceOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        serviceOrderItemId:
+          type: string
+        href:
+          type: string
+        '@referredType':
+          type: string
+    ServiceRelationship:
+      type: object
+      properties:
+        relationshipType:
+          type: string
+        service:
+          $ref: "#/components/schemas/RelatedService"
+    ServiceSpecification:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+        version:
+          type: string
+        '@type':
+          type: string
+    DefaultServiceResponse:
+      type: object
+      properties:
+        service:
+          $ref: "#/components/schemas/Service"
+        urlUtils:
+          $ref: "#/components/schemas/URLUtils"
+        note:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        name:
+          type: string
+        id:
+          type: string
+        state:
+          type: string
+          enum:
+          - initial
+          - feasibilityChecked
+          - designed
+          - reserving
+          - reserved
+          - reservingFailed
+          - inactive
+          - activating
+          - active
+          - failed
+          - terminated
+          - unknown
+          - Cancelled
+        category:
+          type: string
+        serviceOrder:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceOrder"
+        relatedParty:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedParty"
+        supportingService:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportingItem"
+        supportingResource:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportingResource"
+        operatingState:
+          type: string
+        href:
+          type: string
+        serviceType:
+          type: string
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/Characteristic"
+        serviceRelationship:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceRelationship"
+        isStateful:
+          type: boolean
+        isServiceEnabled:
+          type: boolean
+        hasStarted:
+          type: boolean
+        startDate:
+          type: string
+          format: date-time
+        startMode:
+          type: string
+        endDate:
+          type: string
+          format: date-time
+        serviceSpecification:
+          $ref: "#/components/schemas/ServiceSpecification"
+        place:
+          type: array
+          items:
+            $ref: "#/components/schemas/Place"
+        serviceDate:
+          type: string
+          format: date-time
+        '@baseType':
+          type: string
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        schemaLocation:
+          type: string
+        baseType:
+          type: string
+        externalId:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        description:
+          type: string
+        category:
+          type: string
+        characteristics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Characteristic"
+        relatedParties:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedParty"
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: object
+        note:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        state:
+          type: string
+          enum:
+          - initial
+          - feasibilityChecked
+          - designed
+          - reserving
+          - reserved
+          - reservingFailed
+          - inactive
+          - activating
+          - active
+          - failed
+          - terminated
+          - unknown
+          - Cancelled
+        serviceDate:
+          type: string
+          format: date-time
+        isServiceEnabled:
+          type: boolean
+        hasStarted:
+          type: boolean
+        isStateful:
+          type: boolean
+        startMode:
+          type: string
+        operatingState:
+          type: string
+        processState:
+          type: string
+        processDescription:
+          type: string
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceOrder"
+        serviceRelationship:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceRelationship"
+        supportingResources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportingResource"
+        supportingServices:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportingItem"
+        places:
+          type: array
+          items:
+            $ref: "#/components/schemas/Place"
+        serviceSpecification:
+          $ref: "#/components/schemas/ServiceSpecification"
+        serviceType:
+          type: string
+        deleted:
+          type: boolean
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/Characteristic"
+    SupportingItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cateogry:
+          type: string
+        referredType:
+          type: string
+        href:
+          type: string
+        characteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/Characteristic"
+    SupportingResource:
+      type: object
+      properties:
+        id:
+          type: string
+        externalId:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+        referredType:
+          type: string
+        characteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/Characteristic"
+    URLUtils:
+      type: object
+    KafkaStatusResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+    DefaultResourceCreateRequest:
+      required:
+      - '@type'
+      - lifecycleState
+      type: object
+      properties:
+        resource:
+          $ref: "#/components/schemas/Resource"
+        note:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        name:
+          type: string
+        id:
+          type: string
+        description:
+          type: string
+        href:
+          type: string
+          writeOnly: true
+        category:
+          type: string
+        relatedParty:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedParty"
+        publicIdentifier:
+          type: string
+        inventoryObject:
+          $ref: "#/components/schemas/Resource"
+        resourceRelationship:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceRelationship"
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        resourceSpecification:
+          $ref: "#/components/schemas/Specification"
+        lifecycleState:
+          type: string
+        place:
+          $ref: "#/components/schemas/Place"
+        '@type':
+          type: string
+        '@baseType':
+          type: string
+        '@schemaLocation':
+          type: string
+        resourceCharacteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceCharacteristic"
+      description: Data for Resource creation
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        schemaLocation:
+          type: string
+        baseType:
+          type: string
+        externalId:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        description:
+          type: string
+        category:
+          type: string
+        characteristics:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceCharacteristic"
+        relatedParties:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedParty"
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: object
+        note:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        publicIdentifier:
+          type: string
+        lifecycleState:
+          type: string
+        resourceSpecification:
+          $ref: "#/components/schemas/Specification"
+        resourceRelationship:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceRelationship"
+        place:
+          $ref: "#/components/schemas/Place"
+        maxResRelCntIn:
+          type: integer
+          format: int32
+        maxResRelCntOut:
+          type: integer
+          format: int32
+        totalResRelCntIn:
+          type: integer
+          format: int32
+        totalResRelCntOut:
+          type: integer
+          format: int32
+        incompleteResRel:
+          type: boolean
+        perspective:
+          type: integer
+          format: int64
+        deleted:
+          type: boolean
+    ResourceCharacteristic:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: object
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+    ResourceRef:
+      type: object
+      properties:
+        id:
+          type: string
+        href:
+          type: string
+    ResourceRelationship:
+      type: object
+      properties:
+        type:
+          type: string
+        resource:
+          $ref: "#/components/schemas/ResourceRef"
+        resourceRelationshipCharacteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceCharacteristic"
+    Specification:
+      type: object
+      properties:
+        id:
+          type: string
+        href:
+          type: string
+        name:
+          type: string
+        '@type':
+          type: string
+        '@baseType':
+          type: string
+        category:
+          type: string
+        '@schemaLocation':
+          type: string
+        isBundle:
+          type: boolean
+        lifecycleStatus:
+          type: string
+        lastUpdate:
+          type: string
+        validFor:
+          type: string
+        role:
+          type: string
+    CreateRangeRequest:
+      type: object
+      properties:
+        objectClass:
+          type: string
+        tmfResourceId:
+          type: string
+        rangeType:
+          type: string
+        startValue:
+          type: string
+        endValue:
+          type: string
+        orderId:
+          type: string
+        fullName:
+          type: string
+        trunkGroupType:
+          type: string
+        parentDomainId:
+          type: string
+      description: Create Range Request data
+    BaseIdentifiableObjectWithTimestamp:
+      type: object
+      properties:
+        Object Timestamp:
+          type: string
+          example: "1618903341358"
+        uniqueStringId:
+          type: string
+        objectId:
+          type: number
+        objectClassId:
+          type: number
+    ConsumingObject:
+      type: object
+      properties:
+        consumingObjectClass:
+          type: string
+        consumingObjectTmfId:
+          type: string
+    LumenRange:
+      type: object
+      properties:
+        value:
+          type: string
+        parameters:
+          type: object
+          additionalProperties:
+            type: object
+        consumingObjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsumingObject"
+        selfAllocated:
+          type: boolean
+        status:
+          type: string
+        rangeIndices:
+          type: array
+          items:
+            $ref: "#/components/schemas/RangeIndex"
+        trunkGroupType:
+          type: object
+        rangeTypeId:
+          type: string
+        rangeId:
+          type: string
+        availableRangeIndices:
+          type: array
+          items:
+            $ref: "#/components/schemas/RangeIndex"
+        rangeName:
+          type: string
+        rangeOwner:
+          $ref: "#/components/schemas/UIInventoryObject"
+        rangeAllocatedFrom:
+          type: string
+        rangeAllocatedFromObject:
+          $ref: "#/components/schemas/UIInventoryObject"
+    RangeIndex:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+    UIInventoryObject:
+      type: object
+      properties:
+        Name:
+          type: string
+          example: Inventory name
+        Object detail with objectId and classId:
+          $ref: "#/components/schemas/BaseIdentifiableObjectWithTimestamp"
+        Flag for Today:
+          type: boolean
+          example: false
+        Status:
+          type: string
+          example: Planned
+        Tool Tip:
+          type: string
+          example: "{}"
+        Truthfulness:
+          type: number
+          format: double
+          example: 1.0
+        Icon name:
+          type: string
+          example: "{}"
+        Precomputed type name for Inventory object:
+          type: string
+          example: Building
+    ReserveAvailableNumberRangeRequest:
+      type: object
+      properties:
+        orderId:
+          type: string
+      description: value
+    RangeValue:
+      type: object
+      properties:
+        rangeId:
+          type: string
+        value:
+          type: string
+    AllocateValueRangeRequest:
+      type: object
+      properties:
+        consumingObjectClass:
+          type: string
+        consumingTmfId:
+          type: string
+        orderId:
+          type: string
+        networkValidated:
+          type: boolean
+        relatedObjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedObject"
+        relationshipType:
+          type: string
+        fullName:
+          type: string
+      description: destination object
+    RelatedObject:
+      type: object
+      properties:
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        consumingObjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsumingObject"
+    ReserveSpecificValueRangeRequest:
+      type: object
+      properties:
+        value:
+          type: string
+        orderId:
+          type: string
+      description: value
+    ReservationResponse:
+      type: object
+      properties:
+        rangeId:
+          type: string
+        value:
+          type: string
+    LumenMoveRelationshipRequestVO:
+      type: object
+      properties:
+        toObjectClass:
+          type: string
+        toObjectTMFId:
+          type: string
+        orderId:
+          type: string
+      description: Move Range Request data
+    AllocateSpecificValueRangeRequest:
+      type: object
+      properties:
+        consumingObjectClass:
+          type: string
+        consumingTmfId:
+          type: string
+        orderId:
+          type: string
+        networkValidated:
+          type: boolean
+        relatedObjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedObject"
+        relationshipType:
+          type: string
+        fullName:
+          type: string
+        value:
+          type: string
+      description: destination object
+    AllocateSubrangeRangeRequest:
+      type: object
+      properties:
+        consumingObjectClass:
+          type: string
+        consumingTmfId:
+          type: string
+        orderId:
+          type: string
+        networkValidated:
+          type: boolean
+        relatedObjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedObject"
+        relationshipType:
+          type: string
+        fullName:
+          type: string
+        valueFrom:
+          type: string
+        valueTo:
+          type: string
+      description: destination object
+    LumenRangeReservationResponse:
+      type: object
+      properties:
+        range:
+          $ref: "#/components/schemas/LumenRange"
+        reservedValue:
+          $ref: "#/components/schemas/ReservationRangeResponse"
+    ReservationRangeResponse:
+      type: object
+      properties:
+        rangeId:
+          type: string
+        valueFrom:
+          type: string
+        valueTo:
+          type: string
+    GlobalRangeReserveRequest:
+      type: object
+      properties:
+        value:
+          type: string
+        orderId:
+          type: string
+        rangeName:
+          type: string
+      description: destination object
+    GlobalRangeDeallocateRequest:
+      type: object
+      properties:
+        rangeName:
+          type: string
+        consumingObjectClass:
+          type: string
+        consumingTmfId:
+          type: string
+        orderId:
+          type: string
+        rangeId:
+          type: string
+        value:
+          type: string
+        relationshipType:
+          type: string
+      description: destination object
+    GlobalLumenRangeResponse:
+      type: object
+      properties:
+        range:
+          $ref: "#/components/schemas/LumenRange"
+        allocatedValue:
+          type: string
+        relationshipType:
+          type: string
+    GlobalRangeReserveNextNumberRequest:
+      type: object
+      properties:
+        orderId:
+          type: string
+        rangeName:
+          type: string
+      description: Global range reserve details
+    GlobalRangeAllocateRequest:
+      type: object
+      properties:
+        rangeName:
+          type: string
+        consumingObjectClass:
+          type: string
+        consumingTmfId:
+          type: string
+        orderId:
+          type: string
+        networkValidated:
+          type: boolean
+        requestedValue:
+          type: string
+        relationshipType:
+          type: string
+        fullName:
+          type: string
+      description: destination object
+    CreateDeviceFromTemplateRequest:
+      type: object
+      properties:
+        deviceType:
+          type: string
+        templateId:
+          type: string
+        deviceName:
+          type: string
+        building:
+          type: string
+        orderId:
+          type: string
+      description: filtering by id
+    DeviceFromTemplateResponse:
+      type: object
+      properties:
+        deviceObject:
+          $ref: "#/components/schemas/UIInventoryObject"
+        tmfId:
+          type: string
+    DefaultServiceUpdateRequest:
+      type: object
+      properties:
+        serviceCharacteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/Characteristic"
+        note:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/Note"
+        name:
+          type: string
+          writeOnly: true
+        state:
+          type: string
+          enum:
+          - initial
+          - feasibilityChecked
+          - designed
+          - reserving
+          - reserved
+          - reservingFailed
+          - inactive
+          - activating
+          - active
+          - failed
+          - terminated
+          - unknown
+          - Cancelled
+        category:
+          type: string
+          writeOnly: true
+        serviceOrder:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/ServiceOrder"
+        relatedParty:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/RelatedParty"
+        isServiceEnabled:
+          type: boolean
+          writeOnly: true
+        serviceType:
+          type: string
+          writeOnly: true
+        serviceRelationship:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/ServiceRelationship"
+        serviceSpecification:
+          $ref: "#/components/schemas/ServiceSpecification"
+        isStateful:
+          type: boolean
+          writeOnly: true
+        hasStarted:
+          type: boolean
+          writeOnly: true
+        place:
+          type: array
+          writeOnly: true
+          items:
+            $ref: "#/components/schemas/Place"
+        '@baseType':
+          type: string
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+      description: Service data with fields that require patching
+    DefaultResourceUpdateRequest:
+      required:
+      - lifecycleState
+      type: object
+      properties:
+        resource:
+          $ref: "#/components/schemas/Resource"
+        note:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        name:
+          type: string
+        id:
+          type: string
+        description:
+          type: string
+        href:
+          type: string
+          writeOnly: true
+        category:
+          type: string
+        relatedParty:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedParty"
+        publicIdentifier:
+          type: string
+        inventoryObject:
+          $ref: "#/components/schemas/Resource"
+        resourceRelationship:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceRelationship"
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        resourceSpecification:
+          $ref: "#/components/schemas/Specification"
+        lifecycleState:
+          type: string
+        place:
+          $ref: "#/components/schemas/Place"
+        '@baseType':
+          type: string
+        '@type':
+          type: string
+        '@schemaLocation':
+          type: string
+        resourceCharacteristic:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceCharacteristic"
+    VersionInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        projectVersion:
+          type: string
+        revision:
+          type: string
+    AssignedObject:
+      type: object
+      properties:
+        objectClass:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+    AssociatedObjectInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        relationshipType:
+          type: string
+        rangeType:
+          type: string
+        perspective:
+          type: array
+          items:
+            type: string
+        startValue:
+          type: array
+          items:
+            type: string
+        endValue:
+          type: array
+          items:
+            type: string
+        trunkGroupType:
+          type: string
+        assignedObject:
+          $ref: "#/components/schemas/AssignedObject"
+    LumenRangeIndex:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+        relationshipType:
+          type: string
+    AssignedNumberInfo:
+      type: object
+      properties:
+        drawsRelType:
+          type: string
+        name:
+          type: string
+        startValue:
+          type: array
+          items:
+            type: string
+        endValue:
+          type: array
+          items:
+            type: string
+        parentRangeId:
+          type: string
+        parentRangeRelType:
+          type: string
+        rangeDetail:
+          $ref: "#/components/schemas/RangeDetail"
+        relationshipType:
+          type: string
+        trunkGroupType:
+          type: string
+        subranges:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubrangeRelationshipType"
+    RangeDetail:
+      type: object
+      properties:
+        rangeId:
+          type: string
+        rangeType:
+          type: string
+    SubrangeRelationshipType:
+      type: object
+      properties:
+        startValue:
+          type: array
+          items:
+            type: string
+        endValue:
+          type: array
+          items:
+            type: string
+        relationshipType:
+          type: string
+    GlobalRange:
+      type: object
+      properties:
+        rangeType:
+          type: string
+        globalRangeId:
+          type: string
+        rangeName:
+          type: string
+        tmfGlobalRangeObjId:
+          type: string
+    LogicalConnection:
+      type: object
+      properties:
+        connectionType:
+          type: string
+          description: PRO connection or hop type. Observed values include LX and
+            LC. This is intentionally modelled as an open string rather than a strict
+            enum because additional values may exist.
+          example: LX
+        portA:
+          $ref: "#/components/schemas/LogicalPort"
+        portZ:
+          $ref: "#/components/schemas/LogicalPort"
+        warning:
+          type: string
+          description: Warning associated with the hop. Empty in many happy-path examples.
+        error:
+          type: string
+          description: Error or marker text associated with this connection entry.
+            PROTECT SEGMENTS markers are preserved in the connection list to align
+            with PRO behaviour.
+          example: "2UPSR/SNCP PROTECT SEGMENTS:"
+      description: "A hop between two logical or physical port representations. This\
+        \ is the JSON equivalent of a PRO connections element. Some connection entries\
+        \ may be marker/error entries and therefore may not contain connectionType,\
+        \ portA, or portZ."
+    LogicalPort:
+      type: object
+      properties:
+        absoluteChannelBandwidth:
+          type: string
+          description: Absolute channel bandwidth where supplied by PRO.
+          example: 100GIG
+        absoluteChannelName:
+          type: string
+          description: Absolute channel name where supplied by PRO.
+          example: WAVELENGTH-9170
+        absoluteChannelNumber:
+          type: integer
+          description: Absolute channel number. Observed as 0 in many samples.
+          format: int32
+          example: 0
+        absolutePath:
+          type: string
+          description: Full path context for the logical AID.
+          example: 57302G/OTU4/EWNCWADT/BRWSWAEI
+        channelBandwidth:
+          type: string
+          description: Bandwidth of the represented channel.
+          example: 100GIG
+        channelName:
+          type: string
+          description: Channel label or wavelength label.
+          example: WAVELENGTH-9170
+        channelNumber:
+          type: integer
+          description: Numeric channel identifier.
+          format: int32
+          example: 9170
+        equipmentFqn:
+          type: string
+          description: Fully qualified equipment name.
+          example: BRWSWAEI.ALU.1830PSS.00001
+        globalId:
+          type: integer
+          description: PRO global equipment identifier where supplied.
+          format: int64
+          example: 51083
+        legacyContainerName:
+          type: string
+          description: Legacy container name where supplied by PRO.
+          example: AID-LEGACY-CONTAINER
+        logicalAid:
+          type: string
+          description: Generated logical AID. May be empty for marker rows or unresolved
+            logicals.
+          example: S13X100-1-16-L1
+        managementNeName:
+          type: string
+          description: Management network element name where supplied by PRO.
+          example: BRWSWAEIAR51083
+        neCategory:
+          type: string
+          description: Network element category.
+          example: TRANSPORT
+        pathId:
+          type: integer
+          description: PRO path identifier. Observed as 0 in sample XML.
+          format: int64
+          example: 0
+        physicalAid:
+          type: string
+          description: Physical AID of the underlying port. May be empty for marker
+            rows.
+          example: S13X100-1-16-L1-OUT
+        portBandwidth:
+          type: string
+          description: Bandwidth or signal type of the port. Modelled as an open string.
+          example: OTU4
+        relativePath:
+          type: string
+          description: Relative path context for the logical port.
+          example: 57302G/OTU4/EWNCWADT/BRWSWAEI
+        relativePathBandwidth:
+          type: string
+          description: Bandwidth of the relative path.
+          example: 100GIG
+        siteName:
+          type: string
+          description: Site or location name.
+          example: BRWSWAEI-BREWSTER
+        tid:
+          type: string
+          description: Network TID.
+          example: BRWSWAEIAR51083
+        warning:
+          type: string
+          description: Warning associated with this logical port or logical AID generation.
+            PRO-style marker text may also be represented here.
+        error:
+          type: string
+          description: Error or marker text associated with this route row. PROTECT
+            SEGMENTS markers are preserved as rows in ports to align with PRO.
+          example: "2UPSR/SNCP PROTECT SEGMENTS:"
+      description: "Reusable port schema used in connection endpoints and in the ordered\
+        \ ports list. This represents the JSON equivalent of PRO portA, portZ, and\
+        \ ports elements."
+    LogicalRouteResponse:
+      type: object
+      properties:
+        segments:
+          type: array
+          description: Ordered logical route segments. Each segment corresponds to
+            a logical route grouping returned for the connection. This maps to repeated
+            logicalLeg elements in the equivalent PRO XML response. May be empty.
+          items:
+            $ref: "#/components/schemas/LogicalRouteSegment"
+      description: JSON response containing the logical route as BPI route segments.
+        The segments array may be empty to represent a successful request where no
+        route segments are returned.
+    LogicalRouteSegment:
+      type: object
+      properties:
+        segmentName:
+          type: string
+          description: Logical route segment name.
+          example: LOGICAL/1
+        segmentRole:
+          $ref: "#/components/schemas/SegmentRole"
+        warningMessage:
+          type: string
+          description: Segment-level warning message aligned to the route segment
+            output. This corresponds to the PRO warningMessage element and is kept
+            separate from port-level and connection-level warning values.
+          example: CHILD_PATH_COMMIT_DATE_NULL_WARNING
+        connections:
+          type: array
+          description: "Repeating connection or hop objects, equivalent to repeated\
+            \ PRO connections elements. Some entries may be marker/error records rather\
+            \ than normal A/Z connection hops."
+          items:
+            $ref: "#/components/schemas/LogicalConnection"
+        ports:
+          type: array
+          description: "Ordered list of displayed logical route ports for this segment,\
+            \ equivalent to repeated PRO ports elements. Marker rows such as PROTECT\
+            \ SEGMENTS are preserved in this list to align with PRO behaviour."
+          items:
+            $ref: "#/components/schemas/LogicalPort"
+      description: "A BPI logical route segment. Each segment is an ordered grouping\
+        \ of route hops and displayed logical route ports associated with the requested\
+        \ connection. Examples include LOGICAL/1, LOGICAL/9, LOGICAL/GIG-E-01, and\
+        \ LOGICAL/STS1-1. The same segmentName may appear more than once, so it should\
+        \ not be treated as a globally unique identifier without additional context.\
+        \ Consumers must preserve the returned order."
+    SegmentRole:
+      type: string
+      description: Classification of the logical route segment. Consumed represents
+        the route or underlying logicals consumed by the requested connection. Provided
+        represents logical services or channels provided by the requested connection.
+      enum:
+      - consumed
+      - provided
+    ServiceGenerateNameRequest:
+      type: object
+      properties:
+        serviceCodeModifier:
+          type: string
+        enniPortSpeed:
+          type: string
+        serviceCapacity:
+          type: string
+        overlyingServiceName:
+          type: string
+        underlyingServiceName:
+          type: string
+        firstDeviceName:
+          type: string
+        secondDeviceName:
+          type: string
+        site:
+          type: string
+        archetypeName:
+          type: string
+    NameResponse:
+      type: object
+      properties:
+        name:
+          type: string
+    PhysicalConnectionGenerateNameRequest:
+      type: object
+      properties:
+        connectionSuffix:
+          type: string
+        archetypeName:
+          type: string
+        locationA:
+          type: string
+        locationZ:
+          type: string
+    LogicalConnectionGenerateNameRequest:
+      type: object
+      properties:
+        connectionSuffix:
+          type: string
+        subType:
+          type: string
+        archetypeName:
+          type: string
+        locationA:
+          type: string
+        locationZ:
+          type: string
+        channelizationBW:
+          type: string
+        ethernetBW:
+          type: string
+    DeviceGenerateNameRequest:
+      type: object
+      properties:
+        roleCode:
+          type: string
+        typeCode:
+          type: string
+        sourceSystemEquipmentCode:
+          type: string
+        advaRing:
+          type: string
+        advaRingOverlay:
+          type: string
+        archetypeName:
+          type: string
+        locationId:
+          type: string
+        ringNo:
+          type: string
+        ringOverlayNo:
+          type: string
+        networkElementNo:
+          type: integer
+          format: int64
+        instance:
+          type: string
+    DeviceNameResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        networkname:
+          type: string
+        inventoryname:
+          type: string
+    DeviceTemplate:
+      type: object
+      properties:
+        templateId:
+          type: string
+        templateName:
+          type: string
+        deviceType:
+          type: string
+        deviceTypeName:
+          type: string
+    DeleteRangeRequest:
+      type: object
+      properties:
+        rangeId:
+          type: string
+        orderId:
+          type: string
+      description: Delete Range Request data
+  securitySchemes:
+    bearer-jwt:
+      type: http
+      name: Authorization
+      in: header
+      scheme: bearer
+      bearerFormat: JWT
