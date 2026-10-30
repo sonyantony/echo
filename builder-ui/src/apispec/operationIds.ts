@@ -368,20 +368,21 @@ const JOIN_BEAN_YAML = YAML.stringify(
 );
 
 /**
- * What the steps the user still had to fill in read on the canvas in the `attention` era. They now
- * get a red circle saying what to do instead (scaffoldAttention), and the label is taken off routes
- * made then (withoutAttentionLabels).
+ * What the steps the user still had to fill in read on the canvas in the `attention` and
+ * `request-mapper` eras. They now get a red circle saying what to do instead (scaffoldAttention), and
+ * the label is taken off routes made then (withoutAttentionLabels).
  */
 export const ATTENTION = 'Attention';
 
 /**
  * How ECHO made its routes over time: `content-type` before 2026-10-29 (a Set Header Content-Type
  * only, without the 200 response code), `reply-headers` until the DataMapper and the Attention
- * descriptions came, `attention` until 2026-10-30, `marked` now (no Attention descriptions: red circles).
+ * descriptions came, `attention` until the DataMapper before the call came, `request-mapper` until
+ * 2026-10-30, `marked` now (no Attention descriptions: red circles).
  */
-type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'marked';
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked';
 
-const SCAFFOLD_ERAS: ScaffoldEra[] = ['marked', 'attention', 'reply-headers', 'content-type'];
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
 
 /** Ids of the scaffold's steps the user still has to work on, as `scaffold` makes them. */
 export const ATTENTION_STEP_IDS = /^(parameters-.+-\d+|call-.+-\d+|label-.+-\d+|kaoto-datamapper-.+)$/;
@@ -407,6 +408,18 @@ export function withoutAttentionLabels(yaml: string): string {
   return changed ? doc.toString({ lineWidth: 0 }) : yaml;
 }
 
+/** A Kaoto DataMapper as Kaoto adds one (its id starts kaoto-datamapper): nothing mapped yet. */
+const dataMapper = (id: string, labelled: boolean) => ({
+  step: {
+    id: `kaoto-datamapper-${id}`,
+    ...(labelled ? { description: ATTENTION } : {}),
+    steps: [
+      { setBody: { id: `kaoto-datamapper-set-body-${id}`, expression: { simple: { expression: '${null}' } } } },
+      { to: { id: `kaoto-datamapper-xslt-${id}`, uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
+    ],
+  },
+});
+
 /** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
 function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'marked') {
   const callParameters: Record<string, string> = {};
@@ -414,8 +427,11 @@ function scaffold(operationId: string, label: string, variables: string[], call:
   if (call.host) callParameters.host = call.host;
   // Camel refuses a Set Headers step without a header, so each starts with one.
   const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || 'api';
-  const attention = era === 'attention';
+  const attention = era === 'attention' || era === 'request-mapper';
   const marked = attention ? { description: ATTENTION } : {};
+  // Since the request's DataMapper; since the reply's.
+  const requestMapper = era === 'request-mapper' || era === 'marked';
+  const replyMapper = attention || era === 'marked';
   return {
     route: {
       id: `route-${operationId}`,
@@ -454,6 +470,8 @@ function scaffold(operationId: string, label: string, variables: string[], call:
                           ],
                         },
                       },
+                      // The user maps the request to what the called operation takes.
+                      ...(requestMapper ? [dataMapper(`request-${operationId}-1`, attention)] : []),
                       { to: { id: `call-${operationId}-1`, ...marked, uri: 'rest-openapi', parameters: callParameters } },
                       { convertBodyTo: { id: `to-string-${operationId}-1`, type: 'String' } },
                       { setBody: { id: `label-${operationId}-1`, ...marked, simple: '"result": ${body}' } },
@@ -465,20 +483,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
           },
           { setBody: { id: `reply-${operationId}`, simple: '{${body}}' } },
           // A Kaoto DataMapper as Kaoto adds one: the user maps the reply when they open it.
-          ...(era === 'attention' || era === 'marked'
-            ? [
-                {
-                  step: {
-                    id: `kaoto-datamapper-${operationId}`,
-                    ...marked,
-                    steps: [
-                      { setBody: { id: `kaoto-datamapper-set-body-${operationId}`, expression: { simple: { expression: '${null}' } } } },
-                      { to: { id: `kaoto-datamapper-xslt-${operationId}`, uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
-                    ],
-                  },
-                },
-              ]
-            : []),
+          ...(replyMapper ? [dataMapper(operationId, attention)] : []),
           era === 'content-type'
             ? { setHeader: { id: `content-type-${operationId}`, name: 'Content-Type', constant: 'application/json' } }
             : {
@@ -503,11 +508,11 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * makes it, so the user only picks the operation to call: a Set Variable for each of its parameters
  * (from the header Camel puts it in), Remove Headers *, Set Headers "SetAuthorizationHeaders"
  * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
- * after Set Headers (Accept, and a header per variable) and labelling its reply "result", then the
- * joined replies wrapped as a JSON object, a Kaoto DataMapper and Set Headers "SetResponseHeaders"
- * (Content-Type: application/json, CamelHttpResponseCode: 200). The steps the user still has to
- * work on (the pipeline's Set Headers, REST OpenApi and Set Body, and the DataMapper) get a red
- * circle on the canvas saying what to do (scaffoldAttention).
+ * after Set Headers (Accept, and a header per variable) and a Kaoto DataMapper for the request, and
+ * labelling its reply "result", then the joined replies wrapped as a JSON object, a Kaoto DataMapper
+ * and Set Headers "SetResponseHeaders" (Content-Type: application/json, CamelHttpResponseCode: 200).
+ * The steps the user still has to work on (the pipeline's Set Headers, DataMapper, REST OpenApi and
+ * Set Body, and the reply's DataMapper) get a red circle on the canvas saying what to do (scaffoldAttention).
  * The multicast joins replies with the joinWithComma bean (withJoinBean adds it to the flow).
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {

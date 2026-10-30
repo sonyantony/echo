@@ -107,7 +107,9 @@ export function scaffoldAttention(yaml: string): Map<string, string[]> {
     } else if (step.processor === 'setBody' && /^label-/.test(id) && s.simple === '"result": ${body}') {
       message = 'Name this call\'s part of the reply: change "result" to a name for it.';
     } else if (step.processor === 'step' && /^kaoto-datamapper-/.test(id) && !dataMapperFile(s.steps)) {
-      message = 'Map the reply: select this step, choose Configure and map its fields in the DataMapper.';
+      message = /^kaoto-datamapper-request-/.test(id)
+        ? 'Map the request to what the called operation takes: select this step, choose Configure and map its fields in the DataMapper.'
+        : 'Map the reply: select this step, choose Configure and map its fields in the DataMapper.';
     }
     if (message) todo.set(step.id, [message]);
   }

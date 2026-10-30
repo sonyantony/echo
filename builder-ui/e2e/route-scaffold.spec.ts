@@ -49,8 +49,10 @@ test('a new method gets a scaffold route, and a query parameter added later gets
   expect(made[0].setVariable).toMatchObject({ name: 'orderId', simple: '${header.orderId}' });
   expect(made[2].setHeaders).toMatchObject({ description: 'SetAuthorizationHeaders' });
   const branch = made[3].multicast.steps![0].pipeline.steps!;
-  expect(branch.map((s) => Object.keys(s)[0])).toEqual(['setHeaders', 'to', 'convertBodyTo', 'setBody']);
-  expect(branch[1].to).toMatchObject({ uri: 'rest-openapi' });
+  expect(branch.map((s) => Object.keys(s)[0])).toEqual(['setHeaders', 'step', 'to', 'convertBodyTo', 'setBody']);
+  // A DataMapper just before the call, for the request the called operation takes.
+  expect(branch[1].step.id).toMatch(/^kaoto-datamapper-request-/);
+  expect(branch[2].to).toMatchObject({ uri: 'rest-openapi' });
 
   // A query parameter added to the method: the route, still as ECHO made it, gets its variable.
   await editor.getByTitle('Add a new query parameter.').last().click();
@@ -65,7 +67,7 @@ test('a new method gets a scaffold route, and a query parameter added later gets
 
   await designMenu(page, /^Design/);
   await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
-  // The pipeline's Set Headers, REST OpenApi and Set Body, and the DataMapper.
-  await expect(page.locator('.echo-step-problem')).toHaveCount(4);
+  // The pipeline's Set Headers, DataMapper, REST OpenApi and Set Body, and the reply's DataMapper.
+  await expect(page.locator('.echo-step-problem')).toHaveCount(5);
   if (shots) await page.screenshot({ path: `${shots}/1-scaffold-route.png` });
 });

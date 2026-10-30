@@ -66,18 +66,21 @@ describe('scaffoldAttention', () => {
     const todo = scaffoldAttention(made);
     expect([...todo.keys()]).toEqual([
       `${pipeline}.steps.0.setHeaders`,
-      `${pipeline}.steps.1.to`,
-      `${pipeline}.steps.3.setBody`,
+      `${pipeline}.steps.1.step`,
+      `${pipeline}.steps.2.to`,
+      `${pipeline}.steps.4.setBody`,
       'route-getCardsId|route.from.steps.5.step',
     ]);
-    expect(todo.get(`${pipeline}.steps.1.to`)).toEqual(['Pick the operation this step calls: Operation Id.']);
+    expect(todo.get(`${pipeline}.steps.1.step`)![0]).toMatch(/^Map the request/);
+    expect(todo.get('route-getCardsId|route.from.steps.5.step')![0]).toMatch(/^Map the reply/);
+    expect(todo.get(`${pipeline}.steps.2.to`)).toEqual(['Pick the operation this step calls: Operation Id.']);
   });
 
   it('lets each go once the user has done it', () => {
     const done = made
       .replace('specificationUri: blueplanet.openapi.json', 'specificationUri: blueplanet.openapi.json\n                          operationId: getCard')
       .replace('"result": ${body}', '"card": ${body}')
-      .replace('uri: xslt-saxon', 'uri: xslt-saxon:kaoto-datamapper-1.xsl');
+      .replaceAll('uri: xslt-saxon', 'uri: xslt-saxon:kaoto-datamapper-1.xsl');
     expect([...scaffoldAttention(done).keys()]).toEqual([`${pipeline}.steps.0.setHeaders`]);
     // Any change to the headers: here the id header renamed as the operation names it.
     expect(scaffoldAttention(done.replace('- name: id\n', '- name: cardId\n')).size).toBe(0);

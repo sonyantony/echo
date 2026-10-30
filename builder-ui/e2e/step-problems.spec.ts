@@ -32,8 +32,8 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
 
   // Before any Validate, the steps left to the user have a red circle saying what to do.
   const badges = page.locator('.echo-step-problem');
-  await expect(badges).toHaveCount(4);
-  const label = page.locator('g[data-id$="|route.from.steps.2.multicast.steps.0.pipeline.steps.3.setBody"] .echo-step-problem');
+  await expect(badges).toHaveCount(5);
+  const label = page.locator('g[data-id$="|route.from.steps.2.multicast.steps.0.pipeline.steps.4.setBody"] .echo-step-problem');
   await label.click();
   const todo = page.getByRole('dialog', { name: /1 thing to do on setBody/ });
   await expect(todo).toContainText('Name this call\'s part of the reply: change "result" to a name for it.');
@@ -44,12 +44,12 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
 
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
   await expect(page.getByTestId('validation-problems')).toBeVisible();
-  await expect(badges).toHaveCount(4);
+  await expect(badges).toHaveCount(5);
   await expect(page.getByText(/problems? to fix before publishing/)).toBeHidden();
   const summary = page.getByTestId('validation-problems');
-  await expect(summary).toHaveText('2 problems');
+  await expect(summary).toHaveText('3 problems');
   // The circles are on the REST OpenApi step in the multicast and on the DataMapper.
-  const rest = page.locator('g[data-id$="|route.from.steps.2.multicast.steps.0.pipeline.steps.1.to"] .echo-step-problem');
+  const rest = page.locator('g[data-id$="|route.from.steps.2.multicast.steps.0.pipeline.steps.2.to"] .echo-step-problem');
   const mapper = page.locator('g[data-id$="|route.from.steps.4.step:kaoto-datamapper"] .echo-step-problem');
   await expect(rest).toHaveText('1');
   await expect(mapper).toHaveText('1');
@@ -77,13 +77,13 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
 
   // The toolbar's count says where they are; Clear removes the circles.
   await summary.click();
-  const all = page.getByRole('dialog', { name: /2 problems to fix before publishing/ });
+  const all = page.getByRole('dialog', { name: /3 problems to fix before publishing/ });
   await expect(all).toContainText('They are on steps of the flow: click the red circle on a step to see its problems.');
   await page.waitForTimeout(500);
   if (shots) await page.screenshot({ path: `${shots}/4-toolbar-count.png` });
   await all.getByRole('button', { name: 'Clear the problems' }).click();
   // The steps left to the user keep theirs: what to do, not Validate's problems.
-  await expect(badges).toHaveCount(4);
+  await expect(badges).toHaveCount(5);
   await mapper.click();
   const mapperToDo = page.getByRole('dialog', { name: /1 thing to do on kaoto-datamapper/ });
   await expect(mapperToDo.getByTestId('step-problems')).toContainText('Map the reply: select this step, choose Configure');
