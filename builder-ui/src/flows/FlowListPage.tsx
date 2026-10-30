@@ -90,6 +90,8 @@ export function StatusLabel({ status }: { status: FlowSummary['status'] }) {
 
 /** Address of the Open Flow page (the list of flows). */
 export const OPEN_FLOW_PATH = '/flows';
+/** The flow editor's address with the flow's API spec open in it (where a new flow opens). */
+export const apiSpecPath = (id: number) => `/flows/${id}/api`;
 
 /** The flow last opened in the editor, kept per browser so Cancel can return to it after a reload. */
 const LAST_FLOW_KEY = 'echo.lastFlowId';
@@ -408,7 +410,8 @@ export function FlowListPage() {
             const flow = await flowsApi.create(name, description);
             setCreating(false);
             await refresh();
-            navigate(`/flows/${flow.id}`);
+            // A new flow starts from its interface: Interface Specs > Design.
+            navigate(apiSpecPath(flow.id));
           }}
         />
       )}

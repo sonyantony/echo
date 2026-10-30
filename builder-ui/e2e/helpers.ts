@@ -15,7 +15,7 @@ export function uniqueName(prefix: string) {
 
 /**
  * Creates a flow and opens it, through New Flow on the start page (or the Open Flow page with no
- * flows yet) or File > New Flow in the editor. From the Open Flow page with flows that means
+ * flows yet) or File > New Flow in the editor, which lands on Interface Specs > Design. From the Open Flow page with flows that means
  * opening a flow first. A new flow has no routes; unless route is false, the test gives it one
  * (POST /<flow id> to a log step) to work on, as tests about other things need a route.
  */
@@ -35,9 +35,13 @@ export async function createFlow(page: Page, name: string, description = '', { r
   if (description) await dialog.getByLabel('Description').fill(description);
   const before = page.url();
   await dialog.getByRole('button', { name: 'Create' }).click();
-  // From another flow's editor the address already looks like a flow's: wait for the new one.
-  await expect(page).toHaveURL((url) => /\/flows\/\d+$/.test(url.pathname) && url.href !== before);
-  // A new flow has no routes: they come from the Interface or the canvas's New.
+  // A new flow opens on Interface Specs > Design (from another flow's editor the address already
+  // looks like a flow's: wait for the new one).
+  await expect(page).toHaveURL((url) => /\/flows\/\d+\/api$/.test(url.pathname) && url.href !== before);
+  await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeVisible();
+  // The tests go on from the canvas. A new flow has no routes: they come from the Interface or the canvas's New.
+  await designMenu(page, /^Design/);
+  await expect(page).toHaveURL((url) => /\/flows\/\d+$/.test(url.pathname));
   await expect(page.getByText('There are no routes defined')).toBeVisible();
   if (route) await putStarterRoute(page);
 }

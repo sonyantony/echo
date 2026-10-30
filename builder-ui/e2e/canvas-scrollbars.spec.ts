@@ -26,6 +26,16 @@ test('the canvas has scroll bars when the flow does not fit', async ({ page }) =
   // Dragging the thumb down moves the flow up; the wheel over the bar moves it back.
   const diagram = page.locator('g[data-surface]').first();
   const top = () => diagram.evaluate((g) => g.getBoundingClientRect().top);
+  // The new layout settles (Kaoto moves the diagram after it) before the drag starts.
+  let last = NaN;
+  await expect
+    .poll(async () => {
+      const now = await top();
+      const still = now === last;
+      last = now;
+      return still;
+    }, { intervals: [500] })
+    .toBe(true);
   const before = await top();
   const thumb = (await vertical.locator('.echo-canvas-scrollbar__thumb').boundingBox())!;
   await page.mouse.move(thumb.x + thumb.width / 2, thumb.y + 10);
