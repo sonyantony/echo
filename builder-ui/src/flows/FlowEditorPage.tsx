@@ -54,7 +54,8 @@ import { useSpecMappingReview } from '../datamapper/useSpecMappingReview';
 import { ApiFlowFiles } from '../editor/apiFlowFiles';
 import { KaotoEditorHost, type KaotoEditorHandle } from '../editor/KaotoEditorHost';
 import { useDismissMenu } from '../editor/menuDismiss';
-import { DONE_STEPS_FILE } from '../editor/flowFiles';
+import { DONE_STEPS_FILE, type FlowFiles } from '../editor/flowFiles';
+import { attachScaffoldSchemas, mappedXslFiles } from '../datamapper/scaffoldSchemas';
 import { scaffoldAttention, stepProblems, type StepProblems, type ToDo } from '../editor/stepProblems';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
@@ -140,7 +141,22 @@ function FlowEditor() {
     readSpec: readSavedSpec,
     readRoute: async () => editor.current?.getContent(),
   });
-  const { files, review: reviewMappings } = mappingReview;
+  const { files: reviewedFiles, review: reviewMappings } = mappingReview;
+  /** The DataMapper XSLT files that have mappings: a scaffold's DataMapper keeps its red circle until then. */
+  const mappedXsl = useQuery({ queryKey: ['flow', id, 'mapped-xsl'], queryFn: () => mappedXslFiles(apiFiles), staleTime: Infinity });
+  // The editor's files: the DataMapper writing an XSLT file may change which have mappings.
+  const files = useMemo<FlowFiles>(
+    () => ({
+      read: (path) => reviewedFiles.read(path),
+      list: () => reviewedFiles.list(),
+      remove: (path) => reviewedFiles.remove(path),
+      write: async (path, content) => {
+        await reviewedFiles.write(path, content);
+        if (path.endsWith('.xsl')) void queryClient.invalidateQueries({ queryKey: ['flow', id, 'mapped-xsl'] });
+      },
+    }),
+    [reviewedFiles, queryClient, id],
+  );
   const savedYaml = useRef<string | undefined>(undefined);
   const latestYaml = useRef<string | undefined>(undefined);
   const [dirty, setDirty] = useState(false);
@@ -176,7 +192,7 @@ function FlowEditor() {
     () => (routeCall ? { specificationUri: routeCall.specificationUri, host: routeCall.host ?? undefined } : {}),
     [routeCall],
   );
-  const operationRoutes = useOperationRoutes(editor, (variant, text) => setMessage({ variant, text }), apiCall);
+  const operationRoutes = useOperationRoutes(editor, (variant, text) => setMessage({ variant, text }), apiCall, files);
   /** Client Request Validation and Enable CORS, as the route on screen has them (Flow menu). */
   const [restSettings, setRestSettings] = useState<RestSettings>();
   // The API spec is opened on first use and then kept (hidden while a Kaoto view is open), so its
@@ -342,8 +358,8 @@ function FlowEditor() {
    * to do on a scaffold step (routeForOperation), as a problem without a line.
    */
   const todo = useMemo(
-    () => (routeYaml && routeFile ? scaffoldAttention(routeYaml, new Set(doneSteps.data)) : new Map<string, ToDo>()),
-    [routeYaml, routeFile, doneSteps.data],
+    () => (routeYaml && routeFile ? scaffoldAttention(routeYaml, new Set(doneSteps.data), mappedXsl.data) : new Map<string, ToDo>()),
+    [routeYaml, routeFile, doneSteps.data, mappedXsl.data],
   );
   const circles = useMemo(() => {
     const all = new Map(placed?.steps);
@@ -930,6 +946,7 @@ function FlowEditor() {
             try {
               const yaml = await editor.current!.getContent();
               await editor.current!.setContent(operations.reduce((y, op) => appendRoute(y, routeForOperation(op, apiCall)), withJoinBean(yaml)));
+              await attachScaffoldSchemas(files, operations);
               setMessage({
                 variant: 'success',
                 text: `Added a route for ${operations.map(operationLabel).join(', ')}. Design it on the canvas.`,

@@ -1,4 +1,5 @@
 import YAML, { isMap, isSeq, type Document, type YAMLMap } from 'yaml';
+import { makeJsonSchema, specSchemaParts } from '../datamapper/specSchemas';
 
 /**
  * operationIds are ECHO's business, not the user's (docs/decisions/0013). Camel sends each operation
@@ -27,7 +28,23 @@ export interface SpecOperation {
   summary?: string;
   /** Its path, query and header parameters, path first, as the route keeps them in variables. */
   parameters?: OperationParameter[];
+  /**
+   * The JSON Schemas (makeJsonSchema) its route's DataMappers start from: the request body (POST,
+   * PUT and PATCH) as the source of the one before the call, and the reply (GET, POST, PUT and PATCH:
+   * response 200, else another 2xx, else default) as the target of the one after the multicast.
+   */
+  schemas?: OperationSchemas;
 }
+
+export interface OperationSchemas {
+  request?: Record<string, unknown>;
+  response?: Record<string, unknown>;
+}
+
+/** Methods whose request has a body, so their route maps it before the call. */
+export const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
+/** Methods whose route maps the reply to the response's schema. */
+const REPLY_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH']);
 
 /** A parameter of an operation: its name and where it comes from. */
 export interface OperationParameter {
@@ -99,7 +116,23 @@ export function specOperations(editorJson: string): SpecOperation[] {
     operationId: idOf(op),
     summary: typeof op.summary === 'string' ? op.summary : undefined,
     parameters: parametersOf(spec, path, item, op),
+    schemas: operationSchemas(spec, method, path),
   }));
+}
+
+function operationSchemas(spec: Record<string, unknown>, method: string, path: string): OperationSchemas | undefined {
+  if (!REPLY_METHODS.has(method)) return undefined;
+  const parts = specSchemaParts(spec).filter((p) => p.method === method.toLowerCase() && p.path === path);
+  const responses = parts.filter((p) => p.part === 'response');
+  const request = BODY_METHODS.has(method) ? parts.find((p) => p.part === 'request') : undefined;
+  const response =
+    responses.find((p) => p.status === '200') ??
+    responses.find((p) => /^2\d\d$/.test(p.status ?? '')) ??
+    responses.find((p) => p.status === 'default');
+  const schemas: OperationSchemas = {};
+  if (request) schemas.request = makeJsonSchema(spec, request);
+  if (response) schemas.response = makeJsonSchema(spec, response);
+  return schemas.request || schemas.response ? schemas : undefined;
 }
 
 /** An operation that changed its id: the routes starting from direct:<from> now start from direct:<to>. */
@@ -378,11 +411,26 @@ export const ATTENTION = 'Attention';
  * How ECHO made its routes over time: `content-type` before 2026-10-29 (a Set Header Content-Type
  * only, without the 200 response code), `reply-headers` until the DataMapper and the Attention
  * descriptions came, `attention` until the DataMapper before the call came, `request-mapper` until
- * 2026-10-30, `marked` now (no Attention descriptions: red circles).
+ * 2026-10-30, `marked` until the DataMappers' schemas came (no Attention descriptions: red circles),
+ * `schemas` now: the DataMapper before the call only for POST, PUT and PATCH, and the DataMappers
+ * starting from the spec's schemas where it has them.
  */
-type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked';
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas';
 
-const SCAFFOLD_ERAS: ScaffoldEra[] = ['marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+
+/** Which of a route's DataMappers ECHO gave a schema from the spec (attachScaffoldSchemas). */
+interface Attached {
+  request?: boolean;
+  response?: boolean;
+}
+
+const ATTACHED: Attached[] = [{}, { request: true }, { response: true }, { request: true, response: true }];
+
+/** The ids of the DataMappers of an operation's scaffold route: before the call, and for the reply. */
+export function scaffoldMapperIds(operationId: string) {
+  return { request: `kaoto-datamapper-request-${operationId}-1`, response: `kaoto-datamapper-${operationId}` };
+}
 
 /** Ids of the scaffold's steps the user still has to work on, as `scaffold` makes them. */
 export const ATTENTION_STEP_IDS = /^(parameters-.+-\d+|call-.+-\d+|label-.+-\d+|kaoto-datamapper-.+)$/;
@@ -408,20 +456,32 @@ export function withoutAttentionLabels(yaml: string): string {
   return changed ? doc.toString({ lineWidth: 0 }) : yaml;
 }
 
-/** A Kaoto DataMapper as Kaoto adds one (its id starts kaoto-datamapper): nothing mapped yet. */
-const dataMapper = (id: string, labelled: boolean) => ({
+/**
+ * A Kaoto DataMapper as Kaoto adds one (its id starts kaoto-datamapper): nothing mapped yet. With a
+ * schema ECHO attached, as Kaoto has it once opened: its XSLT file named, and with a source schema
+ * the body read as JSON (no Set Body ${null}).
+ */
+const dataMapper = (id: string, labelled: boolean, schema?: 'source' | 'target') => ({
   step: {
     id: `kaoto-datamapper-${id}`,
     ...(labelled ? { description: ATTENTION } : {}),
     steps: [
-      { setBody: { id: `kaoto-datamapper-set-body-${id}`, expression: { simple: { expression: '${null}' } } } },
-      { to: { id: `kaoto-datamapper-xslt-${id}`, uri: 'xslt-saxon', parameters: { failOnNullBody: false } } },
+      ...(schema === 'source'
+        ? []
+        : [{ setBody: { id: `kaoto-datamapper-set-body-${id}`, expression: { simple: { expression: '${null}' } } } }]),
+      {
+        to: {
+          id: `kaoto-datamapper-xslt-${id}`,
+          uri: schema ? `xslt-saxon:kaoto-datamapper-${id}.xsl` : 'xslt-saxon',
+          parameters: { failOnNullBody: false, ...(schema === 'source' ? { useJsonBody: true } : {}) },
+        },
+      },
     ],
   },
 });
 
 /** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'marked') {
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'schemas', attached: Attached = {}) {
   const callParameters: Record<string, string> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   if (call.host) callParameters.host = call.host;
@@ -429,9 +489,11 @@ function scaffold(operationId: string, label: string, variables: string[], call:
   const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || 'api';
   const attention = era === 'attention' || era === 'request-mapper';
   const marked = attention ? { description: ATTENTION } : {};
-  // Since the request's DataMapper; since the reply's.
-  const requestMapper = era === 'request-mapper' || era === 'marked';
-  const replyMapper = attention || era === 'marked';
+  // Since the request's DataMapper (only for a request with a body since schemas); since the reply's.
+  const schemas = era === 'schemas';
+  const method = label.split(' ')[0].toUpperCase();
+  const requestMapper = era === 'request-mapper' || era === 'marked' || (schemas && BODY_METHODS.has(method));
+  const replyMapper = attention || era === 'marked' || schemas;
   return {
     route: {
       id: `route-${operationId}`,
@@ -463,7 +525,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
                       {
                         setHeaders: {
                           id: `parameters-${operationId}-1`,
-                          ...(attention ? { description: ATTENTION } : era === 'marked' ? {} : { description: 'SetMethodParameters' }),
+                          ...(attention ? { description: ATTENTION } : era === 'marked' || schemas ? {} : { description: 'SetMethodParameters' }),
                           headers: [
                             { name: 'Accept', constant: 'application/json' },
                             ...variables.map((name) => ({ name, simple: `\${variable.${name}}` })),
@@ -471,7 +533,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
                         },
                       },
                       // The user maps the request to what the called operation takes.
-                      ...(requestMapper ? [dataMapper(`request-${operationId}-1`, attention)] : []),
+                      ...(requestMapper ? [dataMapper(`request-${operationId}-1`, attention, schemas && attached.request ? 'source' : undefined)] : []),
                       { to: { id: `call-${operationId}-1`, ...marked, uri: 'rest-openapi', parameters: callParameters } },
                       { convertBodyTo: { id: `to-string-${operationId}-1`, type: 'String' } },
                       { setBody: { id: `label-${operationId}-1`, ...marked, simple: '"result": ${body}' } },
@@ -483,7 +545,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
           },
           { setBody: { id: `reply-${operationId}`, simple: '{${body}}' } },
           // A Kaoto DataMapper as Kaoto adds one: the user maps the reply when they open it.
-          ...(replyMapper ? [dataMapper(operationId, attention)] : []),
+          ...(replyMapper ? [dataMapper(operationId, attention, schemas && attached.response ? 'target' : undefined)] : []),
           era === 'content-type'
             ? { setHeader: { id: `content-type-${operationId}`, name: 'Content-Type', constant: 'application/json' } }
             : {
@@ -508,16 +570,32 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * makes it, so the user only picks the operation to call: a Set Variable for each of its parameters
  * (from the header Camel puts it in), Remove Headers *, Set Headers "SetAuthorizationHeaders"
  * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
- * after Set Headers (Accept, and a header per variable) and a Kaoto DataMapper for the request, and
- * labelling its reply "result", then the joined replies wrapped as a JSON object, a Kaoto DataMapper
- * and Set Headers "SetResponseHeaders" (Content-Type: application/json, CamelHttpResponseCode: 200).
+ * after Set Headers (Accept, and a header per variable) and, for POST, PUT and PATCH, a Kaoto
+ * DataMapper for the request, and labelling its reply "result", then the joined replies wrapped as a
+ * JSON object, a Kaoto DataMapper and Set Headers "SetResponseHeaders" (Content-Type:
+ * application/json, CamelHttpResponseCode: 200). The DataMappers start from the operation's schemas
+ * where the spec has them (op.schemas: the request body as the source of the one before the call,
+ * the response as the target of the reply's); attachScaffoldSchemas writes their files.
  * The steps the user still has to work on (the pipeline's Set Headers, DataMapper, REST OpenApi and
  * Set Body, and the reply's DataMapper) get a red circle on the canvas saying what to do (scaffoldAttention).
  * The multicast joins replies with the joinWithComma bean (withJoinBean adds it to the flow).
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
   const variables = (op.parameters ?? []).map((p) => p.name);
-  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call)], { lineWidth: 0 });
+  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'schemas', attachedFor(op))], { lineWidth: 0 });
+}
+
+/** Which DataMappers of op's route start from a schema of the spec. */
+function attachedFor(op: SpecOperation): Attached {
+  return {
+    ...(op.schemas?.request && BODY_METHODS.has(op.method.toUpperCase()) ? { request: true } : {}),
+    ...(op.schemas?.response ? { response: true } : {}),
+  };
+}
+
+/** The XSLT files a route's DataMappers use (`xslt-saxon:<file>`). */
+function xsltFiles(json: unknown): string[] {
+  return [...JSON.stringify(json).matchAll(/"uri":"xslt-saxon:([^"?]+)/g)].map((m) => m[1]);
 }
 
 /** The route YAML with the joinWithComma bean the new routes' multicasts use, if it isn't there. */
@@ -563,9 +641,17 @@ export function withoutUnusedJoinBean(yaml: string): string {
   return seq.items.length ? doc.toString({ lineWidth: 0 }) : '[]\n';
 }
 
-/** The scaffold a route of ECHO's is, if it still is one: its variables and where its call points. */
-function asScaffold(route: YAMLMap, name: string): { variables: string[]; call: ApiCall; era: ScaffoldEra } | undefined {
+/**
+ * The scaffold a route of ECHO's is, if it still is one: its variables and where its call points.
+ * A route whose DataMapper has mappings (an XSLT file in `mapped`) is somebody's work.
+ */
+function asScaffold(
+  route: YAMLMap,
+  name: string,
+  mapped: ReadonlySet<string> = new Set(),
+): { variables: string[]; call: ApiCall; era: ScaffoldEra; attached: Attached } | undefined {
   const json = route.toJSON() as { description?: unknown; from?: { steps?: unknown[] } };
+  if (xsltFiles(json).some((file) => mapped.has(file))) return undefined;
   const steps = Array.isArray(json.from?.steps) ? json.from.steps : [];
   const variables: string[] = [];
   for (const step of steps) {
@@ -585,29 +671,37 @@ function asScaffold(route: YAMLMap, name: string): { variables: string[]; call: 
   const withoutIds = (value: unknown) => JSON.stringify(value, (key, v) => (key === 'id' ? undefined : v));
   const made = withoutIds(json);
   // Routes made in earlier eras count too.
-  const era = SCAFFOLD_ERAS.find((e) => made === withoutIds(scaffold(name, label, variables, call, e).route));
-  return era ? { variables, call, era } : undefined;
+  for (const era of SCAFFOLD_ERAS) {
+    for (const attached of era === 'schemas' ? ATTACHED : [{}]) {
+      if (made === withoutIds(scaffold(name, label, variables, call, era, attached).route)) return { variables, call, era, attached };
+    }
+  }
+  return undefined;
 }
 
 /**
  * The route YAML with the scaffold route of each of these operations (still as ECHO made it) made
  * again for the operation's parameters as they are now: a parameter added in Interface Specs gets
- * its Set Variable, a removed one loses it. Routes somebody worked on stay as they are. Unchanged
- * (the same string) if no route changed.
+ * its Set Variable, a removed one loses it; and for its schemas: a request body or response given
+ * one gets its DataMapper started from it (attachScaffoldSchemas writes the files). Routes somebody
+ * worked on (their DataMappers' XSLT files in `mapped`) stay as they are. Unchanged (the same
+ * string) if no route changed.
  */
-export function refreshRoutes(yaml: string, operations: RoutableOperation[]): string {
+export function refreshRoutes(yaml: string, operations: RoutableOperation[], mapped: ReadonlySet<string> = new Set()): string {
   const doc = parseRoute(yaml);
   if (!doc) return yaml;
   const byId = new Map(operations.map((op) => [op.operationId, op]));
   let changed = false;
   for (const { entry, route, name } of routeEntries(doc)) {
     const op = name === undefined ? undefined : byId.get(name);
-    const was = op && route ? asScaffold(route, name!) : undefined;
+    const was = op && route ? asScaffold(route, name!, mapped) : undefined;
     if (!op || !was) continue;
     const variables = (op.parameters ?? []).map((p) => p.name);
-    if (variables.join('\n') === was.variables.join('\n')) continue;
+    const attached = was.era === 'schemas' ? attachedFor(op) : was.attached;
+    const same = (a: Attached) => `${!!a.request} ${!!a.response}`;
+    if (variables.join('\n') === was.variables.join('\n') && same(attached) === same(was.attached)) continue;
     const label = String(route!.get('description') ?? operationLabel(op));
-    (entry as YAMLMap).set('route', doc.createNode(scaffold(op.operationId, label, variables, was.call, was.era).route));
+    (entry as YAMLMap).set('route', doc.createNode(scaffold(op.operationId, label, variables, was.call, was.era, attached).route));
     changed = true;
   }
   return changed ? doc.toString({ lineWidth: 0 }) : yaml;
@@ -637,11 +731,12 @@ export function routableOperations(editorJson: string): RoutableOperation[] {
 export function operationChanges(before: RoutableOperation[], after: RoutableOperation[]) {
   const was = new Map(before.map((op) => [op.operationId, op]));
   const now = new Set(after.map((op) => op.operationId));
-  const names = (op: RoutableOperation) => (op.parameters ?? []).map((p) => p.name).join('\n');
+  // Its parameters' names, and its DataMappers' schemas.
+  const names = (op: RoutableOperation) => `${(op.parameters ?? []).map((p) => p.name).join('\n')}\n${JSON.stringify(op.schemas ?? {})}`;
   return {
     added: after.filter((op) => !was.has(op.operationId)),
     removed: before.filter((op) => !now.has(op.operationId)),
-    /** Still there, with other parameters. */
+    /** Still there, with other parameters or schemas. */
     changed: after.filter((op) => was.has(op.operationId) && names(was.get(op.operationId)!) !== names(op)),
   };
 }
@@ -671,16 +766,17 @@ export function removeDirectRoutes(yaml: string, names: string[]): { yaml: strin
 /**
  * The direct endpoints whose route is still as ECHO made it: the scaffold routeForOperation makes
  * (with the variables of any parameters, and the call's spec and Host, but no operation picked), or
- * the log step only routes were made with before. Removing one of those loses no work.
+ * the log step only routes were made with before. Removing one of those loses no work. One whose
+ * DataMapper has mappings (its XSLT file in `mapped`, mappedXslFiles) is somebody's work.
  */
-export function untouchedRoutes(yaml: string): Set<string> {
+export function untouchedRoutes(yaml: string, mapped: ReadonlySet<string> = new Set()): Set<string> {
   const names = new Set<string>();
   const doc = parseRoute(yaml);
   if (!doc) return names;
   const only = (map: YAMLMap, keys: string[]) => map.items.every((pair) => keys.includes(String((pair.key as YAML.Scalar)?.value ?? pair.key)));
   for (const { route, name } of routeEntries(doc)) {
     if (!route || !name) continue;
-    if (asScaffold(route, name)) {
+    if (asScaffold(route, name, mapped)) {
       names.add(name);
       continue;
     }

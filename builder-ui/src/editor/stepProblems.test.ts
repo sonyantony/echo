@@ -57,7 +57,7 @@ describe('stepProblems', () => {
 
 describe('scaffoldAttention', () => {
   const made = routeForOperation(
-    { method: 'GET', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }] },
+    { method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }] },
     { specificationUri: 'blueplanet.openapi.json' },
   );
   const pipeline = 'route-getCardsId|route.from.steps.3.multicast.steps.0.pipeline';
@@ -89,5 +89,19 @@ describe('scaffoldAttention', () => {
     expect([...scaffoldAttention(done).keys()]).toEqual([`${pipeline}.steps.0.setHeaders`]);
     // Any change to the headers: here the id header renamed as the operation names it.
     expect(scaffoldAttention(done.replace('- name: id\n', '- name: cardId\n')).size).toBe(0);
+  });
+
+  it('keeps the circle on a DataMapper ECHO gave a schema until it has mappings', () => {
+    const schemas = { request: { type: 'object' }, response: { type: 'object' } };
+    const attached = routeForOperation({ method: 'PUT', path: '/cards/{id}', operationId: 'putCardsId', schemas });
+    const mappers = (mapped?: Set<string>) =>
+      [...scaffoldAttention(attached, new Set(), mapped).values()].map((t) => t.stepId).filter((id) => id.startsWith('kaoto'));
+    expect(mappers(new Set())).toEqual(['kaoto-datamapper-request-putCardsId-1', 'kaoto-datamapper-putCardsId']);
+    expect(mappers(new Set(['kaoto-datamapper-putCardsId.xsl']))).toEqual(['kaoto-datamapper-request-putCardsId-1']);
+    // Not known yet: no circle rather than a wrong one.
+    expect(mappers()).toEqual([]);
+    // A GET has no request body to map.
+    const get = routeForOperation({ method: 'GET', path: '/cards/{id}', operationId: 'getCardsId' });
+    expect([...scaffoldAttention(get).values()].map((t) => t.stepId)).not.toContain('kaoto-datamapper-request-getCardsId-1');
   });
 });
