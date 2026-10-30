@@ -175,6 +175,9 @@ describe('operationIds', () => {
     const yaml = routeForOperation(op, call);
     const step = YAML.parse(yaml)[0].route.from.steps[3].multicast.steps[0].pipeline.steps[1].to;
     expect(step).toMatchObject({ id: 'call-getCards-1', description: 'BluePlanet Call', uri: 'rest-openapi' });
+    const multicast = YAML.parse(yaml)[0].route.from.steps[3].multicast;
+    expect(multicast.description).toBe('Parallel Processor');
+    expect(multicast.steps[0].pipeline.description).toBe('BluePlanet Call Path');
     expect(untouchedRoutes(yaml)).toEqual(new Set(['getCards']));
     // Refreshed for a new parameter, it keeps its description.
     const refreshed = refreshRoutes(yaml, [{ ...op, parameters: [...op.parameters, { name: 'status', in: 'query' as const }] }]);
@@ -222,6 +225,7 @@ describe('operationIds', () => {
       {
         multicast: {
           id: 'multicast-getCardsCardId',
+          description: 'Parallel Processor',
           parallelProcessing: true,
           aggregationStrategy: '#joinWithComma',
           steps: [
@@ -410,8 +414,12 @@ describe('operationIds', () => {
   it('tells routes still as ECHO made them from ones somebody worked on', () => {
     const made = routeForOperation({ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }] });
     expect(untouchedRoutes(made)).toEqual(new Set(['getCardsId']));
+    // Routes made before the multicast was described.
+    const undescribed = made.replace(/\n +description: Parallel Processor/, '');
+    expect(undescribed).not.toBe(made);
+    expect(untouchedRoutes(undescribed)).toEqual(new Set(['getCardsId']));
     // A GET's route had a DataMapper before the call too until schemas came.
-    expect(untouchedRoutes(made.replace('description: PUT /cards/{id}', 'description: GET /cards/{id}'))).toEqual(new Set(['getCardsId']));
+    expect(untouchedRoutes(undescribed.replace('description: PUT /cards/{id}', 'description: GET /cards/{id}'))).toEqual(new Set(['getCardsId']));
     // A renamed operation's route keeps its step ids.
     expect(untouchedRoutes(made.replace('id: remove-headers-getCardsId', 'id: remove-headers-getCardId'))).toEqual(new Set(['getCardsId']));
     const added = made.replace(/( +)- removeHeaders:/, '$1- setBody:\n$1    constant: hi\n$1- removeHeaders:');
@@ -422,14 +430,14 @@ describe('operationIds', () => {
     expect(made).not.toContain('Attention');
     // Routes made while the steps left to the user read Attention, before red circles; once the
     // labels are taken off (withoutAttentionLabels) they are routes as made now.
-    const labelled = made.replace(
+    const labelled = undescribed.replace(
       /^( +)id: (parameters-getCardsId-1|kaoto-datamapper-request-getCardsId-1|call-getCardsId-1|label-getCardsId-1|kaoto-datamapper-getCardsId)\n/gm,
       '$1id: $2\n$1description: Attention\n',
     );
     expect(labelled.match(/description: Attention/g)).toHaveLength(5);
     expect(untouchedRoutes(labelled)).toEqual(new Set(['getCardsId']));
     expect(untouchedRoutes(labelled.replace('description: Attention', 'description: Done')).size).toBe(0);
-    expect(withoutAttentionLabels(labelled)).toBe(made);
+    expect(withoutAttentionLabels(labelled)).toBe(undescribed);
     expect(withoutAttentionLabels(made)).toBe(made);
     // A step's own description of Attention elsewhere stays.
     const own = made.replace('    description: PUT /cards/{id}', '    description: Attention');

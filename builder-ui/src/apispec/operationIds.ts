@@ -424,12 +424,25 @@ export const ATTENTION = 'Attention';
  * only, without the 200 response code), `reply-headers` until the DataMapper and the Attention
  * descriptions came, `attention` until the DataMapper before the call came, `request-mapper` until
  * 2026-10-30, `marked` until the DataMappers' schemas came (no Attention descriptions: red circles),
- * `schemas` now: the DataMapper before the call only for POST, PUT and PATCH, and the DataMappers
- * starting from the spec's schemas where it has them.
+ * `schemas` until the multicast and pipeline were described (the DataMapper before the call only for
+ * POST, PUT and PATCH, and the DataMappers starting from the spec's schemas where it has them),
+ * `described` now: as `schemas`, with the multicast described "Parallel Processor" and, when the call
+ * names an approved API, its pipeline "<API> Call Path".
  */
-type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas';
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described';
 
-const SCAFFOLD_ERAS: ScaffoldEra[] = ['schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+
+/** Whether routes of this era start their DataMappers from the spec's schemas. */
+const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described';
+
+/** The multicast of a route made from the spec. */
+export const MULTICAST_DESCRIPTION = 'Parallel Processor';
+
+/** The description of a pipeline calling the API named `name`: "BluePlanet Call Path", or "BluePlanet getResource Path" once it picks an operation. */
+export function pipelineDescription(name: string, operationId?: string): string {
+  return `${name} ${operationId ?? 'Call'} Path`;
+}
 
 /** Which of a route's DataMappers ECHO gave a schema from the spec (attachScaffoldSchemas). */
 interface Attached {
@@ -493,7 +506,7 @@ const dataMapper = (id: string, labelled: boolean, schema?: 'source' | 'target')
 });
 
 /** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'schemas', attached: Attached = {}) {
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'described', attached: Attached = {}) {
   const callParameters: Record<string, string> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   if (call.host) callParameters.host = call.host;
@@ -502,7 +515,8 @@ function scaffold(operationId: string, label: string, variables: string[], call:
   const attention = era === 'attention' || era === 'request-mapper';
   const marked = attention ? { description: ATTENTION } : {};
   // Since the request's DataMapper (only for a request with a body since schemas); since the reply's.
-  const schemas = era === 'schemas';
+  const schemas = withSchemas(era);
+  const described = era === 'described';
   const method = label.split(' ')[0].toUpperCase();
   const requestMapper = era === 'request-mapper' || era === 'marked' || (schemas && BODY_METHODS.has(method));
   const replyMapper = attention || era === 'marked' || schemas;
@@ -527,12 +541,14 @@ function scaffold(operationId: string, label: string, variables: string[], call:
           {
             multicast: {
               id: `multicast-${operationId}`,
+              ...(described ? { description: MULTICAST_DESCRIPTION } : {}),
               parallelProcessing: true,
               aggregationStrategy: `#${JOIN_BEAN}`,
               steps: [
                 {
                   pipeline: {
                     id: `pipeline-${operationId}-1`,
+                    ...(described && call.name ? { description: pipelineDescription(call.name) } : {}),
                     steps: [
                       {
                         setHeaders: {
@@ -602,7 +618,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
   const variables = (op.parameters ?? []).map((p) => p.name);
-  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'schemas', attachedFor(op))], { lineWidth: 0 });
+  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'described', attachedFor(op))], { lineWidth: 0 });
 }
 
 /** Which DataMappers of op's route start from a schema of the spec. */
@@ -694,7 +710,7 @@ function asScaffold(
   const made = withoutIds(json);
   // Routes made in earlier eras count too.
   for (const era of SCAFFOLD_ERAS) {
-    for (const attached of era === 'schemas' ? ATTACHED : [{}]) {
+    for (const attached of withSchemas(era) ? ATTACHED : [{}]) {
       if (made === withoutIds(scaffold(name, label, variables, call, era, attached).route)) return { variables, call, era, attached };
     }
   }
@@ -719,7 +735,7 @@ export function refreshRoutes(yaml: string, operations: RoutableOperation[], map
     const was = op && route ? asScaffold(route, name!, mapped) : undefined;
     if (!op || !was) continue;
     const variables = (op.parameters ?? []).map((p) => p.name);
-    const attached = was.era === 'schemas' ? attachedFor(op) : was.attached;
+    const attached = withSchemas(was.era) ? attachedFor(op) : was.attached;
     const same = (a: Attached) => `${!!a.request} ${!!a.response}`;
     if (variables.join('\n') === was.variables.join('\n') && same(attached) === same(was.attached)) continue;
     const label = String(route!.get('description') ?? operationLabel(op));
