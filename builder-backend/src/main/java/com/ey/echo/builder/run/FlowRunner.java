@@ -32,6 +32,7 @@ import org.apache.camel.component.platform.http.PlatformHttpEndpoint;
 import org.apache.camel.component.platform.http.vertx.VertxPlatformHttpServer;
 import org.apache.camel.component.platform.http.vertx.VertxPlatformHttpServerConfiguration;
 import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.camel.model.Model;
 import org.apache.camel.spi.CamelEvent;
 import org.apache.camel.spi.CamelEvent.ExchangeCompletedEvent;
 import org.apache.camel.spi.CamelEvent.ExchangeCreatedEvent;
@@ -121,8 +122,10 @@ public class FlowRunner {
             run.camel.start();
             run.endpoints = endpoints(run);
         } catch (Exception e) {
+            String reason = e instanceof RunException ? null : startFailure(run, e);
             run.close();
-            throw e instanceof RunException r ? r : new RunException("The flow could not start: " + rootMessage(e), e);
+            LOG.warn("Test run of flow {} by {} could not start", flowName, user, e);
+            throw e instanceof RunException r ? r : new RunException("The flow could not start: " + reason, e);
         }
         run.log("INFO", "Started %s on port %d.".formatted(flowName, port));
         runs.put(flowId, run);
@@ -322,6 +325,22 @@ public class FlowRunner {
         } catch (IOException e) {
             return false;
         }
+    }
+
+    /**
+     * Why a flow did not start, in words a designer can act on. A step left without its expression
+     * (a Set Header with no value, say) only gives Camel's "Unsupported definition: null", so the
+     * routes are searched for that step and it is named.
+     */
+    static String startFailure(FlowRun run, Throwable e) {
+        String root = rootMessage(e);
+        if (root.startsWith("Unsupported definition: null") && run.camel != null) {
+            var empty = EmptyExpressions.find(run.camel.getCamelContextExtension().getContextPlugin(Model.class).getRouteDefinitions());
+            if (empty.isPresent()) {
+                return empty.get();
+            }
+        }
+        return root;
     }
 
     static String rootMessage(Throwable e) {

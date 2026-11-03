@@ -58,6 +58,13 @@ public class FlowValidator {
     /** An endpoint URI as an Enrich expression: a component scheme, a colon, and no spaces. */
     private static final Pattern ENDPOINT_URI = Pattern.compile("^[a-z][a-z0-9+.-]*:\\S*$");
 
+    /** Steps that need an expression, by YAML key, with the name the canvas shows them by. */
+    private static final Map<String, String> EXPRESSION_STEPS = Map.of("setHeader", "The Set Header",
+            "setVariable", "The Set Variable", "setProperty", "The Set Property", "setBody", "The Set Body",
+            "transform", "The Transform", "filter", "The Filter");
+    private static final Set<String> NOT_EXPRESSION_KEYS = Set.of("id", "description", "name", "disabled", "note",
+            "inheritErrorHandler", "steps", "statusPropertyName");
+
     private final ValidationProperties properties;
     private final ApiCatalog apis;
 
@@ -198,6 +205,7 @@ public class FlowValidator {
                     headersRemoved = true;
                 }
             }
+            checkEmptyExpression(key, value, line);
             if (key.equals("restConfiguration") && value instanceof MappingNode rest) {
                 checkRestConfiguration(rest);
             }
@@ -217,6 +225,47 @@ public class FlowValidator {
             } else if (key.equals("message") && value instanceof ScalarNode s) {
                 checkSimple(s.getValue(), line); // log: { message: ... } is a simple expression
             }
+        }
+
+        /**
+         * A Set Header, Set Variable, Set Body and the like with no value (or a header of Set
+         * Headers left empty in the form) loads, but the flow then fails to start with Camel's
+         * "Unsupported definition: null", which names no step.
+         */
+        private void checkEmptyExpression(String key, Node value, int line) {
+            if (EXPRESSION_STEPS.containsKey(key) && value instanceof MappingNode step && !hasExpression(step)) {
+                String name = scalar(step, "name").map(n -> " '" + n + "'").orElse("");
+                problems.add(new Problem(routeFile, line, "%s%s has no value. Give it one or delete it."
+                        .formatted(EXPRESSION_STEPS.get(key), name)));
+            }
+            if ((key.equals("setHeaders") || key.equals("setVariables")) && value instanceof MappingNode step) {
+                String list = key.equals("setHeaders") ? "headers" : "variables";
+                String what = key.equals("setHeaders") ? "header" : "variable";
+                step.getValue().stream()
+                        .filter(t -> t.getKeyNode() instanceof ScalarNode k && k.getValue().equals(list))
+                        .map(NodeTuple::getValueNode)
+                        .filter(SequenceNode.class::isInstance)
+                        .flatMap(n -> ((SequenceNode) n).getValue().stream())
+                        .filter(MappingNode.class::isInstance)
+                        .map(MappingNode.class::cast)
+                        .forEach(entry -> {
+                            String name = scalar(entry, "name").orElse("");
+                            int at = entry.getStartMark().getLine() + 1;
+                            if (name.isBlank() && !hasExpression(entry)) {
+                                problems.add(new Problem(routeFile, at, "An empty %s (no name, no value) is left in this step. Delete it.".formatted(what)));
+                            } else if (name.isBlank()) {
+                                problems.add(new Problem(routeFile, at, "A %s in this step has no name.".formatted(what)));
+                            } else if (!hasExpression(entry)) {
+                                problems.add(new Problem(routeFile, at, "The %s '%s' has no value. Give it one or delete it."
+                                        .formatted(what, name)));
+                            }
+                        });
+            }
+        }
+
+        private static boolean hasExpression(MappingNode step) {
+            return step.getValue().stream().anyMatch(t -> t.getKeyNode() instanceof ScalarNode k
+                    && !NOT_EXPRESSION_KEYS.contains(k.getValue()));
         }
 
         /**
