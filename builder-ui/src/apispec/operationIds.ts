@@ -431,14 +431,23 @@ export const ATTENTION = 'Attention';
  * `described`, with the REST OpenApi call's requestValidationEnabled on, so a request missing a
  * required parameter fails before it is sent instead of going out with a literal {name} (until
  * 2026-11-03), `variables` now: as `validated`, with one Set Variables step copying every parameter of
- * the request into a variable of its name, in place of a Set Variable step per parameter.
+ * the request into a variable of its name, in place of a Set Variable step per parameter (until
+ * 2026-11-03), `shared-token` now: as `variables`, with the Authorization token placeholder
+ * always {{api.token}}, whichever API the route calls, in place of {{<api>.token}}, and the REST
+ * OpenApi call's Host always {{api.base-url}} (was {{<api>.base-url}} only when one approved API names no server host).
  */
-type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated' | 'variables';
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated' | 'variables' | 'shared-token';
 
-const SCAFFOLD_ERAS: ScaffoldEra[] = ['variables', 'validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['shared-token', 'variables', 'validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
 
 /** Whether routes of this era start their DataMappers from the spec's schemas. */
-const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described' || era === 'validated' || era === 'variables';
+const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described' || era === 'validated' || era === 'variables' || era === 'shared-token';
+
+/** The Authorization token placeholder of a scaffold calling the approved API `api` (none: undefined), as of its era. */
+function tokenPlaceholder(api: string | undefined, era: ScaffoldEra): string {
+  if (era === 'shared-token') return '{{api.token}}';
+  return `{{${api ?? 'api'}.token}}`;
+}
 
 /** The multicast of a route made from the spec. */
 export const MULTICAST_DESCRIPTION = 'Parallel Processor';
@@ -510,19 +519,21 @@ const dataMapper = (id: string, labelled: boolean, schema?: 'source' | 'target')
 });
 
 /** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'variables', attached: Attached = {}) {
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'shared-token', attached: Attached = {}) {
   const callParameters: Record<string, string | boolean> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
-  if (call.host) callParameters.host = call.host;
+  // Since shared-token the Host is {{api.base-url}} whichever API is called, like the token.
+  if (era === 'shared-token') callParameters.host = '{{api.base-url}}';
+  else if (call.host) callParameters.host = call.host;
   // The call checks the request against the called operation before sending it.
-  if (era === 'validated' || era === 'variables') callParameters.requestValidationEnabled = true;
+  if (era === 'validated' || era === 'variables' || era === 'shared-token') callParameters.requestValidationEnabled = true;
   // Camel refuses a Set Headers step without a header, so each starts with one.
-  const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || 'api';
+  const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || undefined;
   const attention = era === 'attention' || era === 'request-mapper';
   const marked = attention ? { description: ATTENTION } : {};
   // Since the request's DataMapper (only for a request with a body since schemas); since the reply's.
   const schemas = withSchemas(era);
-  const described = era === 'described' || era === 'validated' || era === 'variables';
+  const described = era === 'described' || era === 'validated' || era === 'variables' || era === 'shared-token';
   const method = label.split(' ')[0].toUpperCase();
   const requestMapper = era === 'request-mapper' || era === 'marked' || (schemas && BODY_METHODS.has(method));
   const replyMapper = attention || era === 'marked' || schemas;
@@ -538,7 +549,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
           // Each parameter of the request (Camel has it in a header of its name) kept in a variable of
           // that name, before Remove Headers drops the headers. Camel refuses a Set Variables step
           // without a variable, so an operation without parameters has none.
-          ...(era === 'variables'
+          ...(era === 'variables' || era === 'shared-token'
             ? variables.length
               ? [
                   {
@@ -555,7 +566,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
             setHeaders: {
               id: `authorization-${operationId}`,
               description: 'SetAuthorizationHeaders',
-              headers: [{ name: 'Authorization', simple: `Bearer {{${api}.token}}` }],
+              headers: [{ name: 'Authorization', simple: `Bearer ${tokenPlaceholder(api, era)}` }],
             },
           },
           {
@@ -625,7 +636,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * A route for the operation, as a method added in Interface Specs (or Add Route For Operation)
  * makes it, so the user only picks the operation to call: one Set Variables step putting each of
  * its parameters (from the header Camel puts it in) in a variable of its name, Remove Headers *, Set Headers "SetAuthorizationHeaders"
- * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
+ * (Authorization: Bearer {{api.token}}, whichever API it calls; the call's Host is {{api.base-url}}), a multicast with one pipeline calling a REST OpenApi step
  * (described "<API name> Call" when the call names an approved API, call.name) after Set Headers (Accept, and a header per variable) and, for POST, PUT and PATCH, a Kaoto
  * DataMapper for the request, and labelling its reply "result", then the joined replies wrapped as a
  * JSON object, a Kaoto DataMapper and Set Headers "SetResponseHeaders" (Content-Type:
@@ -638,7 +649,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
   const variables = (op.parameters ?? []).map((p) => p.name);
-  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'variables', attachedFor(op))], { lineWidth: 0 });
+  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'shared-token', attachedFor(op))], { lineWidth: 0 });
 }
 
 /** Which DataMappers of op's route start from a schema of the spec. */
@@ -698,6 +709,29 @@ export function withoutUnusedJoinBean(yaml: string): string {
 }
 
 /**
+ * The parameters of the first REST OpenApi step in the route (as JSON), found by walking it: a
+ * regex over the JSON stopped at the braces of a {{placeholder}} Host, so such a route was never
+ * known as its scaffold.
+ */
+function restOpenApiParameters(value: unknown): Record<string, unknown> | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = restOpenApiParameters(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (!value || typeof value !== 'object') return undefined;
+  const map = value as Record<string, unknown>;
+  if (map.uri === 'rest-openapi') return map.parameters && typeof map.parameters === 'object' ? (map.parameters as Record<string, unknown>) : {};
+  for (const child of Object.values(map)) {
+    const found = restOpenApiParameters(child);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
  * The scaffold a route of ECHO's is, if it still is one: its variables and where its call points.
  * A route whose DataMapper has mappings (an XSLT file in `mapped`) is somebody's work.
  */
@@ -727,8 +761,7 @@ function asScaffold(
       variables.push(v.name);
     }
   }
-  const callStep = JSON.stringify(json).match(/"uri":"rest-openapi","parameters":(\{[^{}]*\})/);
-  const parameters = callStep ? (JSON.parse(callStep[1]) as Record<string, unknown>) : {};
+  const parameters = restOpenApiParameters(json) ?? {};
   const described = JSON.stringify(json).match(/"description":"(\S+) Call","uri":"rest-openapi"/);
   const call: ApiCall = {
     specificationUri: typeof parameters.specificationUri === 'string' ? parameters.specificationUri : undefined,

@@ -4,7 +4,7 @@ Date: 2026-10-27
 Status: Accepted
 
 Flows read settings and secrets through Camel `{{placeholders}}` (e.g. `{{inventory.host}}` in an
-https step, `{{blueplanet.token}}` in a header). Validate needs each one set in the flow's
+https step, `{{api.token}}` in a header). Validate needs each one set in the flow's
 `application.properties`, and that value is built into the image. Each environment needs its own
 values. The Deployment from decision 0017 already reads an optional ConfigMap and Secret
 `<app>-env` as environment variables, but nothing created them, so the buyer had to find every

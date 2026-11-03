@@ -226,7 +226,7 @@ describe('operationIds', () => {
         setHeaders: {
           id: 'authorization-getCardsCardId',
           description: 'SetAuthorizationHeaders',
-          headers: [{ name: 'Authorization', simple: 'Bearer {{blueplanet.token}}' }],
+          headers: [{ name: 'Authorization', simple: 'Bearer {{api.token}}' }],
         },
       },
       {
@@ -252,7 +252,7 @@ describe('operationIds', () => {
                       ],
                     },
                   },
-                  { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}', requestValidationEnabled: true } } },
+                  { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{api.base-url}}', requestValidationEnabled: true } } },
                   { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
                   { setBody: { id: 'label-getCardsCardId-1', simple: '"result": ${body}' } },
                 ],
@@ -286,10 +286,11 @@ describe('operationIds', () => {
     const bare = YAML.parse(routeForOperation({ method: 'POST', path: '/cards', operationId: 'postCards' }))[0].route.from.steps;
     expect(bare[0]).toEqual({ removeHeaders: { id: 'remove-headers-postCards', pattern: '*' } });
     // Camel needs a header in each Set Headers step: Authorization's token placeholder, and Accept.
+    // Token and Host are the same placeholders whichever API is called, so they are there even before one is picked.
     expect(bare[1].setHeaders.headers).toEqual([{ name: 'Authorization', simple: 'Bearer {{api.token}}' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[0].setHeaders.headers).toEqual([{ name: 'Accept', constant: 'application/json' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[1].step.id).toBe('kaoto-datamapper-request-postCards-1');
-    expect(bare[2].multicast.steps[0].pipeline.steps[2].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: { requestValidationEnabled: true } });
+    expect(bare[2].multicast.steps[0].pipeline.steps[2].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: { host: '{{api.base-url}}', requestValidationEnabled: true } });
   });
 
   it("starts a POST's DataMappers from its request body and its response, and attaches them once the spec has them", () => {
@@ -429,6 +430,15 @@ describe('operationIds', () => {
     expect(YAML.parse(more)[0].route.from.steps[0]).toEqual({
       setVariables: { id: 'variables-getCardsId', variables: [{ name: 'id', simple: '${header.id}' }, { name: 'q', simple: '${header.q}' }] },
     });
+    // The Authorization token placeholder is {{api.token}} whichever API the route calls; routes made
+    // with {{<api>.token}} still count, and keep it when a parameter is added.
+    expect(made).toContain('Bearer {{api.token}}');
+    const op = { method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' as const }] };
+    const oldToken = routeForOperation(op, { specificationUri: 'blueplanet.openapi.json' }).replace('{{api.token}}', '{{blueplanet.token}}');
+    expect(untouchedRoutes(oldToken)).toEqual(new Set(['getCardsId']));
+    const oldTokenMore = refreshRoutes(oldToken, [{ ...op, parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
+    expect(oldTokenMore).toContain('name: q');
+    expect(oldTokenMore).toContain('Bearer {{blueplanet.token}}');
     // Routes made with a Set Variable step per parameter still count, and keep them.
     const perStep = YAML.stringify(
       YAML.parse(made).map((entry: { route: { from: { steps: Record<string, unknown>[] } } }) => {
@@ -438,7 +448,10 @@ describe('operationIds', () => {
         return entry;
       }),
       { lineWidth: 0 },
-    );
+    )
+      // Before 2026-11-03 the Host was only set for an approved API without a server host.
+      .replace(/\n +host: "\{\{api\.base-url\}\}"/, '')
+      ;
     expect(untouchedRoutes(perStep)).toEqual(new Set(['getCardsId']));
     const perStepMore = refreshRoutes(perStep, [{ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
     expect(YAML.parse(perStepMore)[0].route.from.steps.slice(0, 2)).toEqual([
