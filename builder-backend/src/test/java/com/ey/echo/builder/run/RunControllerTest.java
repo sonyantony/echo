@@ -99,6 +99,37 @@ class RunControllerTest {
     }
 
     @Test
+    void aReplyWithConnectionHeadersADownstreamCallLeftReachesTheTestPanel() throws Exception {
+        // The headers a downstream reply carries, copied onto the flow's reply when nothing removes them.
+        // Over HTTP/2 (which the run port offers) they are not allowed, and Java 25's HttpClient refused
+        // the reply ("Prohibited header name 'keep-alive'"); the test panel calls the flow over HTTP/1.1.
+        long id = create("echoed", """
+                - route:
+                    id: echoed
+                    from:
+                      uri: platform-http:/echoed
+                      steps:
+                        - setHeaders:
+                            headers:
+                              - name: Connection
+                                constant: keep-alive
+                              - name: Keep-Alive
+                                constant: timeout=5
+                              - name: Content-Type
+                                constant: application/json
+                        - setBody:
+                            constant: '{"reply":"ok"}'
+                """);
+        mvc.perform(as(post("/api/flows/{id}/run", id))).andExpect(status().isOk());
+
+        mvc.perform(as(post("/api/flows/{id}/run/request", id)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"method\":\"GET\",\"path\":\"/echoed\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.body").value("{\"reply\":\"ok\"}"));
+    }
+
+    @Test
     void anInvalidDraftIsNotStarted() throws Exception {
         long id = create("bad", PING.replace("platform-http:/ping", "kafka:orders"));
 
