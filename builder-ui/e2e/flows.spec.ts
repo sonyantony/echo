@@ -184,7 +184,7 @@ test('downloads the flow diagram as a PNG', async ({ page }, testInfo) => {
   await expect(page.getByTestId('exportImageButton')).toBeHidden();
 
   // Works from another Kaoto tab too.
-  await page.getByRole('tab', { name: /DataMapper/ }).click();
+  await page.getByRole('tab', { name: 'Datamappers' }).click();
   const downloading = page.waitForEvent('download');
   await designMenu(page, new RegExp(`^Download ${name} As Image`));
   const download = await downloading;

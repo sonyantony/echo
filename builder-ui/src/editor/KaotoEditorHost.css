@@ -297,3 +297,41 @@ body.echo-canvas-maximized .pf-v6-c-page__main-container {
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
 }
+/* ECHO's Datamappers tab (EchoDataMappersPage.tsx), in place of Kaoto's DataMapper "how to" page. */
+.echo-datamappers {
+  padding: var(--pf-t--global--spacer--lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-t--global--spacer--md);
+  max-width: 72rem;
+}
+
+.echo-datamappers__id {
+  color: var(--pf-t--global--text--color--subtle);
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--sm);
+}
+
+/* The DataMapper opened from the list: a line naming it, with the way back to the list. */
+.echo-datamapper-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.echo-datamapper-page__header {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--md);
+  border-bottom: var(--pf-t--global--border--width--regular) solid var(--pf-t--global--border--color--default);
+}
+
+.echo-datamapper-page__route {
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.echo-datamapper-page__body {
+  flex: 1;
+  min-height: 0;
+}
