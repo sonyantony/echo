@@ -241,7 +241,7 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await editor.getByPlaceholder('Enter a unique data type name.').fill('Customer');
   await editor.getByRole('button', { name: 'Save' }).first().click();
   await expect(page.getByTestId('unsaved')).toBeVisible();
-  await page.getByRole('tab', { name: /DataMapper/ }).click();
+  await page.getByRole('tab', { name: 'Datamappers' }).click();
   await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
   await page.getByRole('button', { name: 'File', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Save$/ }).click();

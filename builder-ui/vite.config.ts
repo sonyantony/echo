@@ -12,25 +12,30 @@ const tildeImporter = {
   },
 };
 
-// Kaoto's editor router lazy-loads its About tab from '../pages/About'; show ECHO's instead.
-const kaotoAboutImport = /^\.\.\/pages\/About$/;
-const echoAboutPage = fileURLToPath(new URL('./src/editor/EchoAboutPage.tsx', import.meta.url));
+// Kaoto's editor router lazy-loads its pages from '../pages/<name>'; ECHO shows its own About tab,
+// its own Datamappers list in place of the DataMapper "how to" page, and its own page around one DataMapper.
+const echoPage = (file: string) => fileURLToPath(new URL(`./src/editor/${file}`, import.meta.url));
+const kaotoPages = [
+  { find: /^\.\.\/pages\/About$/, replacement: echoPage('EchoAboutPage.tsx') },
+  { find: /^\.\.\/pages\/DataMapperHowTo$/, replacement: echoPage('EchoDataMappersPage.tsx') },
+  { find: /^\.\.\/pages\/DataMapper$/, replacement: echoPage('EchoDataMapperPage.tsx') },
+];
 
 const backend = process.env.ECHO_BACKEND_URL ?? 'http://localhost:8080';
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: [{ find: kaotoAboutImport, replacement: echoAboutPage }],
+    alias: kaotoPages,
   },
   // Kaoto is pre-bundled in dev, where resolve.alias does not apply.
   optimizeDeps: {
     esbuildOptions: {
       plugins: [
         {
-          name: 'echo-about-page',
+          name: 'echo-kaoto-pages',
           setup(build) {
-            build.onResolve({ filter: kaotoAboutImport }, () => ({ path: echoAboutPage }));
+            for (const { find, replacement } of kaotoPages) build.onResolve({ filter: find }, () => ({ path: replacement }));
           },
         },
       ],

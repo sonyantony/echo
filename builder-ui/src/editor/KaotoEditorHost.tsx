@@ -76,6 +76,21 @@ type Picked = Record<string, string> | undefined;
 /** Kaoto asks for this pattern when only XML schemas may be picked (e.g. a field's type override). */
 const XML_ONLY = '**/*.{xsd,XSD,xml,XML}';
 
+/** Kaoto's DataMapper tab opens ECHO's list of the flow's DataMappers (EchoDataMappersPage), so it reads "Datamappers". */
+const DATAMAPPERS_TAB = 'Datamappers';
+
+/**
+ * Renames Kaoto's DataMapper tab. React leaves the text alone, as Kaoto's never changes; the
+ * MutationObserver calls this again should Kaoto draw the tab anew.
+ */
+function renameDataMapperTab(tabList: Element) {
+  const tab = tabList.querySelector<HTMLElement>("[data-testid='datamapper-tab'] [role='tab']");
+  const text = tab?.querySelector('.pf-v6-c-tabs__item-text');
+  if (!tab || !text) return;
+  if (text.textContent !== DATAMAPPERS_TAB) text.textContent = DATAMAPPERS_TAB;
+  if (tab.getAttribute('aria-label') !== DATAMAPPERS_TAB) tab.setAttribute('aria-label', DATAMAPPERS_TAB);
+}
+
 interface KaotoEditor {
   setContent(path: string, content: string): Promise<void>;
   getContent(): Promise<string>;
@@ -251,6 +266,7 @@ export const KaotoEditorHost = forwardRef<KaotoEditorHandle, KaotoEditorHostProp
           designTab.before(design);
           setDesignSlot(design);
         }
+        renameDataMapperTab(tabList);
         // Kaoto wraps each tab's <li> in a link, so the list's children are the links.
         const about = tabList.querySelector(":scope > [data-testid='about-tab']");
         if (advanced.parentElement !== tabList || advanced.nextElementSibling !== about) {

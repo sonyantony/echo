@@ -32,7 +32,7 @@ test('Fit Route enlarges the route and Maximize gives the canvas the window', as
   await expect.poll(centred).toBe(true);
 
   // Maximize: the editor covers the window and Kaoto's tab line steps aside; Escape restores.
-  const tabLine = page.getByRole('tab', { name: /DataMapper/ });
+  const tabLine = page.getByRole('tab', { name: 'Datamappers' });
   await expect(tabLine).toBeVisible();
   await page.getByRole('button', { name: 'Maximize Canvas' }).click();
   const host = page.getByTestId('kaoto-editor-host');

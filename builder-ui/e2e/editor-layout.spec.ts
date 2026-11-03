@@ -3,10 +3,30 @@ import { createFlow, designMenu, login, uniqueName } from './helpers';
 
 test('editor fits the page and prints the whole open tab', async ({ page }) => {
   await login(page);
-  await createFlow(page, uniqueName('layout'));
-  await page.getByRole('tab', { name: /DataMapper/ }).click();
+  const name = uniqueName('layout');
+  await createFlow(page, name, '', { route: false });
+  // Enough DataMappers for the Datamappers list to run past one printed page.
+  const id = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
+  const xsrf = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
+  const mappers = Array.from({ length: 40 }, (_, i) => [
+    '        - step:',
+    `            id: kaoto-datamapper-${i}`,
+    `            description: Mapping ${i}`,
+    '            steps:',
+    `              - to: xslt-saxon:kaoto-datamapper-${i}.xsl`,
+  ]).flat();
+  const route = ['- route:', `    id: ${name}`, '    from:', `      uri: platform-http:/${name}`, '      steps:', ...mappers, ''];
+  const { routeFile } = await (await page.request.get(`/api/flows/${id}`)).json();
+  const put = await page.request.put(`/api/flows/${id}/files/${routeFile}`, {
+    headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf },
+    data: route.join('\n'),
+  });
+  expect(put.ok()).toBe(true);
+  await page.reload();
+  await page.getByRole('tab', { name: 'Datamappers' }).click();
   const tab = page.locator('.shell__tab-content--scrollable');
   await expect(tab).toBeVisible();
+  await expect(page.getByTestId('echo-datamapper-row')).toHaveCount(40);
 
   // The editor is no wider than the page, so its vertical scroll bar is on screen.
   const main = page.locator('.pf-v6-c-page__main');
@@ -130,7 +150,7 @@ test('Advanced > Java Beans opens the Beans view, before About; Flow takes the D
   const advanced = page.getByRole('button', { name: 'Advanced', exact: true });
   const advancedBox = (await advanced.boundingBox())!;
   const about = (await page.getByRole('tab', { name: /About/ }).boundingBox())!;
-  const dataMapper = (await page.getByRole('tab', { name: /DataMapper/ }).boundingBox())!;
+  const dataMapper = (await page.getByRole('tab', { name: 'Datamappers' }).boundingBox())!;
   expect(advancedBox.x).toBeGreaterThanOrEqual(dataMapper.x + dataMapper.width);
   expect(advancedBox.x + advancedBox.width).toBeLessThanOrEqual(about.x);
   await advanced.click();
@@ -272,7 +292,7 @@ test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With..
   const run = page.getByRole('button', { name: 'Run', exact: true });
   const runBox = (await run.boundingBox())!;
   const advanced = (await page.getByRole('button', { name: 'Advanced', exact: true }).boundingBox())!;
-  const dataMapper = (await page.getByRole('tab', { name: /DataMapper/ }).boundingBox())!;
+  const dataMapper = (await page.getByRole('tab', { name: 'Datamappers' }).boundingBox())!;
   expect(runBox.x).toBeGreaterThanOrEqual(dataMapper.x + dataMapper.width);
   expect(runBox.x + runBox.width).toBeLessThanOrEqual(advanced.x);
   await run.click();
@@ -310,7 +330,7 @@ test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With..
   await expect(page.getByTestId('validation-result')).toBeVisible();
 
   // They come back with the canvas after another tab.
-  await page.getByRole('tab', { name: /DataMapper/ }).click();
+  await page.getByRole('tab', { name: 'Datamappers' }).click();
   await expect(validate).toBeHidden();
   await designMenu(page, /^Design/);
   await expect(validate).toBeVisible();
