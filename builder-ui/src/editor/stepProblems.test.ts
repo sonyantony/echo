@@ -88,7 +88,7 @@ describe('scaffoldAttention', () => {
       .replaceAll('uri: xslt-saxon', 'uri: xslt-saxon:kaoto-datamapper-1.xsl');
     expect([...scaffoldAttention(done).keys()]).toEqual([`${pipeline}.steps.0.setHeaders`]);
     // Any change to the headers: here the id header renamed as the operation names it.
-    expect(scaffoldAttention(done.replace('- name: id\n', '- name: cardId\n')).size).toBe(0);
+    expect(scaffoldAttention(done.replace(/(- name: Accept[\s\S]*?)- name: id\n/, '$1- name: cardId\n')).size).toBe(0);
   });
 
   it('keeps the circle on a DataMapper ECHO gave a schema until it has mappings', () => {

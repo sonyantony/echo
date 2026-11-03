@@ -210,10 +210,17 @@ describe('operationIds', () => {
     expect(op.parameters?.map((p) => p.name)).toEqual(['cardId', 'status', 'limit', 'X-Trace']);
     const route = YAML.parse(routeForOperation(op, { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}' }))[0].route;
     expect(route.from.steps).toEqual([
-      { setVariable: { id: 'variable-getCardsCardId-cardId', name: 'cardId', simple: '${header.cardId}' } },
-      { setVariable: { id: 'variable-getCardsCardId-status', name: 'status', simple: '${header.status}' } },
-      { setVariable: { id: 'variable-getCardsCardId-limit', name: 'limit', simple: '${header.limit}' } },
-      { setVariable: { id: 'variable-getCardsCardId-X-Trace', name: 'X-Trace', simple: '${header.X-Trace}' } },
+      {
+        setVariables: {
+          id: 'variables-getCardsCardId',
+          variables: [
+            { name: 'cardId', simple: '${header.cardId}' },
+            { name: 'status', simple: '${header.status}' },
+            { name: 'limit', simple: '${header.limit}' },
+            { name: 'X-Trace', simple: '${header.X-Trace}' },
+          ],
+        },
+      },
       { removeHeaders: { id: 'remove-headers-getCardsCardId', pattern: '*' } },
       {
         setHeaders: {
@@ -417,7 +424,28 @@ describe('operationIds', () => {
     // The call checks the request before sending it; routes made before that still count, and
     // keep their call as it was when a parameter is added.
     expect(made).toContain('requestValidationEnabled: true');
-    const unvalidated = made.replace(/parameters:\n +requestValidationEnabled: true/, 'parameters: {}');
+    // One Set Variables step; a parameter added later gets its variable there.
+    const more = refreshRoutes(made, [{ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
+    expect(YAML.parse(more)[0].route.from.steps[0]).toEqual({
+      setVariables: { id: 'variables-getCardsId', variables: [{ name: 'id', simple: '${header.id}' }, { name: 'q', simple: '${header.q}' }] },
+    });
+    // Routes made with a Set Variable step per parameter still count, and keep them.
+    const perStep = YAML.stringify(
+      YAML.parse(made).map((entry: { route: { from: { steps: Record<string, unknown>[] } } }) => {
+        const [first, ...rest] = entry.route.from.steps;
+        const { variables } = first.setVariables as { variables: { name: string; simple: string }[] };
+        entry.route.from.steps = [...variables.map((v) => ({ setVariable: { id: `variable-getCardsId-${v.name}`, ...v } })), ...rest];
+        return entry;
+      }),
+      { lineWidth: 0 },
+    );
+    expect(untouchedRoutes(perStep)).toEqual(new Set(['getCardsId']));
+    const perStepMore = refreshRoutes(perStep, [{ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
+    expect(YAML.parse(perStepMore)[0].route.from.steps.slice(0, 2)).toEqual([
+      { setVariable: { id: 'variable-getCardsId-id', name: 'id', simple: '${header.id}' } },
+      { setVariable: { id: 'variable-getCardsId-q', name: 'q', simple: '${header.q}' } },
+    ]);
+    const unvalidated = perStep.replace(/parameters:\n +requestValidationEnabled: true/, 'parameters: {}');
     expect(unvalidated).not.toBe(made);
     expect(untouchedRoutes(unvalidated)).toEqual(new Set(['getCardsId']));
     const grown = refreshRoutes(unvalidated, [{ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);

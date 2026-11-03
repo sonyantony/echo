@@ -37,7 +37,7 @@ interface Asking {
  * Keeps the flow's routes in step with the operations edited in Interface (docs/decisions/0013):
  * a method added there gets a route on the canvas at once (routeForOperation's scaffold, as Add
  * Route For Operation makes it, calling `call`). A parameter added or removed later changes the
- * route's Set Variable steps while the route is still as ECHO made it. When a method is deleted, a
+ * route's Set Variables step while the route is still as ECHO made it. When a method is deleted, a
  * route still as ECHO made it goes
  * quietly (so undoing an add leaves nothing behind); one somebody worked on is kept unless the user
  * says Remove Route. A removed route comes back as it was if the method does (undo).
