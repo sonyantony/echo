@@ -73,10 +73,11 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
   await expect(box.getByTestId('step-problems')).toContainText('pick its Operation Id');
   await page.waitForTimeout(500);
   if (shots) await page.screenshot({ path: `${shots}/3-rest-openapi-problem.png` });
-  // Clear takes that step's problems away until the next Validate: what is left to do shows again.
+  // Clear takes that step's problems away until the next Validate, and out of the toolbar's count:
+  // what is left to do shows again.
   await box.getByRole('button', { name: 'Clear', exact: true }).click();
   await expect(box).toBeHidden();
-  await expect(summary).toHaveText('3 problems');
+  await expect(summary).toHaveText('2 problems');
   await rest.click();
   const restToDo = page.getByRole('dialog', { name: /1 thing to do on rest-openapi/ });
   await expect(restToDo.getByTestId('step-problems')).toContainText(/Pick the (API and the )?operation this step calls/);
@@ -85,7 +86,7 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
 
   // The toolbar's count says where they are; Clear removes the circles.
   await summary.click();
-  const all = page.getByRole('dialog', { name: /3 problems to fix before publishing/ });
+  const all = page.getByRole('dialog', { name: /2 problems to fix before publishing/ });
   await expect(all).toContainText('They are on steps of the flow: click the red circle on a step to see its problems.');
   await page.waitForTimeout(500);
   if (shots) await page.screenshot({ path: `${shots}/4-toolbar-count.png` });
@@ -106,4 +107,16 @@ test('Validate puts a red circle on each step with problems, opening them', asyn
   await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
   await expect(badges).toHaveCount(4);
   await expect(mapper).toHaveCount(0);
+
+  // Changing a step after Validate takes its problems away too, and out of the toolbar's count.
+  await page.getByRole('button', { name: 'Validate', exact: true }).click();
+  await expect(summary).toHaveText('3 problems');
+  await expect(rest).toHaveText('1');
+  await page.locator('g[data-id$="|route.from.steps.2.multicast.steps.0.pipeline.steps.2.to"] .custom-node__container').first().click();
+  await page.getByRole('button', { name: 'All', exact: true }).click();
+  const description = page.getByRole('textbox', { name: 'Description' });
+  await description.fill('Calls the inventory');
+  await expect(summary).toHaveText('2 problems');
+  await rest.click();
+  await expect(page.getByRole('dialog', { name: /thing to do on/ })).toBeVisible();
 });

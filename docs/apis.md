@@ -53,17 +53,19 @@ after changing a spec (`docker compose restart`).
    for `/v1/service/{id}`. The request body is the message body.
 4. Add a **Remove Headers** step with pattern `*` before the call, so the incoming request's headers
    don't change the URL. Then set what the API needs, such as
-   `Authorization: Bearer {{blueplanet.token}}`. Secrets stay as placeholders and never go into Git.
+   `Authorization: Bearer {{api.token}}`. Secrets stay as placeholders and never go into Git.
 
 A route ECHO makes for a new operation of the flow's spec already has this shape: Set Variable
 steps for the operation's parameters, Remove Headers `*`, and a REST OpenApi step inside a
 multicast. A Set Headers step "SetAuthorizationHeaders" before the multicast sets
-`Authorization: Bearer {{<id>.token}}`, and one just before the call sets a header per variable
+`Authorization: Bearer {{api.token}}` (the same name whichever API is called; routes made before 2026-11-03 keep `{{<id>.token}}`), and one just before the call sets a header per variable
 (`id` from `${variable.id}`) plus `Accept`, followed (for POST, PUT and PATCH) by a DataMapper
 where the request body, its source schema already attached from the flow's spec, is mapped to the
 body the called operation takes: once the Operation Id is picked, that operation's request body
-(from the approved spec, served to the editor at `/api/editor/apis/<file>`) becomes its target. With exactly one approved API, its Specification Uri
-(and Host placeholder) are filled in; pick the Operation Id, then adjust the Set Headers rows to the
+(from the approved spec, served to the editor at `/api/editor/apis/<file>`) becomes its target. Host is always `{{api.base-url}}`
+(the same placeholder whichever API is called, like `{{api.token}}`; routes made before 2026-11-03
+had `{{<id>.base-url}}` only when the one approved API names no server). With exactly one approved
+API, its Specification Uri is filled in; pick the Operation Id, then adjust the Set Headers rows to the
 parameters it takes. Every step that needs the user (that Set Headers, the DataMapper before the
 call, the REST OpenApi step, the pipeline's last Set Body and the DataMapper after the reply) has a
 red circle on the canvas saying what to do.
