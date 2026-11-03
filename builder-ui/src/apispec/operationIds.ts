@@ -431,14 +431,22 @@ export const ATTENTION = 'Attention';
  * `described`, with the REST OpenApi call's requestValidationEnabled on, so a request missing a
  * required parameter fails before it is sent instead of going out with a literal {name} (until
  * 2026-11-03), `variables` now: as `validated`, with one Set Variables step copying every parameter of
- * the request into a variable of its name, in place of a Set Variable step per parameter.
+ * the request into a variable of its name, in place of a Set Variable step per parameter (until
+ * 2026-11-03), `access-token` now: as `variables`, with the Authorization token placeholder
+ * {{<api>.api.access.token}} ({{api.access.token}} without an approved API) in place of {{<api>.token}}.
  */
-type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated' | 'variables';
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated' | 'variables' | 'access-token';
 
-const SCAFFOLD_ERAS: ScaffoldEra[] = ['variables', 'validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['access-token', 'variables', 'validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
 
 /** Whether routes of this era start their DataMappers from the spec's schemas. */
-const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described' || era === 'validated' || era === 'variables';
+const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described' || era === 'validated' || era === 'variables' || era === 'access-token';
+
+/** The Authorization token placeholder of a scaffold calling the approved API `api` (none: undefined), as of its era. */
+function tokenPlaceholder(api: string | undefined, era: ScaffoldEra): string {
+  if (era === 'access-token') return api ? `{{${api}.api.access.token}}` : '{{api.access.token}}';
+  return `{{${api ?? 'api'}.token}}`;
+}
 
 /** The multicast of a route made from the spec. */
 export const MULTICAST_DESCRIPTION = 'Parallel Processor';
@@ -510,19 +518,19 @@ const dataMapper = (id: string, labelled: boolean, schema?: 'source' | 'target')
 });
 
 /** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'variables', attached: Attached = {}) {
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'access-token', attached: Attached = {}) {
   const callParameters: Record<string, string | boolean> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   if (call.host) callParameters.host = call.host;
   // The call checks the request against the called operation before sending it.
-  if (era === 'validated' || era === 'variables') callParameters.requestValidationEnabled = true;
+  if (era === 'validated' || era === 'variables' || era === 'access-token') callParameters.requestValidationEnabled = true;
   // Camel refuses a Set Headers step without a header, so each starts with one.
-  const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || 'api';
+  const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || undefined;
   const attention = era === 'attention' || era === 'request-mapper';
   const marked = attention ? { description: ATTENTION } : {};
   // Since the request's DataMapper (only for a request with a body since schemas); since the reply's.
   const schemas = withSchemas(era);
-  const described = era === 'described' || era === 'validated' || era === 'variables';
+  const described = era === 'described' || era === 'validated' || era === 'variables' || era === 'access-token';
   const method = label.split(' ')[0].toUpperCase();
   const requestMapper = era === 'request-mapper' || era === 'marked' || (schemas && BODY_METHODS.has(method));
   const replyMapper = attention || era === 'marked' || schemas;
@@ -538,7 +546,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
           // Each parameter of the request (Camel has it in a header of its name) kept in a variable of
           // that name, before Remove Headers drops the headers. Camel refuses a Set Variables step
           // without a variable, so an operation without parameters has none.
-          ...(era === 'variables'
+          ...(era === 'variables' || era === 'access-token'
             ? variables.length
               ? [
                   {
@@ -555,7 +563,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
             setHeaders: {
               id: `authorization-${operationId}`,
               description: 'SetAuthorizationHeaders',
-              headers: [{ name: 'Authorization', simple: `Bearer {{${api}.token}}` }],
+              headers: [{ name: 'Authorization', simple: `Bearer ${tokenPlaceholder(api, era)}` }],
             },
           },
           {
@@ -625,7 +633,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * A route for the operation, as a method added in Interface Specs (or Add Route For Operation)
  * makes it, so the user only picks the operation to call: one Set Variables step putting each of
  * its parameters (from the header Camel puts it in) in a variable of its name, Remove Headers *, Set Headers "SetAuthorizationHeaders"
- * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
+ * (Authorization: Bearer {{<api>.api.access.token}}, {{api.access.token}} without an approved API), a multicast with one pipeline calling a REST OpenApi step
  * (described "<API name> Call" when the call names an approved API, call.name) after Set Headers (Accept, and a header per variable) and, for POST, PUT and PATCH, a Kaoto
  * DataMapper for the request, and labelling its reply "result", then the joined replies wrapped as a
  * JSON object, a Kaoto DataMapper and Set Headers "SetResponseHeaders" (Content-Type:
@@ -638,7 +646,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
   const variables = (op.parameters ?? []).map((p) => p.name);
-  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'variables', attachedFor(op))], { lineWidth: 0 });
+  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'access-token', attachedFor(op))], { lineWidth: 0 });
 }
 
 /** Which DataMappers of op's route start from a schema of the spec. */

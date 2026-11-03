@@ -85,8 +85,8 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   amount of work"). A Set Variable for each path, query and header parameter of the operation
   (`${header.<name>}`, where the generated REST service puts it), Remove Headers `*` (so the
   incoming request's headers don't change the downstream URL), a Set Headers step described
-  "SetAuthorizationHeaders" (`Authorization: Bearer {{<api id>.token}}`, `{{api.token}}` without a
-  single approved API), a multicast (parallel, joined by the
+  "SetAuthorizationHeaders" (`Authorization: Bearer {{<api id>.api.access.token}}`, `{{api.access.token}}` without a
+  single approved API; `{{<api id>.token}}` in routes made before 2026-11-03), a multicast (parallel, joined by the
   `joinWithComma` StringAggregationStrategy bean, which is added to the flow if missing) with one
   pipeline: a Set Headers step described "SetMethodParameters" (`Accept: application/json` and a
   header per variable, `${variable.<name>}`, as REST OpenApi takes parameters from same-named
