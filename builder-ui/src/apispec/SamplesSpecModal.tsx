@@ -8,6 +8,7 @@ import {
   FormSelectOption,
   HelperText,
   HelperTextItem,
+  Label,
   Modal,
   ModalBody,
   ModalFooter,
@@ -15,7 +16,7 @@ import {
   TextArea,
   TextInput,
 } from '@patternfly/react-core';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import {
   bodyOptional,
   parseSample,
@@ -44,116 +45,189 @@ interface Props {
   replaces?: string;
   /** Whether the spec on screen has this method on this path already: Add to this spec replaces that method then. */
   hasOperation?(method: SampleMethod, path: string): boolean;
-  onGenerate(samples: SamplesSpec): void;
+  /** The filled-in sets, in order: the first makes the spec, the others are added to it. */
+  onGenerate(samples: SamplesSpec[]): void;
   /**
-   * Add to this spec: the method goes into the spec on screen, which keeps everything it has; or,
-   * when the spec has it on that path, takes its place (Replace METHOD path).
+   * Add to this spec: the methods go into the spec on screen, which keeps everything it has; a
+   * method the spec has on that path is put in its place (Replace METHOD path).
    */
-  onAdd?(samples: SamplesSpec): void;
+  onAdd?(samples: SamplesSpec[]): void;
   onClose(): void;
 }
 
+/** One set of samples, as typed. */
+interface SampleSet {
+  key: number;
+  method: SampleMethod;
+  path: string;
+  request: string;
+  response: string;
+}
+
+/** The dialog starts with this many sets, and More Samples adds this many more. */
+export const SETS_AT_A_TIME = 3;
+
+let nextKey = 1;
+const emptySet = (): SampleSet => ({ key: nextKey++, method: 'POST', path: '', request: '', response: '' });
+const emptySets = () => Array.from({ length: SETS_AT_A_TIME }, emptySet);
+
+/** A set with nothing typed in it is left out. */
+const used = (set: SampleSet) => !!(set.path.trim() || set.request.trim() || set.response.trim());
+
+/** What a set makes, and what is wrong with it. */
+function check(set: SampleSet) {
+  const { path: fullPath, query } = splitPath(set.path);
+  const pathValid = PATH_PATTERN.test(fullPath);
+  const optional = bodyOptional(set.method);
+  const request = sample(set.request, !optional);
+  const response = sample(set.response, true);
+  const pathError = !set.path.trim() ? 'A path is needed, e.g. /cards/{cardId}/activate.' : pathValid ? undefined : 'Segments of letters, digits, - _ . or a {name}, split by /, then an optional ?query.';
+  const samples: SamplesSpec = {
+    method: set.method,
+    path: fullPath,
+    ...(query ? { query } : {}),
+    // The operation is named after its method and path, like every operation (operationIds.ts).
+    operationId: operationIdFor(set.method, fullPath),
+    request: request.value,
+    response: response.value,
+  };
+  return { samples, optional, pathError, request, response, valid: !pathError && !request.error && !response.error };
+}
+
+const nameOf = (s: SamplesSpec) => `${s.method} ${s.path}`;
+
 /**
- * Interface Specs > Interface Specs from Samples: method, path and a sample request and response,
- * from which the flow's spec is made (specFromSamples) or, when it has one, which are added to it
- * (addOperations). The operationId is the method and path, as ECHO names every operation.
+ * Interface Specs > Interface Specs from Samples: sets of method, path and a sample request and
+ * response (three at first, More Samples adds three more), shown as cards like Import from Jira
+ * using AI. From the filled-in sets ECHO makes the flow's spec (specFromSamples) or, when it has
+ * one, adds them to it (addOperations). Each operationId is the method and path, as ECHO names
+ * every operation.
  */
 export function SamplesSpecModal({ replaces, hasOperation, onGenerate, onAdd, onClose }: Props) {
-  const [method, setMethod] = useState<SampleMethod>('POST');
-  const [path, setPath] = useState('');
-  const [request, setRequest] = useState('');
-  const [response, setResponse] = useState('');
+  const [sets, setSets] = useState<SampleSet[]>(emptySets);
+  const update = (key: number, change: Partial<SampleSet>) => setSets((all) => all.map((s) => (s.key === key ? { ...s, ...change } : s)));
 
-  const { path: fullPath, query } = splitPath(path);
-  // The operation is named after its method and path, like every operation (operationIds.ts).
-  const operationId = operationIdFor(method, fullPath);
-  const pathValid = PATH_PATTERN.test(fullPath);
-  const optional = bodyOptional(method);
-  const requestSample = sample(request, !optional);
-  const responseSample = sample(response, true);
-  const valid = pathValid && !requestSample.error && !responseSample.error;
+  const filled = sets.filter(used).map((set) => ({ set, ...check(set) }));
+  const names = filled.map((f) => nameOf(f.samples));
+  const duplicates = new Set(names.filter((n, i) => names.indexOf(n) !== i));
+  const valid = filled.length > 0 && duplicates.size === 0 && filled.every((f) => f.valid);
   const canAdd = !!replaces && !!onAdd;
-  const taken = canAdd && pathValid && !!hasOperation?.(method, fullPath);
+  const takenOf = (f: (typeof filled)[number]) => canAdd && !f.pathError && !!hasOperation?.(f.samples.method, f.samples.path);
+  const taken = filled.filter(takenOf);
+  const only = filled.length === 1 ? filled[0].samples : undefined;
 
-  const samples = (): SamplesSpec => ({ method, path: fullPath, ...(query ? { query } : {}), operationId, request: requestSample.value, response: responseSample.value });
-  // Enter in the Path field adds (or replaces the one method) when it can: it never throws the spec away.
-  const submit = (event?: FormEvent) => {
+  const all = () => filled.map((f) => f.samples);
+  // Enter in a Path field adds (or replaces the methods the spec has) when it can: it never throws the spec away.
+  const submit = (event?: FormEvent | KeyboardEvent) => {
     event?.preventDefault();
     if (!valid) return;
-    if (canAdd) onAdd!(samples());
-    else onGenerate(samples());
+    if (canAdd) onAdd!(all());
+    else onGenerate(all());
   };
   const replace = () => {
-    if (valid) onGenerate(samples());
+    if (valid) onGenerate(all());
   };
+  const addLabel = taken.length === 0 ? 'Add to this spec' : only ? `Replace ${nameOf(only)}` : `Add to this spec, replacing ${taken.length}`;
 
   return (
-    <Modal isOpen variant="medium" onClose={onClose} aria-labelledby="spec-samples-title">
+    <Modal isOpen variant="large" onClose={onClose} aria-labelledby="spec-samples-title">
       <ModalHeader
         title="Interface Specs from Samples"
         labelId="spec-samples-title"
-        description={`ECHO writes the schemas, the path and the operation from a sample request and response${canAdd ? ', as a new spec or added to the one on screen' : ''}. Fields with a value in the sample are marked required; tweak the spec afterwards in the editor.`}
+        description={`ECHO writes the schemas, the paths and the operations from each set of sample request and response${canAdd ? ', as a new spec or added to the one on screen' : ''}. Sets left blank are skipped. Fields with a value in the sample are marked required; tweak the spec afterwards in the editor.`}
       />
       <ModalBody>
         <Form id="spec-samples-form" onSubmit={submit} className="echo-samples-spec">
-          <div className="echo-samples-spec__route">
-            <FormGroup label="Method" fieldId="spec-samples-method" className="echo-samples-spec__method">
-              <FormSelect id="spec-samples-method" value={method} onChange={(_e, v) => setMethod(v as SampleMethod)}>
-                {SAMPLE_METHODS.map((m) => (
-                  <FormSelectOption key={m} value={m} label={m} />
-                ))}
-              </FormSelect>
-            </FormGroup>
-            <FormGroup label="Path" isRequired fieldId="spec-samples-path" className="echo-samples-spec__path">
-              <TextInput
-                id="spec-samples-path"
-                value={path}
-                onChange={(_e, v) => setPath(v)}
-                placeholder="/cards/{cardId}/activate or /cards?status=ACTIVE&limit=10"
-                validated={path.trim() && !pathValid ? 'error' : 'default'}
-                autoFocus
-              />
-              <FormHelperText>
-                <HelperText>
-                  <HelperTextItem variant={path.trim() && !pathValid ? 'error' : 'default'}>
-                    {path.trim() && !pathValid ? 'Segments of letters, digits, - _ . or a {name}, split by /, then an optional ?query.' : 'Each {name} becomes a path parameter. A sample query after ? (e.g. ?status=ACTIVE&limit=10) gives optional query parameters.'}
-                  </HelperTextItem>
-                </HelperText>
-              </FormHelperText>
-            </FormGroup>
+          <div className="echo-jira-import__cards">
+            {sets.map((set, i) => {
+              const c = check(set);
+              const on = used(set);
+              const id = `spec-samples-${set.key}`;
+              const name = nameOf(c.samples);
+              const isTaken = on && takenOf({ set, ...c });
+              return (
+                <section key={set.key} className="echo-jira-import__card" aria-label={`Sample ${i + 1}`}>
+                  <div className="echo-jira-import__card-head">
+                    <strong>Sample {i + 1}</strong>
+                    {isTaken && <Label color="orange" isCompact>Already in the spec: replaces it (its route stays)</Label>}
+                    {on && !c.pathError && duplicates.has(name) && <Label color="red" isCompact>Two sets are {name}</Label>}
+                    {sets.length > 1 && (
+                      <Button variant="link" isInline className="echo-jira-import__remove" onClick={() => setSets((all) => all.filter((s) => s.key !== set.key))}>
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <div className="echo-samples-spec__route">
+                    <FormGroup label="Method" fieldId={`${id}-method`} className="echo-samples-spec__method">
+                      <FormSelect id={`${id}-method`} value={set.method} onChange={(_e, v) => update(set.key, { method: v as SampleMethod })}>
+                        {SAMPLE_METHODS.map((m) => (
+                          <FormSelectOption key={m} value={m} label={m} />
+                        ))}
+                      </FormSelect>
+                    </FormGroup>
+                    <FormGroup label="Path" isRequired fieldId={`${id}-path`} className="echo-samples-spec__path">
+                      <TextInput
+                        id={`${id}-path`}
+                        value={set.path}
+                        onChange={(_e, v) => update(set.key, { path: v })}
+                        placeholder="/cards/{cardId}/activate or /cards?status=ACTIVE&limit=10"
+                        validated={set.path.trim() && c.pathError ? 'error' : 'default'}
+                        autoFocus={i === 0}
+                        // A form with many fields submits on Enter only through its submit button, which is outside it.
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') submit(e);
+                        }}
+                      />
+                      <FormHelperText>
+                        <HelperText>
+                          <HelperTextItem variant={on && c.pathError ? 'error' : 'default'}>
+                            {on && c.pathError ? c.pathError : 'Each {name} becomes a path parameter. A sample query after ? (e.g. ?status=ACTIVE&limit=10) gives optional query parameters.'}
+                          </HelperTextItem>
+                        </HelperText>
+                      </FormHelperText>
+                    </FormGroup>
+                  </div>
+                  <div className="echo-jira-import__bodies">
+                    <FormGroup label="Sample request (JSON)" isRequired={!c.optional} fieldId={`${id}-request`}>
+                      <TextArea
+                        id={`${id}-request`}
+                        className="echo-samples-spec__json"
+                        value={set.request}
+                        onChange={(_e, v) => update(set.key, { request: v })}
+                        rows={6}
+                        resizeOrientation="vertical"
+                        validated={c.request.shown ? 'error' : 'default'}
+                        placeholder={c.optional ? `Optional for ${set.method}: leave blank for no request body` : '{ "activationCode": "123456" }'}
+                      />
+                      {on && c.request.error && <SampleError text={c.request.error} />}
+                    </FormGroup>
+                    <FormGroup label="Sample response (JSON)" isRequired fieldId={`${id}-response`}>
+                      <TextArea
+                        id={`${id}-response`}
+                        className="echo-samples-spec__json"
+                        value={set.response}
+                        onChange={(_e, v) => update(set.key, { response: v })}
+                        rows={6}
+                        resizeOrientation="vertical"
+                        validated={c.response.shown ? 'error' : 'default'}
+                        placeholder='{ "cardId": "c-42", "status": "ACTIVE" }'
+                      />
+                      {on && c.response.error && <SampleError text={c.response.error} />}
+                    </FormGroup>
+                  </div>
+                </section>
+              );
+            })}
           </div>
-          <FormGroup label="Sample request (JSON)" isRequired={!optional} fieldId="spec-samples-request">
-            <TextArea
-              id="spec-samples-request"
-              className="echo-samples-spec__json"
-              value={request}
-              onChange={(_e, v) => setRequest(v)}
-              rows={7}
-              resizeOrientation="vertical"
-              validated={requestSample.shown ? 'error' : 'default'}
-              placeholder={optional ? `Optional for ${method}: leave blank for no request body` : '{ "activationCode": "123456" }'}
-            />
-            {requestSample.shown && <SampleError text={requestSample.error!} />}
-          </FormGroup>
-          <FormGroup label="Sample response (JSON)" isRequired fieldId="spec-samples-response">
-            <TextArea
-              id="spec-samples-response"
-              className="echo-samples-spec__json"
-              value={response}
-              onChange={(_e, v) => setResponse(v)}
-              rows={7}
-              resizeOrientation="vertical"
-              validated={responseSample.shown ? 'error' : 'default'}
-              placeholder='{ "cardId": "c-42", "status": "ACTIVE" }'
-            />
-            {responseSample.shown && <SampleError text={responseSample.error!} />}
-          </FormGroup>
-          {replaces && canAdd && !taken && (
+          <Button variant="secondary" className="echo-samples-spec__more" onClick={() => setSets((all) => [...all, ...emptySets()])}>
+            More Samples
+          </Button>
+          {replaces && canAdd && taken.length === 0 && (
             <p className="echo-samples-spec__add-note">
-              <strong>Add to this spec</strong>: adds this method to the spec.
+              <strong>Add to this spec</strong>: adds {filled.length > 1 ? 'these methods' : 'this method'} to the spec.
             </p>
           )}
-          {replaces && (!canAdd || taken) && (
+          {replaces && (!canAdd || taken.length > 0) && (
             <Alert
               variant="warning"
               isInline
@@ -161,12 +235,20 @@ export function SamplesSpecModal({ replaces, hasOperation, onGenerate, onAdd, on
               title={canAdd ? `A flow has one OpenAPI spec. Replace Whole Spec makes a new one: ${replaces}.` : `A flow has one OpenAPI spec: ${replaces}.`}
             />
           )}
-          {taken && (
+          {only && taken.length > 0 && (
             <Alert
               variant="danger"
               isInline
               isPlain
-              title={`This spec has ${method} ${fullPath} already. Replace ${method} ${fullPath} puts the one made from these samples in its place (its route stays); Cancel keeps it.`}
+              title={`This spec has ${nameOf(only)} already. Replace ${nameOf(only)} puts the one made from these samples in its place (its route stays); Cancel keeps it.`}
+            />
+          )}
+          {!only && taken.length > 0 && (
+            <Alert
+              variant="danger"
+              isInline
+              isPlain
+              title={`This spec has ${taken.map((f) => nameOf(f.samples)).join(', ')} already. ${addLabel} puts the ones made from these samples in their place (their routes stay); Cancel keeps them.`}
             />
           )}
         </Form>
@@ -174,8 +256,8 @@ export function SamplesSpecModal({ replaces, hasOperation, onGenerate, onAdd, on
       <ModalFooter>
         {canAdd ? (
           <>
-            <Button type="submit" form="spec-samples-form" variant={taken ? 'warning' : 'primary'} isDisabled={!valid}>
-              {taken ? `Replace ${method} ${fullPath}` : 'Add to this spec'}
+            <Button type="submit" form="spec-samples-form" variant={taken.length ? 'warning' : 'primary'} isDisabled={!valid}>
+              {addLabel}
             </Button>
             <Button variant="danger" isDisabled={!valid} onClick={replace}>
               Replace Whole Spec

@@ -314,9 +314,9 @@ export interface EditorSettings {
   autosaveSeconds: number;
   /** Whether this install lets users run drafts inside the Builder (the Run button). */
   runEnabled?: boolean;
-  /** Whether Interface offers Import Request/Response from Jira (echo.jira is set up). */
+  /** Whether Interface offers Import from Jira using AI (echo.jira is set up). */
   jiraImport?: boolean;
-  /** The AI engine Import Request/Response from Jira sends stories to ("gpt-4.1 at acme.openai.azure.com"); absent without one. */
+  /** The AI engine Import from Jira using AI sends stories to ("gpt-4.1 at acme.openai.azure.com"); absent without one. */
   aiEngine?: string | null;
   /**
    * Where the REST OpenApi step of a route made for a new operation points (the one approved API's

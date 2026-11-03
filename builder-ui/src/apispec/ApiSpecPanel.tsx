@@ -520,10 +520,10 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     }
   };
 
-  /** The spec as it was before Import Request/Response from Jira added to it, for its Undo. */
+  /** The spec as it was before Import from Jira using AI added to it, for its Undo. */
   const beforeImport = useRef<{ json: string; latest: string | undefined; dirty: boolean } | undefined>(undefined);
 
-  /** Puts json on screen, unsaved, in place of what is there (Import Request/Response from Jira and its Undo). */
+  /** Puts json on screen, unsaved, in place of what is there (Import from Jira using AI and its Undo). */
   const showUnsaved = (json: string) => {
     latest.current = json;
     named.current = undefined;
@@ -534,7 +534,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   };
 
   /**
-   * Import Request/Response from Jira: the spec with the confirmed operations added goes on screen, unsaved. The new
+   * Import from Jira using AI: the spec with the confirmed operations added goes on screen, unsaved. The new
    * operations get routes, and a new path another flow has is asked about, as when typed in.
    */
   const applyImport = (result: ImportResult) => {
@@ -549,26 +549,24 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   };
 
   /**
-   * Interface Specs from Samples > Add to this spec: the method made from the samples goes into the
-   * spec on screen (under the path it has already, when it has it), with its data types, unsaved.
-   * It gets a route, and a new path another flow has is asked about, as when typed in. When the
-   * spec has that method there (Replace METHOD path), it takes its place under the same
+   * Interface Specs from Samples > Add to this spec: the methods made from the samples go into the
+   * spec on screen (under the paths it has already, when it has them), with their data types,
+   * unsaved. They get routes, and a new path another flow has is asked about, as when typed in.
+   * A method the spec has on that path (Replace METHOD path) takes its place under the same
    * operationId, so its route stays, and the data types only the old one used go.
    */
-  const addFromSamples = (samples: SamplesSpec) => {
+  const addFromSamples = (samples: SamplesSpec[]) => {
     setDialog(undefined);
     const before = currentJson();
-    const path = pathInSpec(before, samples.path);
-    const op = { method: samples.method, path, query: samples.query, request: samples.request, response: samples.response };
-    const { json, paths: done } = addOperations(before, [op], true);
+    const ops = samples.map((s) => ({ method: s.method, path: pathInSpec(before, s.path), query: s.query, request: s.request, response: s.response }));
+    const { json, paths: done } = addOperations(before, ops, true);
     void checkNewPaths(json, pathsOf(json).filter((p) => !pathsOf(before).includes(p)));
     const { added, changed } = operationChanges(operationsOf(before) ?? [], operationsOf(json) ?? []);
     // A replaced method's route starts from the id a save may have renamed it to.
     const routed = changed.map((c) => ({ ...c, operationId: renamedSince.current.get(c.operationId) ?? c.operationId }));
     if (added.length || routed.length) onOperationsChangedRef.current?.({ added, removed: [], changed: routed });
     showUnsaved(json);
-    const what = done[0]?.replaced ? 'Replaced' : 'Added';
-    setStatus({ variant: 'success', text: `${what} ${samples.method} ${path} from the samples: save to keep it.` });
+    setStatus({ variant: 'success', text: `${madeFrom(done)} from the samples: save to keep ${done.length === 1 ? 'it' : 'them'}.` });
   };
 
   const undoImport = () => {
@@ -665,7 +663,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           isAriaDisabled={!saving && !settings.data?.jiraImport}
           title={settings.data?.jiraImport ? undefined : 'Jira is not set up: add echo.jira base-url and token to the config'}
         >
-          Import Request/Response from Jira
+          Import from Jira using AI
         </Button>
         <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'samples' })} isDisabled={saving}>
           Interface Specs from Samples
@@ -782,10 +780,13 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           hasOperation={(method, path) => operationKeys(currentJson()).has(`${method} ${pathInSpec(currentJson(), path)}`)}
           onAdd={addFromSamples}
           onClose={() => setDialog(undefined)}
-          onGenerate={(samples) => {
+          onGenerate={(sets) => {
             setDialog(undefined);
             const before = pathsOf(currentJson());
-            const json = specFromSamples({ ...samples, current: currentJson(), flowName: flowTitle, flowDescription });
+            // The first set makes the spec; the others are added to it.
+            const [first, ...rest] = sets;
+            const made = specFromSamples({ ...first, current: currentJson(), flowName: flowTitle, flowDescription });
+            const json = rest.length ? addOperations(made, rest.map(({ method, path, query, request, response }) => ({ method, path, query, request, response }))).json : made;
             void checkNewPaths(json, pathsOf(json).filter((p) => !before.includes(p)));
             // Its operation gets a route, and the routes of the operations it replaces are dealt with
             // as when they are deleted in the editor (by the ids their routes start from).
@@ -797,7 +798,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
             setEditorKey((k) => k + 1);
             setContentDirty(json !== saved.current);
             setDialogOpen(false);
-            setStatus({ variant: 'success', text: `Made ${samples.method} ${samples.path} from the samples: save to keep it.` });
+            setStatus({ variant: 'success', text: `Made ${sets.length === 1 ? `${first.method} ${first.path}` : `${sets.length} operations`} from the samples: save to keep ${sets.length === 1 ? 'it' : 'them'}.` });
           }}
         />
       )}
@@ -871,3 +872,13 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     </div>
   );
 });
+
+/** What Add to this spec did, for the status line: "Added GET /cards", "Replaced GET /cards", or "Added 2 and replaced 1 operations". */
+function madeFrom(done: { method: string; path: string; replaced: boolean }[]): string {
+  if (done.length === 1) return `${done[0].replaced ? 'Replaced' : 'Added'} ${done[0].method} ${done[0].path}`;
+  const replaced = done.filter((d) => d.replaced).length;
+  const added = done.length - replaced;
+  if (!replaced) return `Added ${added} operations`;
+  if (!added) return `Replaced ${replaced} operations`;
+  return `Added ${added} and replaced ${replaced} operation${replaced === 1 ? '' : 's'}`;
+}

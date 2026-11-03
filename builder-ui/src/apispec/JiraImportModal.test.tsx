@@ -30,7 +30,7 @@ const story: StoryExamples = {
   ],
 };
 
-describe('Import Request/Response from Jira dialog', () => {
+describe('Import from Jira using AI dialog', () => {
   it('shows what it found for checking, adds it, then lists the paths and data types made', async () => {
     const user = userEvent.setup();
     storyExamples.mockResolvedValue(story);

@@ -206,9 +206,9 @@ test("Openapi keeps the editor's tab line, styled in ECHO's theme", async ({ pag
   await expect(page.locator('iframe[title="OpenAPI editor"]')).toBeHidden();
   await page.keyboard.press('Escape');
   await openSpec(page);
-  // The bar: Import Request/Response from Jira (the e2e backend reads a fake Jira), Interface Specs from Samples, Save, Rename, Discard; Info and the rest are in the list on the left; no "Schema from a sample" note.
+  // The bar: Import from Jira using AI (the e2e backend reads a fake Jira), Interface Specs from Samples, Save, Rename, Discard; Info and the rest are in the list on the left; no "Schema from a sample" note.
   const bar = page.locator('.echo-api-spec__bar');
-  await expect(bar.getByRole('button')).toHaveText(['Import Request/Response from Jira', 'Interface Specs from Samples', 'Save', 'Rename', 'Discard']);
+  await expect(bar.getByRole('button')).toHaveText(['Import from Jira using AI', 'Interface Specs from Samples', 'Save', 'Rename', 'Discard']);
   await expect(bar).not.toContainText('Schema from a sample');
   const editor = editorOf(page);
   for (const name of ['File', 'Flow', 'Run', 'Advanced']) {
