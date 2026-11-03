@@ -583,6 +583,28 @@ class FlowRunnerTest {
     }
 
     @Test
+    void aStepWithoutAValueIsNamedInsteadOfUnsupportedDefinitionNull() {
+        String yaml = """
+                - route:
+                    id: get-node
+                    from:
+                      uri: platform-http:/x
+                      steps:
+                        - setHeaders:
+                            id: parameters-1
+                            description: Parameters
+                            headers:
+                              - name: ""
+                              - name: id
+                                simple: ${header.id}
+                """;
+        assertThatThrownBy(() -> runner.start(6, "bad", "bad.camel.yaml", Map.of("bad.camel.yaml", yaml), "designer"))
+                .isInstanceOf(RunException.class)
+                .hasMessage("The flow could not start: the setHeaders step \"Parameters\" in route get-node: "
+                        + "an empty header (no name, no value) is left in it. Open the step and fill it in, or delete it.");
+    }
+
+    @Test
     void stopsRunsThatHaveBeenIdle() {
         var clock = new MutableClock();
         runner = new FlowRunner(new RunProperties(true, 18081, 18085, 30, "http://localhost"), clock);

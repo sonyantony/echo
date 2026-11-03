@@ -57,6 +57,33 @@ class FlowValidatorTest {
     }
 
     @Test
+    void stepsAndHeadersWithoutAValueAreReportedAtTheirLine() {
+        String yaml = """
+                - route:
+                    from:
+                      uri: direct:x
+                      steps:
+                        - setVariable:
+                            name: id
+                        - setHeaders:
+                            headers:
+                              - name: ""
+                              - name: name
+                                variable:
+                                  expression: id
+                              - name: other
+                        - setBody:
+                            id: b
+                """;
+        var result = validator.validate("x.camel.yaml", Map.of("x.camel.yaml", yaml));
+        assertThat(result.problems()).extracting(Problem::line, Problem::message).containsExactly(
+                org.assertj.core.groups.Tuple.tuple(6, "The Set Variable 'id' has no value. Give it one or delete it."),
+                org.assertj.core.groups.Tuple.tuple(9, "An empty header (no name, no value) is left in this step. Delete it."),
+                org.assertj.core.groups.Tuple.tuple(13, "The header 'other' has no value. Give it one or delete it."),
+                org.assertj.core.groups.Tuple.tuple(15, "The Set Body has no value. Give it one or delete it."));
+    }
+
+    @Test
     void malformedYamlIsReportedWithItsLine() {
         var result = validateFixture("malformed.camel.yaml");
         assertThat(result.valid()).isFalse();
