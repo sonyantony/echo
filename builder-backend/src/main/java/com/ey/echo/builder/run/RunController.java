@@ -49,7 +49,11 @@ public class RunController {
     private final FlowRunner runner;
     private final ApiCatalog apis;
     private final RunValues values;
+    // HTTP/1.1: over HTTP/2 (the run port accepts the h2c upgrade Java asks for by default) a reply
+    // carrying Connection or Keep-Alive, as one copied from a downstream call does, is refused by
+    // newer Java ("malformed response: Prohibited header name 'keep-alive'").
     private final HttpClient http = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .proxy(HttpClient.Builder.NO_PROXY)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
