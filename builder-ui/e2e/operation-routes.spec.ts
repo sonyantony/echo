@@ -98,7 +98,7 @@ test('an uploaded spec gets a route per operation under its own ids; Add Route F
   await page.reload();
   await designMenu(page, /^Design/);
   await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publish Flow', exact: true }).click();
   const publish = page.getByRole('dialog');
   await publish.getByRole('button', { name: 'Publish' }).click();
   await expect(publish.getByText('These operations have no route')).toBeVisible();
@@ -117,7 +117,7 @@ test('an uploaded spec gets a route per operation under its own ids; Add Route F
   await fileMenu(page, /^Save(?! As)/);
   await expect(page.getByText('Saved.')).toBeVisible();
   // Its REST OpenApi step waits for the operation it calls: Publish says so.
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publish Flow', exact: true }).click();
   await publish.getByRole('button', { name: 'Publish' }).click();
   // The problem is on that step: its red circle opens it.
   await expect(page.getByTestId('validation-problems')).toBeVisible();
@@ -130,7 +130,7 @@ test('an uploaded spec gets a route per operation under its own ids; Add Route F
   await page.reload();
   await designMenu(page, /^Design/);
   await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publish Flow', exact: true }).click();
   await publish.getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
 });

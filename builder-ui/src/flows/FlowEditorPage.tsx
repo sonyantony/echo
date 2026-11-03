@@ -715,6 +715,16 @@ function FlowEditor() {
           >
             Save As Template
           </DropdownItem>
+          <Divider component="li" key="publish-divider" />
+          <DropdownItem
+            key="publish"
+            icon={<UploadIcon />}
+            onClick={() => setPublishing(true)}
+            isDisabled={saving || validating}
+            description="Save and publish this flow so the pipeline can build it"
+          >
+            Publish Flow
+          </DropdownItem>
         </DropdownList>
       </Dropdown>
     </div>
@@ -770,7 +780,8 @@ function FlowEditor() {
     </div>
   );
 
-  // Downloads, Validate, the REST settings and Publish on the Flow canvas toolbar, where Kaoto's copy to clipboard was.
+  // Downloads, Validate and the REST settings on the Flow canvas toolbar, where Kaoto's copy to clipboard was.
+  // Publish is a Publish Flow button on the tab line (before Draft/Published) and a File menu item.
   const canvasActions = (
     <div className="echo-canvas-actions echo-no-print">
       <DownloadButtons onDownloadZip={download} onDownloadImage={downloadDiagram} zipBusy={saving} imageBusy={drawing} />
@@ -793,15 +804,6 @@ function FlowEditor() {
         />
       )}
       <RestSettingChecks settings={restSettings} hasSpec={!!flow.data.apiSpec} toggle={toggleRestSetting} />
-      <Button
-        variant="primary"
-        icon={<UploadIcon />}
-        onClick={() => setPublishing(true)}
-        isDisabled={saving || validating}
-        title={`Publish ${flow.data.displayName} so the pipeline can build it`}
-      >
-        Publish
-      </Button>
     </div>
   );
 
@@ -862,6 +864,16 @@ function FlowEditor() {
           canvasToolbarActions={canvasActions}
           tabBarActions={
             <FlowNameTag name={flow.data.displayName} id={flow.data.name}>
+              <Button
+                variant="primary"
+                size="sm"
+                className="echo-publish-flow echo-no-print"
+                onClick={() => setPublishing(true)}
+                isDisabled={saving || validating}
+                title={`Publish ${flow.data.displayName} so the pipeline can build it`}
+              >
+                Publish Flow
+              </Button>
               <StatusLabel status={flow.data.status} />
               {dirty || specDirty ? (
                 <span data-testid="unsaved">Unsaved changes</span>
@@ -1057,7 +1069,7 @@ function FlowEditor() {
 }
 
 /**
- * The REST settings next to Publish, written to the route's restConfiguration. They apply to the
+ * The REST settings on the Flow canvas toolbar, written to the route's restConfiguration. They apply to the
  * REST service ECHO makes from the flow's OpenAPI spec, so they wait for a spec (but one already on
  * can always be turned off).
  */

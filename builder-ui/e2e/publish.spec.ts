@@ -11,7 +11,7 @@ test('publishes a flow to Git', async ({ page }) => {
   const name = uniqueName('pub');
   await createFlow(page, name);
 
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publish Flow', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Description').fill(`First version of ${name}`);
   await dialog.getByRole('button', { name: 'Publish' }).click();
@@ -34,7 +34,7 @@ test('lists a published flow and deletes it from Git', async ({ page }) => {
   await login(page);
   const name = uniqueName('del');
   await createFlow(page, name);
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publish Flow', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
 
@@ -57,7 +57,7 @@ test('disables and enables a published flow from the Open Flow page', async ({ p
   await login(page);
   const name = uniqueName('off');
   await createFlow(page, name);
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publish Flow', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
 
