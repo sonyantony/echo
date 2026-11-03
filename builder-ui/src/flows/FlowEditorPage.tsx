@@ -59,7 +59,7 @@ import { useDismissMenu } from '../editor/menuDismiss';
 import { DONE_STEPS_FILE, type FlowFiles } from '../editor/flowFiles';
 import { attachScaffoldSchemas, mappedXslFiles } from '../datamapper/scaffoldSchemas';
 import { attachCallTargets, attachReplySources, calledSpecs, operationIdsOf, withCallDescriptions, withCallLabels, withJsonSources, withXsltFile } from '../datamapper/callSchemas';
-import { scaffoldAttention, stepProblems, type StepProblems, type ToDo } from '../editor/stepProblems';
+import { problemsLeft, scaffoldAttention, stepContents, stepProblems, type StepProblems, type ToDo } from '../editor/stepProblems';
 import { readRestSettings, writeRestSetting, type RestSetting, type RestSettings } from '../editor/restSettings';
 import { AddOperationRouteModal, addOperationRouteMenuItem } from './AddOperationRouteModal';
 import { DownloadButtons, downloadMenuItems } from './downloads';
@@ -164,8 +164,11 @@ function FlowEditor() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ variant: 'success' | 'warning' | 'danger'; text: string }>();
   const [validation, setValidation] = useState<ValidationResult>();
-  /** The problems of `validation` sorted onto the canvas steps they are on, and the others. */
-  const [placed, setPlaced] = useState<StepProblems & { of: ValidationResult; n: number }>();
+  /**
+   * The problems of `validation` sorted onto the canvas steps they are on, and the others; `contents`
+   * is what each step held when validated (stepContents), so a step the user changes loses its problems.
+   */
+  const [placed, setPlaced] = useState<StepProblems & { of: ValidationResult; n: number; contents: Map<string, string> }>();
   const placedCount = useRef(0);
   const [validating, setValidating] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -462,12 +465,26 @@ function FlowEditor() {
     let current = true;
     void (async () => {
       const yaml = (await editor.current?.getContent()) ?? '';
-      if (current) setPlaced({ ...stepProblems(validation.problems, routeFile, yaml), of: validation, n: ++placedCount.current });
+      if (current)
+        setPlaced({ ...stepProblems(validation.problems, routeFile, yaml), of: validation, n: ++placedCount.current, contents: stepContents(yaml) });
     })();
     return () => {
       current = false;
     };
   }, [validation, routeFile]);
+
+  // A step the user changes (or removes) after Validate loses its problems, as its Clear would.
+  useEffect(() => {
+    if (!routeYaml) return;
+    setPlaced((was) => {
+      if (!was || was.steps.size === 0) return was;
+      const left = problemsLeft(was.steps, was.contents, stepContents(routeYaml));
+      return left === was.steps ? was : { ...was, steps: left };
+    });
+  }, [routeYaml]);
+
+  /** The problems still shown: those on steps not cleared or changed, and those on no step. */
+  const problemsShown = useMemo(() => (placed ? [...[...placed.steps.values()].flat(), ...placed.other] : []), [placed]);
 
   /**
    * Runs what is on screen inside the Builder: unsaved edits are saved and the draft validated first.
@@ -767,10 +784,10 @@ function FlowEditor() {
       >
         Validate
       </Button>
-      {placed && (
+      {placed && problemsShown.length > 0 && (
         <ValidationProblems
           key={placed.n}
-          problems={placed.of.problems}
+          problems={problemsShown}
           other={placed.other}
           onClear={() => setValidation(undefined)}
         />

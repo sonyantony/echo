@@ -27,6 +27,8 @@ interface Found {
   /** The processor (e.g. `to`), and its settings: none for a branch or a route's `from`. */
   processor?: string;
   settings?: unknown;
+  /** What the step holds, to tell when the user changes it (stepContents). */
+  content: string;
 }
 
 /** Every canvas node in a route file, with the lines (1-based) it spans. */
@@ -35,9 +37,14 @@ function stepsIn(yaml: string): Found[] {
   const doc = parseDocument(yaml, { lineCounter: lines });
   if (doc.errors.length > 0 || !isSeq(doc.contents)) return [];
   const found: Found[] = [];
-  const add = (routeId: string, path: string, node: Node | null | undefined, processor?: string, settings?: unknown) => {
+  const add = (routeId: string, path: string, node: Node | null | undefined, processor?: string, settings?: unknown, content?: unknown) => {
     if (!node?.range) return;
-    const step = { id: `${routeId}|${path}`, start: lines.linePos(node.range[0]).line, end: lines.linePos(node.range[1]).line };
+    const step = {
+      id: `${routeId}|${path}`,
+      start: lines.linePos(node.range[0]).line,
+      end: lines.linePos(node.range[1]).line,
+      content: JSON.stringify(content ?? (node as { toJSON?(): unknown }).toJSON?.() ?? null),
+    };
     found.push(processor ? { ...step, processor, settings: isMap(settings) ? (settings as YAMLMap).toJSON() : settings } : step);
   };
   // Walks a node's children, adding the processors of each `steps` list and the branches.
@@ -79,9 +86,12 @@ function stepsIn(yaml: string): Found[] {
     if (!isMap(route)) continue;
     const routeId = route.get('id');
     if (typeof routeId !== 'string' || !routeId) continue;
-    // A problem with the route itself (its id, its `from`) goes on the route's first node.
-    add(routeId, 'route.from', item as Node);
+    // A problem with the route itself (its id, its `from`) goes on the route's first node, which
+    // changes with the route's own settings, not with its steps.
     const from = route.get('from', true);
+    const own = route.toJSON() as Record<string, unknown> & { from?: Record<string, unknown> };
+    if (own.from && typeof own.from === 'object') delete own.from.steps;
+    add(routeId, 'route.from', item as Node, undefined, undefined, own);
     if (isMap(from)) walk(routeId, 'route.from', from);
   }
   return found;
@@ -151,6 +161,29 @@ function mapperDone(node: string, id: string, steps: unknown, mapped: ReadonlySe
   const route = node.slice(0, node.indexOf('|'));
   const scaffold = /^kaoto-datamapper-request-.+-\d+$/.test(id) || (route.startsWith('route-') && id === `kaoto-datamapper-${route.slice(6)}`);
   return !mapped || !scaffold || xslt.uri !== `xslt-saxon:${id}.xsl` || mapped.has(`${id}.xsl`);
+}
+
+/**
+ * What each step of a route file holds (its settings and the steps inside it), by step: a step whose
+ * content differs from when it was validated has been worked on, so its problems go (FlowEditorPage).
+ * Empty while the YAML cannot be read.
+ */
+export function stepContents(yaml: string): Map<string, string> {
+  return new Map(stepsIn(yaml).map((s) => [s.id, s.content]));
+}
+
+/**
+ * The problems on steps still as they were (`then`, stepContents of the validated YAML) in `now`: a
+ * step the user changed or removed loses its problems. While `now` cannot be read nothing goes.
+ */
+export function problemsLeft(
+  steps: Map<string, ValidationProblem[]>,
+  then: Map<string, string>,
+  now: Map<string, string>,
+): Map<string, ValidationProblem[]> {
+  if (now.size === 0) return steps;
+  const left = new Map([...steps].filter(([step]) => then.get(step) === now.get(step)));
+  return left.size === steps.size ? steps : left;
 }
 
 /** Sorts the problems into those on a step of this route file and the others. */
