@@ -155,10 +155,10 @@ itself keeps only what is designed, so the service always follows the spec's cur
   `echo-missing-<operationId>` route for each such operation; add a route for it and it takes
   over. A path that is not in the spec is a 404 too. **Publish** lists such operations (and ones
   whose route is switched off) and publishes only after **Publish Anyway**.
-- The **Client Request Validation** and **Enable CORS** checkboxes, stacked just before Publish on
-  the Flow Design toolbar, turn the REST configuration's
+- The **Client Request Validation** and **Enable CORS** checkboxes, stacked after Validate on
+  the Flow > Design canvas toolbar, turn the REST configuration's
   settings on and off (`restConfiguration` in the route file). They need a spec. A new flow
-  starts with Client Request Validation on. See [Request validation](#request-validation) below.
+  starts with both on. See [Request validation](#request-validation) below.
 - **Swagger UI** for the spec is at **`<Base Path>/docs`** of the running flow (below).
 - The Run panel lists the spec's paths, Base Path included, to call, and links the flow's Swagger UI.
 - Upload, Edit as draft and Open Flow Template take the generated part out again, so it never shows up
@@ -167,7 +167,7 @@ itself keeps only what is designed, so the service always follows the spec's cur
 ### Request validation
 
 Client Request Validation is **on in every new flow** (its route file starts with
-`restConfiguration: {clientRequestValidation: true}`); flows made before, uploaded or opened from a
+`restConfiguration: {clientRequestValidation: true, enableCORS: true}`); flows made before, uploaded or opened from a
 template keep what they have. With **Client Request Validation** ticked, every request is checked against the spec before the
 flow's route sees it, and a request that does not fit gets **400** with what is wrong:
 

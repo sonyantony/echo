@@ -42,3 +42,9 @@ A new flow's route file starts with `restConfiguration: {clientRequestValidation
 request that does not fit the spec (missing required parameter, unknown query parameter, wrong
 body) gets a 400 from the first Run, instead of passing silently. The flow can still turn it off in
 the Flow menu. Existing, uploaded and template flows keep their setting.
+
+## Update 2026-11-03: Enable CORS on by default too
+
+New flows also start with `enableCORS: true`, so a web page on another site can call the flow
+without first ticking Enable CORS. The checkbox (Flow > Design canvas toolbar) still turns it off.
+Existing, uploaded and template flows keep their setting.

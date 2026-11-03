@@ -119,7 +119,7 @@ Things to know:
 
 ## 4. Publish
 
-Choose **Publish** on the Flow Design toolbar, describe the change and confirm. The Builder validates the flow again,
+Choose **Publish Flow** (the button before Draft at the right of the tab line, or **File > Publish Flow**), describe the change and confirm. The Builder validates the flow again,
 then commits `flows/orders/` to the configured branch as you. The commit holds the route,
 the DataMapper XSLT, the schemas, `application.properties` and `echo-flow.json`. **History**
 lists earlier publishes with their commit ids.

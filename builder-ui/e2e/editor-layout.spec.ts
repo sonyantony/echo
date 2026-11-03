@@ -65,7 +65,7 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   expect(file.x + file.width).toBeLessThanOrEqual(spec.x);
   expect(spec.x + spec.width).toBeLessThanOrEqual(design.x);
   await page.getByRole('button', { name: 'File', exact: true }).click();
-  for (const item of [/^Open Flow Template/, /^Open Flow(?! Template)/, /^Manage Flows/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/]) {
+  for (const item of [/^Open Flow Template/, /^Open Flow(?! Template)/, /^Manage Flows/, /^Upload Flow/, /^Save$/, /^Save As(?! Template)/, /^Save As Template/, /^Publish Flow/]) {
     await expect(page.getByRole('menuitem', { name: item })).toBeVisible();
   }
   await page.keyboard.press('Escape');
@@ -78,6 +78,12 @@ test("the editor's controls share the line with Kaoto's tabs", async ({ page }) 
   expect(tagBox.y + tagBox.height).toBeLessThanOrEqual(tabBox.y + tabBox.height);
   await expect(page.getByRole('button', { name: 'History', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'More actions' })).toHaveCount(0);
+  // Publish Flow comes just before Draft/Published, on every view.
+  const publishFlow = (await page.getByRole('button', { name: 'Publish Flow', exact: true }).boundingBox())!;
+  const status = (await page.locator('.echo-flow-state .pf-v6-c-label').first().boundingBox())!;
+  expect(publishFlow.x + publishFlow.width).toBeLessThanOrEqual(status.x);
+  expect(publishFlow.y).toBeGreaterThanOrEqual(tabBox.y);
+  expect(publishFlow.y + publishFlow.height).toBeLessThanOrEqual(tabBox.y + tabBox.height);
 
   await page.setViewportSize({ width: 1100, height: 900 });
   // The tab line still fits on one line: no taller than at full width, every item on it.
@@ -285,7 +291,7 @@ test('the route holding the selected step is outlined and marked in the Routes l
   expect(await width('list-orders')).toBe('1px');
 });
 
-test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With...; downloads, Validate and Publish replace copy to clipboard', async ({ page }) => {
+test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With...; downloads, Validate and the REST settings replace copy to clipboard', async ({ page }) => {
   await login(page);
   const name = uniqueName('runmenu');
   await createFlow(page, name);
@@ -301,7 +307,7 @@ test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With..
   await expect(page.getByRole('menuitem')).toHaveCount(2);
   await page.keyboard.press('Escape');
 
-  // Download Flow, Download Flow As Image, Validate, the REST settings and Publish take the place of Kaoto's copy to
+  // Download Flow, Download Flow As Image, Validate and the REST settings take the place of Kaoto's copy to
   // clipboard, after undo and redo.
   await expect(page.getByTestId('clipboardButton')).toBeHidden();
   const redo = (await page.getByRole('button', { name: 'Redo' }).boundingBox())!;
@@ -311,20 +317,15 @@ test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With..
   expect(image.x).toBeGreaterThanOrEqual(zip.x + zip.width);
   const clipboard = image;
   const validate = page.getByRole('button', { name: 'Validate', exact: true });
-  const publish = page.getByRole('button', { name: 'Publish', exact: true });
   const validateBox = (await validate.boundingBox())!;
-  const publishBox = (await publish.boundingBox())!;
   expect(validateBox.x).toBeGreaterThanOrEqual(clipboard.x + clipboard.width);
-  // Client Request Validation over Enable CORS, between Validate and Publish.
+  // Client Request Validation over Enable CORS, after Validate. Publish is on the tab line and in File, not here.
   const validation = (await page.getByRole('checkbox', { name: 'Client Request Validation' }).boundingBox())!;
   const cors = (await page.getByRole('checkbox', { name: 'Enable CORS' }).boundingBox())!;
   expect(validation.x).toBeGreaterThanOrEqual(validateBox.x + validateBox.width);
   expect(Math.abs(cors.x - validation.x)).toBeLessThan(2);
   expect(cors.y).toBeGreaterThanOrEqual(validation.y + validation.height);
-  expect(validation.y).toBeGreaterThanOrEqual(publishBox.y - 6);
-  expect(cors.y + cors.height).toBeLessThanOrEqual(publishBox.y + publishBox.height + 6);
-  const settingsRight = (await page.locator('.echo-rest-settings').boundingBox())!;
-  expect(publishBox.x).toBeGreaterThanOrEqual(settingsRight.x + settingsRight.width);
+  await expect(page.locator('.echo-canvas-actions').getByRole('button', { name: /Publish/ })).toHaveCount(0);
   expect(Math.abs(validateBox.y + validateBox.height / 2 - (clipboard.y + clipboard.height / 2))).toBeLessThan(4);
   await validate.click();
   await expect(page.getByTestId('validation-result')).toBeVisible();
@@ -334,7 +335,6 @@ test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With..
   await expect(validate).toBeHidden();
   await designMenu(page, /^Design/);
   await expect(validate).toBeVisible();
-  await expect(publish).toBeVisible();
 });
 
 test('only the selected step shows its step toolbar, hovering another step shows none', async ({ page }) => {

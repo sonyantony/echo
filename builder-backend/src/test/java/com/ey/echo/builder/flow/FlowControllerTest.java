@@ -70,14 +70,14 @@ class FlowControllerTest {
     }
 
     @Test
-    void newRouteFileHasNoRoutesAndClientRequestValidationOn() throws Exception {
+    void newRouteFileHasNoRoutesAndClientRequestValidationAndCorsOn() throws Exception {
         // Routes come from the Interface (one per operation) or the canvas; a ready-made
         // platform-http:/<name> route would take the calls of a spec path with the same name.
-        // Client Request Validation starts on, so requests that do not fit the spec get a 400.
+        // Client Request Validation starts on, so requests that do not fit the spec get a 400, and CORS is on.
         long id = create("orders");
         mvc.perform(as(get("/api/flows/{id}/files/orders.camel.yaml", id)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("- restConfiguration:\n    clientRequestValidation: true\n"));
+                .andExpect(content().string("- restConfiguration:\n    clientRequestValidation: true\n    enableCORS: true\n"));
     }
 
     @Test

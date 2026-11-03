@@ -46,7 +46,7 @@ test('the orders flow with DataMapper validates and publishes', async ({ page })
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
   await expect(page.getByTestId('validation-result')).toContainText('The flow is valid.');
 
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await page.getByRole('button', { name: 'Publish Flow', exact: true }).click();
   await page.getByRole('dialog').getByLabel('Description').fill('Orders flow for the demo');
   await page.getByRole('dialog').getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText('Published Successfully')).toBeVisible();
