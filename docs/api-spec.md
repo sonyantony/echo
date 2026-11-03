@@ -104,8 +104,8 @@ itself keeps only what is designed, so the service always follows the spec's cur
   Set Variable per parameter, Remove Headers `*`, Set Headers "SetAuthorizationHeaders", a
   multicast with one pipeline: Set Headers, for POST, PUT and PATCH a Kaoto DataMapper for the
   request, and a REST OpenApi step whose operation the user picks, and a JSON reply, a Kaoto
-  DataMapper for it and Set Headers "SetResponseHeaders", which sets Content-Type `application/json`
-  and response code 200; see decision 0013). The DataMappers start from the spec's schemas: the
+  DataMapper for it, a second Remove Headers `*` and Set Headers "SetResponseHeaders", which sets
+  Content-Type `application/json` and response code 200; see decision 0013). The DataMappers start from the spec's schemas: the
   request DataMapper's source is the request body, and (for GET, POST, PUT and PATCH) the reply
   DataMapper's target is the response (200, else another 2xx, else `default`). ECHO writes them as
   the `openapi-*.schema.json` files Attach Schema makes, so they follow the spec on Save; a method

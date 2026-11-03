@@ -434,18 +434,21 @@ export const ATTENTION = 'Attention';
  * the request into a variable of its name, in place of a Set Variable step per parameter (until
  * 2026-11-03), `shared-token` now: as `variables`, with the Authorization token placeholder
  * always {{api.token}}, whichever API the route calls, in place of {{<api>.token}}, and the REST
- * OpenApi call's Host always {{api.base-url}} (was {{<api>.base-url}} only when one approved API names no server host).
+ * OpenApi call's Host always {{api.base-url}} (was {{<api>.base-url}} only when one approved API names no server host)
+ * (until 2026-11-03), `reply-strip` now: as `shared-token`, with Remove Headers * before the
+ * reply's Set Headers, so nothing the request or a downstream reply left is sent back to the caller.
  */
-type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated' | 'variables' | 'shared-token';
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated' | 'variables' | 'shared-token' | 'reply-strip';
 
-const SCAFFOLD_ERAS: ScaffoldEra[] = ['shared-token', 'variables', 'validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['reply-strip', 'shared-token', 'variables', 'validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
 
 /** Whether routes of this era start their DataMappers from the spec's schemas. */
-const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described' || era === 'validated' || era === 'variables' || era === 'shared-token';
+const withSchemas = (era: ScaffoldEra) =>
+  era === 'schemas' || era === 'described' || era === 'validated' || era === 'variables' || era === 'shared-token' || era === 'reply-strip';
 
 /** The Authorization token placeholder of a scaffold calling the approved API `api` (none: undefined), as of its era. */
 function tokenPlaceholder(api: string | undefined, era: ScaffoldEra): string {
-  if (era === 'shared-token') return '{{api.token}}';
+  if (era === 'shared-token' || era === 'reply-strip') return '{{api.token}}';
   return `{{${api ?? 'api'}.token}}`;
 }
 
@@ -519,21 +522,21 @@ const dataMapper = (id: string, labelled: boolean, schema?: 'source' | 'target')
 });
 
 /** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'shared-token', attached: Attached = {}) {
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'reply-strip', attached: Attached = {}) {
   const callParameters: Record<string, string | boolean> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   // Since shared-token the Host is {{api.base-url}} whichever API is called, like the token.
-  if (era === 'shared-token') callParameters.host = '{{api.base-url}}';
+  if (era === 'shared-token' || era === 'reply-strip') callParameters.host = '{{api.base-url}}';
   else if (call.host) callParameters.host = call.host;
   // The call checks the request against the called operation before sending it.
-  if (era === 'validated' || era === 'variables' || era === 'shared-token') callParameters.requestValidationEnabled = true;
+  if (era === 'validated' || era === 'variables' || era === 'shared-token' || era === 'reply-strip') callParameters.requestValidationEnabled = true;
   // Camel refuses a Set Headers step without a header, so each starts with one.
   const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || undefined;
   const attention = era === 'attention' || era === 'request-mapper';
   const marked = attention ? { description: ATTENTION } : {};
   // Since the request's DataMapper (only for a request with a body since schemas); since the reply's.
   const schemas = withSchemas(era);
-  const described = era === 'described' || era === 'validated' || era === 'variables' || era === 'shared-token';
+  const described = era === 'described' || era === 'validated' || era === 'variables' || era === 'shared-token' || era === 'reply-strip';
   const method = label.split(' ')[0].toUpperCase();
   const requestMapper = era === 'request-mapper' || era === 'marked' || (schemas && BODY_METHODS.has(method));
   const replyMapper = attention || era === 'marked' || schemas;
@@ -549,7 +552,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
           // Each parameter of the request (Camel has it in a header of its name) kept in a variable of
           // that name, before Remove Headers drops the headers. Camel refuses a Set Variables step
           // without a variable, so an operation without parameters has none.
-          ...(era === 'variables' || era === 'shared-token'
+          ...(era === 'variables' || era === 'shared-token' || era === 'reply-strip'
             ? variables.length
               ? [
                   {
@@ -613,6 +616,10 @@ function scaffold(operationId: string, label: string, variables: string[], call:
           { setBody: { id: `reply-${operationId}`, simple: '{${body}}' } },
           // A Kaoto DataMapper as Kaoto adds one: the user maps the reply when they open it.
           ...(replyMapper ? [dataMapper(operationId, attention, schemas && attached.response ? 'target' : undefined)] : []),
+          // Nothing the caller's request or a downstream reply left behind goes back to the caller:
+          // the Authorization token of the call, and the hop-by-hop headers (Connection, Keep-Alive,
+          // Transfer-Encoding) a reply copied, which an HTTP/2 caller refuses.
+          ...(era === 'reply-strip' ? [{ removeHeaders: { id: `remove-reply-headers-${operationId}`, pattern: '*' } }] : []),
           era === 'content-type'
             ? { setHeader: { id: `content-type-${operationId}`, name: 'Content-Type', constant: 'application/json' } }
             : {
@@ -639,8 +646,9 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * (Authorization: Bearer {{api.token}}, whichever API it calls; the call's Host is {{api.base-url}}), a multicast with one pipeline calling a REST OpenApi step
  * (described "<API name> Call" when the call names an approved API, call.name) after Set Headers (Accept, and a header per variable) and, for POST, PUT and PATCH, a Kaoto
  * DataMapper for the request, and labelling its reply "result", then the joined replies wrapped as a
- * JSON object, a Kaoto DataMapper and Set Headers "SetResponseHeaders" (Content-Type:
- * application/json, CamelHttpResponseCode: 200). The DataMappers start from the operation's schemas
+ * JSON object, a Kaoto DataMapper, a second Remove Headers * (so no header of the request or of a
+ * downstream reply, the call's Authorization among them, goes back to the caller) and Set Headers
+ * "SetResponseHeaders" (Content-Type: application/json, CamelHttpResponseCode: 200). The DataMappers start from the operation's schemas
  * where the spec has them (op.schemas: the request body as the source of the one before the call,
  * the response as the target of the reply's); attachScaffoldSchemas writes their files.
  * The steps the user still has to work on (the pipeline's Set Headers, DataMapper, REST OpenApi and
@@ -649,7 +657,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
   const variables = (op.parameters ?? []).map((p) => p.name);
-  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'shared-token', attachedFor(op))], { lineWidth: 0 });
+  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'reply-strip', attachedFor(op))], { lineWidth: 0 });
 }
 
 /** Which DataMappers of op's route start from a schema of the spec. */
