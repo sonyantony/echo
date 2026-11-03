@@ -85,7 +85,7 @@ test("the picked operation sets the request DataMapper's target and the reply Da
   // The REST OpenApi step picks the inventory API's createService (as the step's form would).
   const routeFile = `/api/flows/${id}/files/${name}.camel.yaml`;
   const route = await (await page.request.get(routeFile)).text();
-  const picked = route.replace(/( +)uri: rest-openapi\n( +)parameters: \{\}\n/, '$1uri: rest-openapi\n$2parameters:\n$2  specificationUri: inventory.openapi.json\n$2  operationId: createService\n');
+  const picked = route.replace(/( +)uri: rest-openapi\n( +)parameters:\n +requestValidationEnabled: true\n/, '$1uri: rest-openapi\n$2parameters:\n$2  specificationUri: inventory.openapi.json\n$2  operationId: createService\n$2  requestValidationEnabled: true\n');
   expect(picked).not.toBe(route);
   const xsrf = (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')!.value;
   await page.request.put(routeFile, { data: picked, headers: { 'Content-Type': 'text/plain', 'X-XSRF-TOKEN': xsrf } });

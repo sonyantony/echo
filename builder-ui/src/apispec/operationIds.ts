@@ -426,15 +426,17 @@ export const ATTENTION = 'Attention';
  * 2026-10-30, `marked` until the DataMappers' schemas came (no Attention descriptions: red circles),
  * `schemas` until the multicast and pipeline were described (the DataMapper before the call only for
  * POST, PUT and PATCH, and the DataMappers starting from the spec's schemas where it has them),
- * `described` now: as `schemas`, with the multicast described "Parallel Processor" and, when the call
- * names an approved API, its pipeline "<API> Call Path".
+ * `described` until 2026-11-03: as `schemas`, with the multicast described "Parallel Processor" and,
+ * when the call names an approved API, its pipeline "<API> Call Path", `validated` now: as
+ * `described`, with the REST OpenApi call's requestValidationEnabled on, so a request missing a
+ * required parameter fails before it is sent instead of going out with a literal {name}.
  */
-type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described';
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated';
 
-const SCAFFOLD_ERAS: ScaffoldEra[] = ['described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
 
 /** Whether routes of this era start their DataMappers from the spec's schemas. */
-const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described';
+const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described' || era === 'validated';
 
 /** The multicast of a route made from the spec. */
 export const MULTICAST_DESCRIPTION = 'Parallel Processor';
@@ -506,17 +508,19 @@ const dataMapper = (id: string, labelled: boolean, schema?: 'source' | 'target')
 });
 
 /** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'described', attached: Attached = {}) {
-  const callParameters: Record<string, string> = {};
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'validated', attached: Attached = {}) {
+  const callParameters: Record<string, string | boolean> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   if (call.host) callParameters.host = call.host;
+  // The call checks the request against the called operation before sending it.
+  if (era === 'validated') callParameters.requestValidationEnabled = true;
   // Camel refuses a Set Headers step without a header, so each starts with one.
   const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || 'api';
   const attention = era === 'attention' || era === 'request-mapper';
   const marked = attention ? { description: ATTENTION } : {};
   // Since the request's DataMapper (only for a request with a body since schemas); since the reply's.
   const schemas = withSchemas(era);
-  const described = era === 'described';
+  const described = era === 'described' || era === 'validated';
   const method = label.split(' ')[0].toUpperCase();
   const requestMapper = era === 'request-mapper' || era === 'marked' || (schemas && BODY_METHODS.has(method));
   const replyMapper = attention || era === 'marked' || schemas;
@@ -618,7 +622,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
   const variables = (op.parameters ?? []).map((p) => p.name);
-  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'described', attachedFor(op))], { lineWidth: 0 });
+  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'validated', attachedFor(op))], { lineWidth: 0 });
 }
 
 /** Which DataMappers of op's route start from a schema of the spec. */

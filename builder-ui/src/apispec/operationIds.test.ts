@@ -245,7 +245,7 @@ describe('operationIds', () => {
                       ],
                     },
                   },
-                  { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}' } } },
+                  { to: { id: 'call-getCardsCardId-1', uri: 'rest-openapi', parameters: { specificationUri: 'blueplanet.openapi.json', host: '{{blueplanet.base-url}}', requestValidationEnabled: true } } },
                   { convertBodyTo: { id: 'to-string-getCardsCardId-1', type: 'String' } },
                   { setBody: { id: 'label-getCardsCardId-1', simple: '"result": ${body}' } },
                 ],
@@ -282,7 +282,7 @@ describe('operationIds', () => {
     expect(bare[1].setHeaders.headers).toEqual([{ name: 'Authorization', simple: 'Bearer {{api.token}}' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[0].setHeaders.headers).toEqual([{ name: 'Accept', constant: 'application/json' }]);
     expect(bare[2].multicast.steps[0].pipeline.steps[1].step.id).toBe('kaoto-datamapper-request-postCards-1');
-    expect(bare[2].multicast.steps[0].pipeline.steps[2].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: {} });
+    expect(bare[2].multicast.steps[0].pipeline.steps[2].to).toEqual({ id: 'call-postCards-1', uri: 'rest-openapi', parameters: { requestValidationEnabled: true } });
   });
 
   it("starts a POST's DataMappers from its request body and its response, and attaches them once the spec has them", () => {
@@ -414,8 +414,17 @@ describe('operationIds', () => {
   it('tells routes still as ECHO made them from ones somebody worked on', () => {
     const made = routeForOperation({ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }] });
     expect(untouchedRoutes(made)).toEqual(new Set(['getCardsId']));
+    // The call checks the request before sending it; routes made before that still count, and
+    // keep their call as it was when a parameter is added.
+    expect(made).toContain('requestValidationEnabled: true');
+    const unvalidated = made.replace(/parameters:\n +requestValidationEnabled: true/, 'parameters: {}');
+    expect(unvalidated).not.toBe(made);
+    expect(untouchedRoutes(unvalidated)).toEqual(new Set(['getCardsId']));
+    const grown = refreshRoutes(unvalidated, [{ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
+    expect(grown).toContain('name: q');
+    expect(grown).not.toContain('requestValidationEnabled');
     // Routes made before the multicast was described.
-    const undescribed = made.replace(/\n +description: Parallel Processor/, '');
+    const undescribed = unvalidated.replace(/\n +description: Parallel Processor/, '');
     expect(undescribed).not.toBe(made);
     expect(untouchedRoutes(undescribed)).toEqual(new Set(['getCardsId']));
     // A GET's route had a DataMapper before the call too until schemas came.
