@@ -62,8 +62,10 @@ multicast. A Set Headers step "SetAuthorizationHeaders" before the multicast set
 (`id` from `${variable.id}`) plus `Accept`, followed (for POST, PUT and PATCH) by a DataMapper
 where the request body, its source schema already attached from the flow's spec, is mapped to the
 body the called operation takes: once the Operation Id is picked, that operation's request body
-(from the approved spec, served to the editor at `/api/editor/apis/<file>`) becomes its target. With exactly one approved API, its Specification Uri
-(and Host placeholder) are filled in; pick the Operation Id, then adjust the Set Headers rows to the
+(from the approved spec, served to the editor at `/api/editor/apis/<file>`) becomes its target. Host is always `{{api.base-url}}`
+(the same placeholder whichever API is called, like `{{api.token}}`; routes made before 2026-11-03
+had `{{<id>.base-url}}` only when the one approved API names no server). With exactly one approved
+API, its Specification Uri is filled in; pick the Operation Id, then adjust the Set Headers rows to the
 parameters it takes. Every step that needs the user (that Set Headers, the DataMapper before the
 call, the REST OpenApi step, the pipeline's last Set Body and the DataMapper after the reply) has a
 red circle on the canvas saying what to do.

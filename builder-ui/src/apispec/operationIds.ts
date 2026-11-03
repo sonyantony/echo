@@ -433,7 +433,8 @@ export const ATTENTION = 'Attention';
  * 2026-11-03), `variables` now: as `validated`, with one Set Variables step copying every parameter of
  * the request into a variable of its name, in place of a Set Variable step per parameter (until
  * 2026-11-03), `shared-token` now: as `variables`, with the Authorization token placeholder
- * always {{api.token}}, whichever API the route calls, in place of {{<api>.token}}.
+ * always {{api.token}}, whichever API the route calls, in place of {{<api>.token}}, and the REST
+ * OpenApi call's Host always {{api.base-url}} (was {{<api>.base-url}} only when one approved API names no server host).
  */
 type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated' | 'variables' | 'shared-token';
 
@@ -521,7 +522,9 @@ const dataMapper = (id: string, labelled: boolean, schema?: 'source' | 'target')
 function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'shared-token', attached: Attached = {}) {
   const callParameters: Record<string, string | boolean> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
-  if (call.host) callParameters.host = call.host;
+  // Since shared-token the Host is {{api.base-url}} whichever API is called, like the token.
+  if (era === 'shared-token') callParameters.host = '{{api.base-url}}';
+  else if (call.host) callParameters.host = call.host;
   // The call checks the request against the called operation before sending it.
   if (era === 'validated' || era === 'variables' || era === 'shared-token') callParameters.requestValidationEnabled = true;
   // Camel refuses a Set Headers step without a header, so each starts with one.
@@ -633,7 +636,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  * A route for the operation, as a method added in Interface Specs (or Add Route For Operation)
  * makes it, so the user only picks the operation to call: one Set Variables step putting each of
  * its parameters (from the header Camel puts it in) in a variable of its name, Remove Headers *, Set Headers "SetAuthorizationHeaders"
- * (Authorization: Bearer {{api.token}}, whichever API it calls), a multicast with one pipeline calling a REST OpenApi step
+ * (Authorization: Bearer {{api.token}}, whichever API it calls; the call's Host is {{api.base-url}}), a multicast with one pipeline calling a REST OpenApi step
  * (described "<API name> Call" when the call names an approved API, call.name) after Set Headers (Accept, and a header per variable) and, for POST, PUT and PATCH, a Kaoto
  * DataMapper for the request, and labelling its reply "result", then the joined replies wrapped as a
  * JSON object, a Kaoto DataMapper and Set Headers "SetResponseHeaders" (Content-Type:
@@ -706,6 +709,29 @@ export function withoutUnusedJoinBean(yaml: string): string {
 }
 
 /**
+ * The parameters of the first REST OpenApi step in the route (as JSON), found by walking it: a
+ * regex over the JSON stopped at the braces of a {{placeholder}} Host, so such a route was never
+ * known as its scaffold.
+ */
+function restOpenApiParameters(value: unknown): Record<string, unknown> | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = restOpenApiParameters(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (!value || typeof value !== 'object') return undefined;
+  const map = value as Record<string, unknown>;
+  if (map.uri === 'rest-openapi') return map.parameters && typeof map.parameters === 'object' ? (map.parameters as Record<string, unknown>) : {};
+  for (const child of Object.values(map)) {
+    const found = restOpenApiParameters(child);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
  * The scaffold a route of ECHO's is, if it still is one: its variables and where its call points.
  * A route whose DataMapper has mappings (an XSLT file in `mapped`) is somebody's work.
  */
@@ -735,8 +761,7 @@ function asScaffold(
       variables.push(v.name);
     }
   }
-  const callStep = JSON.stringify(json).match(/"uri":"rest-openapi","parameters":(\{[^{}]*\})/);
-  const parameters = callStep ? (JSON.parse(callStep[1]) as Record<string, unknown>) : {};
+  const parameters = restOpenApiParameters(json) ?? {};
   const described = JSON.stringify(json).match(/"description":"(\S+) Call","uri":"rest-openapi"/);
   const call: ApiCall = {
     specificationUri: typeof parameters.specificationUri === 'string' ? parameters.specificationUri : undefined,

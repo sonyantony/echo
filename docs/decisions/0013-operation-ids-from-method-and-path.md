@@ -96,8 +96,8 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   CamelHttpResponseCode `200`, so a status a downstream call left behind is not the reply's
   (a Content-Type Set Header only before 2026-10-29). The REST OpenApi step is left for the user to point
   at the operation it calls: the downstream API is not the flow's own spec. When the install
-  approves exactly one API (`echo.apis`), its spec is filled in, and its `{{<id>.base-url}}` placeholder
-  when the spec names no server. Validate reports a REST OpenApi step that names neither spec nor
+  approves exactly one API (`echo.apis`), its spec is filled in. Host is `{{api.base-url}}` whichever API is
+  called (since 2026-11-03; before, `{{<id>.base-url}}` only when the one approved API's spec named no server). Validate reports a REST OpenApi step that names neither spec nor
   operation. A parameter added or removed in Interface later adds or removes its Set Variable while
   the route is still the scaffold ECHO made (and its SetMethodParameters row). Each Set Headers
   step starts with a header because Camel refuses one without (added 2026-10-28, Francise).
