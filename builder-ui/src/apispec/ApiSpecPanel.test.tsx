@@ -209,7 +209,7 @@ describe('Openapi panel', () => {
     expect(removed.map((op: { operationId: string }) => op.operationId)).toEqual(['getOld']);
   });
 
-  it('Import Request/Response from Jira adds operations with routes, unsaved, and Undo takes them out again', async () => {
+  it('Import from Jira using AI adds operations with routes, unsaved, and Undo takes them out again', async () => {
     mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0, jiraImport: true } },
       'GET /api/flows/1': { status: 200, body: flow(null) },
@@ -233,7 +233,7 @@ describe('Openapi panel', () => {
         <ApiSpecPanel flowId={1} flowName="payments" onOperationsChanged={onOperationsChanged} onDirtyChange={onDirtyChange} />
       </QueryClientProvider>,
     );
-    await userEvent.click(await screen.findByRole('button', { name: 'Import Request/Response from Jira' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Import from Jira using AI' }));
     await userEvent.type(screen.getByLabelText(/Story link/), 'PAY-142');
     await userEvent.click(screen.getByRole('button', { name: 'Read Story' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Add To Spec' }));
@@ -269,21 +269,43 @@ describe('Openapi panel', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled());
 
     await userEvent.click(screen.getByRole('button', { name: 'Interface Specs from Samples' }));
-    await userEvent.selectOptions(screen.getByLabelText('Method'), 'GET');
-    await userEvent.type(screen.getByLabelText(/Path/), '/cards/{{cardId}');
-    await userEvent.click(screen.getByLabelText(/Sample response/));
+    const first = within(screen.getByRole('region', { name: 'Sample 1' }));
+    await userEvent.selectOptions(first.getByLabelText('Method'), 'GET');
+    await userEvent.type(first.getByLabelText(/Path/), '/cards/{{cardId}');
+    await userEvent.click(first.getByLabelText(/Sample response/));
     await userEvent.paste('{"id": "c-1"}');
     // GET /cards/{id} is there already, under another {name}: it could be replaced.
     expect(screen.getByRole('button', { name: 'Replace GET /cards/{cardId}' })).toBeEnabled();
-    await userEvent.selectOptions(screen.getByLabelText('Method'), 'DELETE');
+    await userEvent.selectOptions(first.getByLabelText('Method'), 'DELETE');
     await userEvent.click(screen.getByRole('button', { name: 'Add to this spec' }));
 
     expect(await screen.findByText('Added DELETE /cards/{id} from the samples: save to keep it.')).toBeInTheDocument();
     expect(onOperationsChanged).toHaveBeenLastCalledWith({ added: [expect.objectContaining({ method: 'DELETE', path: '/cards/{id}', operationId: 'deleteCardsId' })], removed: [], changed: [] });
+
+    // Several sets at once: each is added, with its route.
+    await userEvent.click(screen.getByRole('button', { name: 'Interface Specs from Samples' }));
+    const one = within(screen.getByRole('region', { name: 'Sample 1' }));
+    await userEvent.type(one.getByLabelText(/Path/), '/cards');
+    await userEvent.click(one.getByLabelText(/Sample request/));
+    await userEvent.paste('{"holder": "Ann"}');
+    await userEvent.click(one.getByLabelText(/Sample response/));
+    await userEvent.paste('{"id": "c-2"}');
+    const two = within(screen.getByRole('region', { name: 'Sample 2' }));
+    await userEvent.selectOptions(two.getByLabelText('Method'), 'GET');
+    await userEvent.type(two.getByLabelText(/Path/), '/cards/{{id}/limits');
+    await userEvent.click(two.getByLabelText(/Sample response/));
+    await userEvent.paste('{"limit": 2500}');
+    await userEvent.click(screen.getByRole('button', { name: 'Add to this spec' }));
+    expect(await screen.findByText('Added 2 operations from the samples: save to keep them.')).toBeInTheDocument();
+    expect(onOperationsChanged).toHaveBeenLastCalledWith({
+      added: expect.arrayContaining([expect.objectContaining({ method: 'POST', path: '/cards' }), expect.objectContaining({ method: 'GET', path: '/cards/{id}/limits' })]),
+      removed: [],
+      changed: [],
+    });
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
-  it('greys out Import Request/Response from Jira, left of Interface Specs from Samples, when Jira is not set up', async () => {
+  it('greys out Import from Jira using AI, left of Interface Specs from Samples, when Jira is not set up', async () => {
     mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
       'GET /api/flows/1': { status: 200, body: flow(null) },
@@ -291,7 +313,7 @@ describe('Openapi panel', () => {
     renderPanel();
     await screen.findByTitle('OpenAPI editor');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument());
-    const jira = screen.getByRole('button', { name: 'Import Request/Response from Jira' });
+    const jira = screen.getByRole('button', { name: 'Import from Jira using AI' });
     expect(jira).toHaveAttribute('aria-disabled', 'true');
     expect(jira).toHaveAttribute('title', expect.stringContaining('Jira is not set up'));
     expect(jira.nextElementSibling).toHaveTextContent('Interface Specs from Samples');

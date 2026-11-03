@@ -22,12 +22,16 @@ from the spec, then Flow Design) opens the flow's spec in the Apicurio OpenAPI e
   has (and any unsaved edits). Its paths are the other flow's, so it is refused unless that
   flow's paths are gone or changed (a path is in one flow only, decision 0015).
 - **Interface Specs from Samples** (called New From Samples, then New Interface Specs from Samples,
-  before): a method, a path (with an optional sample `?query`) and a sample request and response,
-  from which ECHO writes the operation, its parameters and its data types. With no spec yet it
+  before): sets of a method, a path (with an optional sample `?query`) and a sample request and
+  response, shown as cards like Import from Jira using AI. It starts with three sets; **More Samples**
+  adds three more, **Remove** takes one out, and sets left blank are skipped (two sets for the same
+  method and path are refused). From each set ECHO writes the operation, its parameters and its
+  data types. With no spec yet it
   makes the spec (**Create**). When the flow has one, **Add to this spec** keeps everything it has
   and adds the method, under the path the spec has already (whatever its `{names}`) or a new one,
   with its data types (names not taken yet), its samples as examples and its route. When the spec
-  has that method on that path, the button reads **Replace GET /path** instead: the method made
+  has that method on that path, the set is marked "Already in the spec" and the button reads
+  **Replace GET /path** instead (**Add to this spec, replacing N** with several sets): the method made
   from the samples takes the old one's place under the same operationId (so its route stays), and
   the data types only the old one used go; **Cancel** keeps it. **Replace Whole Spec** throws the spec
   away and makes a new one.
@@ -139,7 +143,7 @@ itself keeps only what is designed, so the service always follows the spec's cur
   keeps it) and treats the old spec's operations it lacks as deleted. Interface Specs from Samples and Copy
   From Another Flow do the same with the spec they bring. Discard treats every operation on screen
   as deleted, so no route made for them is left behind (one somebody worked on is asked about).
-- **Samples are kept as examples.** Interface Specs from Samples (and Import Request/Response from Jira) saves each sample as
+- **Samples are kept as examples.** Interface Specs from Samples (and Import from Jira using AI) saves each sample as
   the named example (`examples.sample`) of its body, which Apicurio lists (it does not list a bare
   `example`), and keeps it as the `example` of the data type it makes. Picking such a data type
   for a body or response without an example of its own, e.g. one under Responses, adds the
@@ -250,9 +254,9 @@ schema." A renamed field shows as missing under its old name. The list is checke
 DataMapper changes the mapping, and clears once nothing is left to review
 (`datamapper/specMappings.ts`, `mappingCheck.ts`).
 
-### Import Request/Response from Jira
+### Import from Jira using AI
 
-The Interface bar has **Import Request/Response from Jira** (AI sparkle, left of Interface Specs from
+The Interface bar has **Import from Jira using AI** (AI sparkle, left of Interface Specs from
 Samples). It
 asks for a story's link (or its key, `PAY-142`), reads the story's description and comments, and
 finds the example payloads, calls and query parameters written in them: JSON in code blocks or in
@@ -307,7 +311,7 @@ echo:
   `username` empty: ECHO sends it as a Bearer token (REST API 2). With a username, the token is sent
   as its password with Basic auth instead.
 
-Import Request/Response from Jira is greyed out (its tooltip says why) until `base-url` and `token` are set. A link to another site is refused,
+Import from Jira using AI is greyed out (its tooltip says why) until `base-url` and `token` are set. A link to another site is refused,
 so the token is only ever sent to the configured Jira; it is never logged or sent to the browser.
 
 #### Setting up the AI engine
@@ -365,7 +369,7 @@ screenshot of each screen per theme (see [branding.md](branding.md#themes)).
 2. **Response validation.** Camel can check the flow's responses against the spec too
    (`clientResponseValidation`); there is no checkbox for it.
 3. **Build checks.** Validation should report an invalid spec, and Publish should refuse one.
-4. **More AI engines.** Import Request/Response from Jira speaks the OpenAI protocol only; native Claude or GitHub
+4. **More AI engines.** Import from Jira using AI speaks the OpenAI protocol only; native Claude or GitHub
    Copilot engines would each be one class behind `AiProvider` (decision 0016).
 
 ## A path in one flow only
