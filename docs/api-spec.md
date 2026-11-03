@@ -157,8 +157,8 @@ itself keeps only what is designed, so the service always follows the spec's cur
   whose route is switched off) and publishes only after **Publish Anyway**.
 - The **Client Request Validation** and **Enable CORS** checkboxes, stacked just before Publish on
   the Flow Design toolbar, turn the REST configuration's
-  settings on and off (`restConfiguration` in the route file). They need a spec. See
-  [Request validation](#request-validation) below.
+  settings on and off (`restConfiguration` in the route file). They need a spec. A new flow
+  starts with Client Request Validation on. See [Request validation](#request-validation) below.
 - **Swagger UI** for the spec is at **`<Base Path>/docs`** of the running flow (below).
 - The Run panel lists the spec's paths, Base Path included, to call, and links the flow's Swagger UI.
 - Upload, Edit as draft and Open Flow Template take the generated part out again, so it never shows up
@@ -166,13 +166,17 @@ itself keeps only what is designed, so the service always follows the spec's cur
 
 ### Request validation
 
-With **Client Request Validation** ticked, every request is checked against the spec before the
+Client Request Validation is **on in every new flow** (its route file starts with
+`restConfiguration: {clientRequestValidation: true}`); flows made before, uploaded or opened from a
+template keep what they have. With **Client Request Validation** ticked, every request is checked against the spec before the
 flow's route sees it, and a request that does not fit gets **400** with what is wrong:
 
 - the request body against the operation's schema: required fields, types, formats, enums,
   lengths, and fields the schema does not have (Atlassian's swagger-request-validator rejects
   those unless the schema allows them with `additionalProperties`);
-- required query parameters, path parameters and headers, and their types;
+- required query parameters, path parameters and headers, and their types, and query parameters
+  the operation does not have (`?id1=` where the spec has only `id` is a 400). A parameter is
+  required only when the spec says so (Required on, `required: true`);
 - the Content-Type the operation takes and the Accept it can answer.
 
 The answer names each field by its JSON path, for example:
