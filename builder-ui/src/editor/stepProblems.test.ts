@@ -1,5 +1,5 @@
 import { routeForOperation } from '../apispec/operationIds';
-import { scaffoldAttention, stepProblems } from './stepProblems';
+import { problemsLeft, scaffoldAttention, stepContents, stepProblems } from './stepProblems';
 
 const yaml = [
   '- route:', //                                1
@@ -52,6 +52,42 @@ describe('stepProblems', () => {
     const problems = [at(4, 'application.properties'), at(null), at(99)];
     expect(stepProblems(problems, 'get-node.camel.yaml', yaml).other).toEqual(problems);
     expect(stepProblems([at(2)], 'get-node.camel.yaml', '- route: [').other).toHaveLength(1);
+  });
+});
+
+describe('problemsLeft', () => {
+  const file = 'get-node.camel.yaml';
+  const { steps } = stepProblems([at(7), at(13), at(19), at(2)], file, yaml);
+  const then = stepContents(yaml);
+  const keys = (left: Map<string, unknown>) => [...left.keys()];
+
+  it('keeps every problem while nothing changed, even if the YAML is laid out again', () => {
+    expect(problemsLeft(steps, then, stepContents(yaml))).toBe(steps);
+    expect(problemsLeft(steps, then, stepContents(yaml.replace('name: id', 'name:   id')))).toBe(steps);
+  });
+
+  it('drops the problems of a step the user changed, and only those', () => {
+    const left = problemsLeft(steps, then, stepContents(yaml.replace('name: id', 'name: nodeId')));
+    expect(keys(left)).toEqual([
+      'get-node|route.from.steps.1.multicast.steps.0.pipeline.steps.0.to',
+      'get-node|route.from.steps.2.choice.when.0.steps.0.log',
+      'get-node|route.from',
+    ]);
+  });
+
+  it("keeps the route's own problems when only its steps change", () => {
+    const left = problemsLeft(steps, then, stepContents(yaml.replace('message: hi', 'message: hello')));
+    expect(keys(left)).toContain('get-node|route.from');
+    expect(keys(left)).not.toContain('get-node|route.from.steps.2.choice.when.0.steps.0.log');
+    expect(keys(problemsLeft(steps, then, stepContents(yaml.replace('id: get-node', 'id: get-node\n    description: x'))))).not.toContain(
+      'get-node|route.from',
+    );
+  });
+
+  it('drops the problems of a removed step, but nothing while the YAML cannot be read', () => {
+    const removed = yaml.replace('        - setVariable:\n            name: id\n', '');
+    expect(keys(problemsLeft(steps, then, stepContents(removed)))).not.toContain('get-node|route.from.steps.0.setVariable');
+    expect(problemsLeft(steps, then, stepContents('- route: ['))).toBe(steps);
   });
 });
 
