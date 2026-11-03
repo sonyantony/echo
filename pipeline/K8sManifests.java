@@ -378,6 +378,11 @@ public class K8sManifests {
                     metadata:
                       labels:
                 %5$s
+                      # Prometheus metrics (docs/observability.md), for scrapers that read these annotations.
+                      annotations:
+                        prometheus.io/scrape: "true"
+                        prometheus.io/path: /actuator/prometheus
+                        prometheus.io/port: "8080"
                     spec:
                       containers:
                         - name: %1$s
@@ -394,6 +399,15 @@ public class K8sManifests {
                             - secretRef:
                                 name: %1$s-env
                                 optional: true
+                          # Tracing (docs/observability.md) is off until OTEL_EXPORTER_OTLP_ENDPOINT is set: point it
+                          # at your OpenTelemetry collector or tracing backend. Any standard OTEL_* setting works, e.g.
+                          # env:
+                          #   - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                          #     value: http://otel-collector.observability:4318
+                          #   - name: OTEL_TRACES_SAMPLER
+                          #     value: parentbased_traceidratio
+                          #   - name: OTEL_TRACES_SAMPLER_ARG
+                          #     value: "0.1"
                           livenessProbe:
                             httpGet:
                               path: /actuator/health/liveness

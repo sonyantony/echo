@@ -31,7 +31,10 @@ field for Splunk, Elasticsearch, Loki and the like:
 | `error.message` | on a failure |
 
 The correlation id is the caller's `X-Correlation-ID`, else the trace id of its `traceparent`, else a new
-one. Outgoing calls send it on as `X-Correlation-ID`.
+one. Outgoing calls send it on as `X-Correlation-ID`, and pass on the caller's `traceparent` and
+`tracestate`. Both happen even with `echo.http-log.enabled=false`. In flow images, every other log line
+written in a flow step (Log steps, errors) carries `echo.correlation_id` too, and with tracing on, the
+records carry `trace.id`. See [observability.md](observability.md).
 
 The format is Spring Boot's: `logging.structured.format.console=ecs` (the default in
 `runtime-template/application.properties`), `logstash` or `gelf`, or removed for plain text. A buyer can
@@ -45,7 +48,7 @@ Set in a flow's `application.properties`, or per install as environment variable
 
 | Setting | Default | What |
 |---|---|---|
-| `echo.http-log.enabled` | `true` | `false` turns the log off |
+| `echo.http-log.enabled` | `true` | `false` turns the log off (correlation id and `traceparent` are still passed on) |
 | `echo.http-log.bodies` | `true` | `false` leaves bodies out (they may hold customer data) |
 | `echo.http-log.max-body` | `8192` | characters of a body logged; the rest is cut |
 | `echo.http-log.masked-headers` | `Authorization,Proxy-Authorization,Cookie,Set-Cookie,X-Api-Key` | headers whose values are masked (`Bearer ****` keeps the scheme) |

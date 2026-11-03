@@ -2,7 +2,8 @@
 # Smoke test for the golden "orders" flow image: starts the mock fulfilment service, runs the
 # image, checks its health endpoint and that POST /orders returns the mapped response. With
 # --bundle the image is a bundle of samples/flows, and the greetings flow is checked too (its
-# operations, body validation and Swagger UI, and the bundle's combined page at /api-docs).
+# operations, body validation and Swagger UI, and the bundle's combined page at /api-docs). Also
+# checks the metrics endpoint and that tracing is off by default.
 #
 #   pipeline/smoke-test-orders.sh [image] [--bundle]
 #     image default: echo-flow-orders:1.0.0 (per-flow), or echo-flows:1.0.0 with --bundle
@@ -61,6 +62,12 @@ grep -q '"lines":\[{"product":"SKU-1","quantity":2}' "$LOGS/mock.log" || {
   echo "The downstream request was not mapped as expected" >&2; tail -20 "$LOGS/mock.log"; exit 1; }
 docker logs echo-smoke-orders >"$LOGS/flow.log" 2>&1
 grep -q '"@timestamp"' "$LOGS/flow.log" || { echo "Logs are not JSON" >&2; tail -20 "$LOGS/flow.log"; exit 1; }
+echo "==> Metrics at /actuator/prometheus (docs/observability.md)"
+curl -fsS localhost:8080/actuator/prometheus > "$LOGS/metrics.txt"
+grep -q 'http_server_requests_seconds_count{.*uri="/orders"' "$LOGS/metrics.txt" \
+  || { echo "No request metrics for /orders" >&2; grep http_server "$LOGS/metrics.txt" | head; exit 1; }
+grep -q 'camel_exchanges_total{' "$LOGS/metrics.txt" || { echo "No Camel route metrics" >&2; exit 1; }
+grep -q 'Tracing off' "$LOGS/flow.log" || { echo "Tracing should be off without OTEL_EXPORTER_OTLP_ENDPOINT" >&2; exit 1; }
 if [[ -n "$BUNDLE" ]]; then
   echo "==> GET /greetings/Ann and DELETE /greetings/Ann (contract-first flow in the same image)"
   RESPONSE="$(curl -fsS localhost:8080/greetings/Ann)"

@@ -28,6 +28,9 @@ app and built into an image by the buyer's pipeline).
 - Every flow image and Run log each HTTP request and response, incoming and outgoing (`echo.http` logger, ECS JSON fields,
   masked secrets, `echo.http-log.*` settings), from `runtime-template/java` which build-flow.sh copies into each app:
   `docs/http-log.md`, `docs/decisions/0020-http-log.md`.
+- Flow images have Prometheus metrics at `/actuator/prometheus`, OpenTelemetry tracing that is off until the standard
+  `OTEL_*` settings (`OTEL_EXPORTER_OTLP_ENDPOINT`) turn it on, and `echo.correlation_id` / `trace.id` on every log
+  line of a step (`ObservabilityConfiguration`, images only): `docs/observability.md`, `docs/decisions/0021-metrics-and-tracing.md`.
 - Run asks for a properties file of test values for the flow's `{{placeholders}}` (Run <flow> With...), kept in memory per flow and user, never published: `docs/decisions/0019-run-with-a-properties-file.md`.
 - Disabling a published flow (`"disabled": true` in `echo-flow.json`, skipped by `build-flow.sh`) and a route (`autoStartup: false` answers 404, "Disabled" badge): `docs/decisions/0011-disable-flows-and-routes.md`.
 - Branding (logo, product name, colours) is per install config, `echo.branding`: `docs/branding.md`.
