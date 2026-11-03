@@ -429,14 +429,16 @@ export const ATTENTION = 'Attention';
  * `described` until 2026-11-03: as `schemas`, with the multicast described "Parallel Processor" and,
  * when the call names an approved API, its pipeline "<API> Call Path", `validated` now: as
  * `described`, with the REST OpenApi call's requestValidationEnabled on, so a request missing a
- * required parameter fails before it is sent instead of going out with a literal {name}.
+ * required parameter fails before it is sent instead of going out with a literal {name} (until
+ * 2026-11-03), `variables` now: as `validated`, with one Set Variables step copying every parameter of
+ * the request into a variable of its name, in place of a Set Variable step per parameter.
  */
-type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated';
+type ScaffoldEra = 'content-type' | 'reply-headers' | 'attention' | 'request-mapper' | 'marked' | 'schemas' | 'described' | 'validated' | 'variables';
 
-const SCAFFOLD_ERAS: ScaffoldEra[] = ['validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
+const SCAFFOLD_ERAS: ScaffoldEra[] = ['variables', 'validated', 'described', 'schemas', 'marked', 'request-mapper', 'attention', 'reply-headers', 'content-type'];
 
 /** Whether routes of this era start their DataMappers from the spec's schemas. */
-const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described' || era === 'validated';
+const withSchemas = (era: ScaffoldEra) => era === 'schemas' || era === 'described' || era === 'validated' || era === 'variables';
 
 /** The multicast of a route made from the spec. */
 export const MULTICAST_DESCRIPTION = 'Parallel Processor';
@@ -508,19 +510,19 @@ const dataMapper = (id: string, labelled: boolean, schema?: 'source' | 'target')
 });
 
 /** The route as ECHO makes it, as data (routeForOperation's YAML), or as it made it in an earlier era. */
-function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'validated', attached: Attached = {}) {
+function scaffold(operationId: string, label: string, variables: string[], call: ApiCall, era: ScaffoldEra = 'variables', attached: Attached = {}) {
   const callParameters: Record<string, string | boolean> = {};
   if (call.specificationUri) callParameters.specificationUri = call.specificationUri;
   if (call.host) callParameters.host = call.host;
   // The call checks the request against the called operation before sending it.
-  if (era === 'validated') callParameters.requestValidationEnabled = true;
+  if (era === 'validated' || era === 'variables') callParameters.requestValidationEnabled = true;
   // Camel refuses a Set Headers step without a header, so each starts with one.
   const api = call.specificationUri?.replace(/\.openapi\.json$/, '') || 'api';
   const attention = era === 'attention' || era === 'request-mapper';
   const marked = attention ? { description: ATTENTION } : {};
   // Since the request's DataMapper (only for a request with a body since schemas); since the reply's.
   const schemas = withSchemas(era);
-  const described = era === 'described' || era === 'validated';
+  const described = era === 'described' || era === 'validated' || era === 'variables';
   const method = label.split(' ')[0].toUpperCase();
   const requestMapper = era === 'request-mapper' || era === 'marked' || (schemas && BODY_METHODS.has(method));
   const replyMapper = attention || era === 'marked' || schemas;
@@ -533,7 +535,21 @@ function scaffold(operationId: string, label: string, variables: string[], call:
         uri: 'direct',
         parameters: { name: operationId },
         steps: [
-          ...variables.map((name) => ({ setVariable: { id: `variable-${operationId}-${name}`, name, simple: `\${header.${name}}` } })),
+          // Each parameter of the request (Camel has it in a header of its name) kept in a variable of
+          // that name, before Remove Headers drops the headers. Camel refuses a Set Variables step
+          // without a variable, so an operation without parameters has none.
+          ...(era === 'variables'
+            ? variables.length
+              ? [
+                  {
+                    setVariables: {
+                      id: `variables-${operationId}`,
+                      variables: variables.map((name) => ({ name, simple: `\${header.${name}}` })),
+                    },
+                  },
+                ]
+              : []
+            : variables.map((name) => ({ setVariable: { id: `variable-${operationId}-${name}`, name, simple: `\${header.${name}}` } }))),
           { removeHeaders: { id: `remove-headers-${operationId}`, pattern: '*' } },
           {
             setHeaders: {
@@ -607,8 +623,8 @@ function scaffold(operationId: string, label: string, variables: string[], call:
 
 /**
  * A route for the operation, as a method added in Interface Specs (or Add Route For Operation)
- * makes it, so the user only picks the operation to call: a Set Variable for each of its parameters
- * (from the header Camel puts it in), Remove Headers *, Set Headers "SetAuthorizationHeaders"
+ * makes it, so the user only picks the operation to call: one Set Variables step putting each of
+ * its parameters (from the header Camel puts it in) in a variable of its name, Remove Headers *, Set Headers "SetAuthorizationHeaders"
  * (Authorization: Bearer {{<api>.token}}), a multicast with one pipeline calling a REST OpenApi step
  * (described "<API name> Call" when the call names an approved API, call.name) after Set Headers (Accept, and a header per variable) and, for POST, PUT and PATCH, a Kaoto
  * DataMapper for the request, and labelling its reply "result", then the joined replies wrapped as a
@@ -622,7 +638,7 @@ function scaffold(operationId: string, label: string, variables: string[], call:
  */
 export function routeForOperation(op: SpecOperation & { operationId: string }, call: ApiCall = {}): string {
   const variables = (op.parameters ?? []).map((p) => p.name);
-  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'validated', attachedFor(op))], { lineWidth: 0 });
+  return YAML.stringify([scaffold(op.operationId, operationLabel(op), variables, call, 'variables', attachedFor(op))], { lineWidth: 0 });
 }
 
 /** Which DataMappers of op's route start from a schema of the spec. */
@@ -694,11 +710,22 @@ function asScaffold(
   if (xsltFiles(json).some((file) => mapped.has(file))) return undefined;
   const steps = Array.isArray(json.from?.steps) ? json.from.steps : [];
   const variables: string[] = [];
-  for (const step of steps) {
-    const v = (step as { setVariable?: { name?: unknown } }).setVariable;
-    if (!v) break;
-    if (typeof v.name !== 'string') return undefined;
-    variables.push(v.name);
+  const many = (steps[0] as { setVariables?: { variables?: unknown } } | undefined)?.setVariables;
+  if (many) {
+    // One Set Variables step (since 2026-11-03).
+    if (!Array.isArray(many.variables)) return undefined;
+    for (const v of many.variables as { name?: unknown }[]) {
+      if (typeof v?.name !== 'string') return undefined;
+      variables.push(v.name);
+    }
+  } else {
+    // A Set Variable step per parameter (before).
+    for (const step of steps) {
+      const v = (step as { setVariable?: { name?: unknown } }).setVariable;
+      if (!v) break;
+      if (typeof v.name !== 'string') return undefined;
+      variables.push(v.name);
+    }
   }
   const callStep = JSON.stringify(json).match(/"uri":"rest-openapi","parameters":(\{[^{}]*\})/);
   const parameters = callStep ? (JSON.parse(callStep[1]) as Record<string, unknown>) : {};
@@ -724,8 +751,8 @@ function asScaffold(
 /**
  * The route YAML with the scaffold route of each of these operations (still as ECHO made it) made
  * again for the operation's parameters as they are now: a parameter added in Interface Specs gets
- * its Set Variable, a removed one loses it; and for its schemas: a request body or response given
- * one gets its DataMapper started from it (attachScaffoldSchemas writes the files). Routes somebody
+ * its variable in the Set Variables step (its Set Variable in older routes), a removed one loses
+ * it; and for its schemas: a request body or response given one gets its DataMapper started from it (attachScaffoldSchemas writes the files). Routes somebody
  * worked on (their DataMappers' XSLT files in `mapped`) stay as they are. Unchanged (the same
  * string) if no route changed.
  */

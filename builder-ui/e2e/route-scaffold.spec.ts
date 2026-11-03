@@ -2,14 +2,14 @@ import { expect, test, type Page } from '@playwright/test';
 import YAML from 'yaml';
 import { createFlow, designMenu, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
-// The route a method added in Interface Specs gets is a scaffold (decision 0013): a Set Variable
-// for each of its parameters, Remove Headers *, a multicast with one pipeline calling a REST
-// OpenApi step, and a JSON reply. Parameters added later get their Set Variable too.
+// The route a method added in Interface Specs gets is a scaffold (decision 0013): one Set Variables
+// step with a variable for each of its parameters, Remove Headers *, a multicast with one pipeline
+// calling a REST OpenApi step, and a JSON reply. Parameters added later get their variable too.
 
 const shots = process.env.ECHO_E2E_SCREENSHOTS;
 const flowIdOf = (page: Page) => page.url().replace(/.*\/flows\/(\d+).*/, '$1');
 
-type Step = Record<string, { id?: string; name?: string; simple?: string; steps?: Step[]; uri?: string; description?: string; headers?: { name: string }[] }>;
+type Step = Record<string, { id?: string; name?: string; simple?: string; steps?: Step[]; uri?: string; description?: string; headers?: { name: string }[]; variables?: { name: string; simple?: string }[] }>;
 
 test('a new method gets a scaffold route, and a query parameter added later gets its variable', async ({ page }) => {
   await login(page);
@@ -40,13 +40,14 @@ test('a new method gets a scaffold route, and a query parameter added later gets
   await expect(page.getByText(`Saved ${name}-api.yaml.`)).toBeVisible();
 
   let made = await steps();
-  expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariable', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'step', 'setHeaders']);
+  expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariables', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'step', 'setHeaders']);
   // A DataMapper after the reply's Set Body. No step reads Attention: the canvas puts red circles on
   // those the user has to work on.
   expect(JSON.stringify(made)).not.toContain('Attention');
   expect(made[5].step.id).toMatch(/^kaoto-datamapper-/);
   expect(made[6].setHeaders).toMatchObject({ description: 'SetResponseHeaders' });
-  expect(made[0].setVariable).toMatchObject({ name: 'orderId', simple: '${header.orderId}' });
+  // One Set Variables step: each parameter of the request in a variable of its name.
+  expect(made[0].setVariables).toMatchObject({ variables: [{ name: 'orderId', simple: '${header.orderId}' }] });
   expect(made[2].setHeaders).toMatchObject({ description: 'SetAuthorizationHeaders' });
   const branch = made[3].multicast.steps![0].pipeline.steps!;
   // A GET has no request body to map: no DataMapper before the call (POST, PUT and PATCH have one).
@@ -59,10 +60,10 @@ test('a new method gets a scaffold route, and a query parameter added later gets
   await nameField.fill('status');
   await editor.getByRole('button', { name: 'Save', exact: true }).last().click();
   await expect(nameField).toBeHidden();
-  await expect.poll(async () => (await steps()).filter((s) => s.setVariable).map((s) => s.setVariable.name)).toEqual(['orderId', 'status']);
+  await expect.poll(async () => (await steps())[0].setVariables?.variables?.map((v) => v.name)).toEqual(['orderId', 'status']);
   made = await steps();
   // ...and its row in the pipeline's Set Headers.
-  expect(made[4].multicast.steps![0].pipeline.steps![0].setHeaders.headers!.map((h) => h.name)).toEqual(['Accept', 'orderId', 'status']);
+  expect(made[3].multicast.steps![0].pipeline.steps![0].setHeaders.headers!.map((h) => h.name)).toEqual(['Accept', 'orderId', 'status']);
 
   await designMenu(page, /^Design/);
   await expect(page.getByTestId('custom-node__route.from').first()).toBeVisible();

@@ -84,6 +84,27 @@ class FlowValidatorTest {
     }
 
     @Test
+    void scaffoldSetVariablesStepLoads() {
+        // The route scaffold keeps every parameter of the request in a variable of its name with one step.
+        String yaml = """
+                - route:
+                    from:
+                      uri: direct:x
+                      steps:
+                        - setVariables:
+                            id: variables-x
+                            variables:
+                              - name: id
+                                simple: ${header.id}
+                              - name: status
+                                simple: ${header.status}
+                        - removeHeaders:
+                            pattern: "*"
+                """;
+        assertThat(validator.validate("x.camel.yaml", Map.of("x.camel.yaml", yaml)).problems()).isEmpty();
+    }
+
+    @Test
     void malformedYamlIsReportedWithItsLine() {
         var result = validateFixture("malformed.camel.yaml");
         assertThat(result.valid()).isFalse();
