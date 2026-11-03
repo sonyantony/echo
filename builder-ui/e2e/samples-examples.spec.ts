@@ -56,9 +56,8 @@ test('the sample request and response are kept as the examples of their bodies',
   // The spec still validates requests and serves Swagger UI with the sample as its example.
   await page.getByRole('button', { name: 'Flow', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Design/ }).click();
-  const validation = page.getByRole('checkbox', { name: 'Client Request Validation' });
-  await validation.click();
-  await expect(validation).toBeChecked();
+  // A new flow starts with Client Request Validation on.
+  await expect(page.getByRole('checkbox', { name: 'Client Request Validation' })).toBeChecked();
   await fileMenu(page, /^Save$/);
   await expect(page.getByTestId('unsaved')).toBeHidden();
   const route = await (await page.request.get(`/api/flows/${flowId}/files/${name}.camel.yaml`)).text();

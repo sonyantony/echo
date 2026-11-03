@@ -35,3 +35,10 @@ Request Validation checkbox that only checked content type and that required par
   version, and `VersionAlignmentTest` keeps the Builder's pom and the template the same.
 - **Try it out tests this flow.** The page sends every call to the host it was loaded from, so a
   spec whose server URL names another host (production, say) still calls the running flow.
+
+## Update 2026-11-03: on by default for new flows
+
+A new flow's route file starts with `restConfiguration: {clientRequestValidation: true}`, so a
+request that does not fit the spec (missing required parameter, unknown query parameter, wrong
+body) gets a 400 from the first Run, instead of passing silently. The flow can still turn it off in
+the Flow menu. Existing, uploaded and template flows keep their setting.
