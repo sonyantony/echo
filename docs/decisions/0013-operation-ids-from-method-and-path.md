@@ -91,10 +91,14 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   pipeline: a Set Headers step described "SetMethodParameters" (`Accept: application/json` and a
   header per variable, `${variable.<name>}`, as REST OpenApi takes parameters from same-named
   headers), a REST OpenApi step, Convert Body To String and Set Body `"result": ${body}`. After the
-  multicast, Set Body `{${body}}` (so the replies of further branches merge into one JSON object)
-  and a Set Headers step described "SetResponseHeaders": Content-Type `application/json` and
-  CamelHttpResponseCode `200`, so a status a downstream call left behind is not the reply's
-  (a Content-Type Set Header only before 2026-10-29). The REST OpenApi step is left for the user to point
+  multicast, Set Body `{${body}}` (so the replies of further branches merge into one JSON object),
+  Remove Headers `*` again and a Set Headers step described "SetResponseHeaders": Content-Type
+  `application/json` and CamelHttpResponseCode `200`, so a status a downstream call left behind is
+  not the reply's (a Content-Type Set Header only before 2026-10-29). The second Remove Headers
+  (since 2026-11-03) keeps the request's headers and those a downstream reply carried out of the
+  flow's own reply: the call's `Authorization` token was sent back to the caller, and the
+  hop-by-hop headers (`Connection`, `Keep-Alive`, `Transfer-Encoding`) a reply copied make an
+  HTTP/2 caller refuse it ("Prohibited header name 'keep-alive'"). The REST OpenApi step is left for the user to point
   at the operation it calls: the downstream API is not the flow's own spec. When the install
   approves exactly one API (`echo.apis`), its spec is filled in. Host is `{{api.base-url}}` whichever API is
   called (since 2026-11-03; before, `{{<id>.base-url}}` only when the one approved API's spec named no server). Validate reports a REST OpenApi step that names neither spec nor

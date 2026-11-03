@@ -271,6 +271,7 @@ describe('operationIds', () => {
           ],
         },
       },
+      { removeHeaders: { id: 'remove-reply-headers-getCardsCardId', pattern: '*' } },
       {
         setHeaders: {
           id: 'reply-headers-getCardsCardId',
@@ -434,14 +435,27 @@ describe('operationIds', () => {
     // with {{<api>.token}} still count, and keep it when a parameter is added.
     expect(made).toContain('Bearer {{api.token}}');
     const op = { method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' as const }] };
-    const oldToken = routeForOperation(op, { specificationUri: 'blueplanet.openapi.json' }).replace('{{api.token}}', '{{blueplanet.token}}');
+    // Routes made before the reply's Remove Headers (so the request's and the downstream reply's
+    // headers went back to the caller) still count, and keep their shape when a parameter is added.
+    const withoutReplyStrip = (yaml: string) => {
+      const stripped = yaml.replace(/\n +- removeHeaders:\n +id: remove-reply-headers-\S+\n +pattern: "\*"/, '');
+      expect(stripped).not.toBe(yaml);
+      return stripped;
+    };
+    expect(made).toContain('id: remove-reply-headers-getCardsId');
+    const noReplyStrip = withoutReplyStrip(made);
+    expect(untouchedRoutes(noReplyStrip)).toEqual(new Set(['getCardsId']));
+    const noReplyStripMore = refreshRoutes(noReplyStrip, [{ method: 'PUT', path: '/cards/{id}', operationId: 'getCardsId', parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
+    expect(noReplyStripMore).toContain('name: q');
+    expect(noReplyStripMore).not.toContain('remove-reply-headers');
+    const oldToken = withoutReplyStrip(routeForOperation(op, { specificationUri: 'blueplanet.openapi.json' })).replace('{{api.token}}', '{{blueplanet.token}}');
     expect(untouchedRoutes(oldToken)).toEqual(new Set(['getCardsId']));
     const oldTokenMore = refreshRoutes(oldToken, [{ ...op, parameters: [{ name: 'id', in: 'path' }, { name: 'q', in: 'query' }] }]);
     expect(oldTokenMore).toContain('name: q');
     expect(oldTokenMore).toContain('Bearer {{blueplanet.token}}');
     // Routes made with a Set Variable step per parameter still count, and keep them.
     const perStep = YAML.stringify(
-      YAML.parse(made).map((entry: { route: { from: { steps: Record<string, unknown>[] } } }) => {
+      YAML.parse(noReplyStrip).map((entry: { route: { from: { steps: Record<string, unknown>[] } } }) => {
         const [first, ...rest] = entry.route.from.steps;
         const { variables } = first.setVariables as { variables: { name: string; simple: string }[] };
         entry.route.from.steps = [...variables.map((v) => ({ setVariable: { id: `variable-getCardsId-${v.name}`, ...v } })), ...rest];

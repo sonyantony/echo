@@ -40,12 +40,15 @@ test('a new method gets a scaffold route, and a query parameter added later gets
   await expect(page.getByText(`Saved ${name}-api.yaml.`)).toBeVisible();
 
   let made = await steps();
-  expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariables', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'step', 'setHeaders']);
+  expect(made.map((s) => Object.keys(s)[0])).toEqual(['setVariables', 'removeHeaders', 'setHeaders', 'multicast', 'setBody', 'step', 'removeHeaders', 'setHeaders']);
   // A DataMapper after the reply's Set Body. No step reads Attention: the canvas puts red circles on
   // those the user has to work on.
   expect(JSON.stringify(made)).not.toContain('Attention');
   expect(made[5].step.id).toMatch(/^kaoto-datamapper-/);
-  expect(made[6].setHeaders).toMatchObject({ description: 'SetResponseHeaders' });
+  // Nothing of the request or of a downstream reply (the call's Authorization token among them) is
+  // sent back to the caller.
+  expect(made[6].removeHeaders).toMatchObject({ pattern: '*' });
+  expect(made[7].setHeaders).toMatchObject({ description: 'SetResponseHeaders' });
   // One Set Variables step: each parameter of the request in a variable of its name.
   expect(made[0].setVariables).toMatchObject({ variables: [{ name: 'orderId', simple: '${header.orderId}' }] });
   expect(made[2].setHeaders).toMatchObject({ description: 'SetAuthorizationHeaders' });
