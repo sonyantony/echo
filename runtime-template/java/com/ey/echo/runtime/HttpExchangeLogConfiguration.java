@@ -48,7 +48,8 @@ public class HttpExchangeLogConfiguration {
         return new CamelContextConfiguration() {
             @Override
             public void beforeApplicationStart(CamelContext camel) {
-                if (log.settings().enabled() && !camel.getManagementStrategy().getEventNotifiers().contains(log)) {
+                // Also with the log switched off: it passes the correlation id and trace context on.
+                if (!camel.getManagementStrategy().getEventNotifiers().contains(log)) {
                     camel.getManagementStrategy().addEventNotifier(log);
                 }
             }

@@ -124,8 +124,9 @@ pipeline/build-flow.sh flows --jar-only
 
 A folder argument is either one flow folder or a folder of flows. In per-flow mode the version is
 `1.0.<n>`, where `n` is the publish number in `echo-flow.json`, or `--version`; in bundle mode it is
-`--version` (default `1.0.0`). Images listen on port 8080 and expose `/actuator/health/liveness`
-and `/actuator/health/readiness`. Flow settings come from the flows' `application.properties`;
+`--version` (default `1.0.0`). Images listen on port 8080 and expose `/actuator/health/liveness`,
+`/actuator/health/readiness` and Prometheus metrics at `/actuator/prometheus`. Tracing (OpenTelemetry)
+is off until `OTEL_EXPORTER_OTLP_ENDPOINT` is set ([docs/observability.md](../docs/observability.md)). Flow settings come from the flows' `application.properties`;
 override them at run time with environment variables (for example `FULFILMENT_URL=https://...`
 overrides `fulfilment.url`).
 

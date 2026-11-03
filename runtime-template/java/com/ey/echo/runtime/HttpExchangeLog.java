@@ -55,6 +55,7 @@ import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.InputStreamEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.slf4j.event.Level;
 import org.slf4j.spi.LoggingEventBuilder;
 
@@ -68,7 +69,9 @@ import org.slf4j.spi.LoggingEventBuilder;
  * Boot's structured logging, e.g. ECS JSON, makes them fields), and to an optional extra sink (the
  * Builder's Run panel). Records of one incoming request share {@code echo.correlation_id}: the
  * caller's {@code X-Correlation-ID}, else the trace id of its {@code traceparent}, else a new one;
- * outgoing calls carry it on as {@code X-Correlation-ID}. Header values named in
+ * outgoing calls carry it on as {@code X-Correlation-ID}, and carry on the caller's {@code traceparent}
+ * (and {@code tracestate}) when nothing else set one (with tracing on, Camel sets its own). Both are
+ * passed on even with the log switched off ({@code echo.http-log.enabled=false}). Header values named in
  * {@code echo.http-log.masked-headers}, and the values of settings whose names match
  * {@code echo.http-log.secret-names}, are masked before anything is logged.
  *
@@ -79,10 +82,17 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
 
     public static final String LOGGER = "echo.http";
     public static final String CORRELATION_HEADER = "X-Correlation-ID";
+    /** Log field (and MDC key) holding the correlation id. */
+    public static final String CORRELATION_FIELD = "echo.correlation_id";
 
     static final String CORRELATION_ID = "EchoCorrelationId";
+    /** The request's OpenTelemetry trace id, set by the image's tracing (ObservabilityConfiguration). */
+    static final String TRACE_ID = "EchoTraceId";
     private static final String INBOUND = "EchoHttpLogInbound";
     private static final String CALL = "EchoHttpLogCall";
+    /** The caller's W3C trace context headers, passed on to the flow's calls. */
+    private static final String TRACE_CONTEXT = "EchoTraceContext";
+    private static final List<String> TRACE_HEADERS = List.of("traceparent", "tracestate");
     private static final String MASK = "****";
     private static final Pattern TRACEPARENT = Pattern.compile("^[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$");
 
@@ -182,11 +192,11 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
         this.sink = sink;
     }
 
-    /** Adds the log to camel: its events, and the http components' calls (before any endpoint is made). */
+    /**
+     * Adds the log to camel: its events, and the http components' calls (before any endpoint is made).
+     * Attached even with the log switched off, to pass the correlation id and trace context on.
+     */
     public void attach(CamelContext camel) {
-        if (!settings.enabled()) {
-            return;
-        }
         camel.getManagementStrategy().addEventNotifier(this);
         for (String scheme : List.of("http", "https")) {
             if (camel.getComponent(scheme) instanceof HttpComponent http) {
@@ -197,11 +207,7 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
 
     /** For Spring Boot: puts the log on each http component Camel makes. */
     public ComponentCustomizer httpCustomizer() {
-        return ComponentCustomizer.forType(HttpComponent.class, http -> {
-            if (settings.enabled()) {
-                watch(http);
-            }
-        });
+        return ComponentCustomizer.forType(HttpComponent.class, this::watch);
     }
 
     /**
@@ -215,7 +221,8 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
             try {
                 return chain.proceed(request, scope);
             } catch (IOException | HttpException | RuntimeException e) {
-                if (scope.clientContext.getAttribute(Exchange.class.getName()) instanceof Exchange exchange
+                if (settings.enabled()
+                        && scope.clientContext.getAttribute(Exchange.class.getName()) instanceof Exchange exchange
                         && exchange.getProperty(CALL) == null) {
                     callStarted(exchange, request.getMethod(), uri(request, scope.route.getTargetHost()),
                             headers(request.getHeaders()), null);
@@ -239,7 +246,7 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
 
     @Override
     public boolean isEnabled(CamelEvent event) {
-        return settings.enabled() && event instanceof ExchangeEvent;
+        return event instanceof ExchangeEvent;
     }
 
     @Override
@@ -273,6 +280,19 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
         Message in = exchange.getIn();
         String correlation = correlationId(in);
         exchange.setProperty(CORRELATION_ID, correlation);
+        var traceContext = new LinkedHashMap<String, String>();
+        for (String name : TRACE_HEADERS) {
+            String value = in.getHeader(name, String.class);
+            if (value != null && !value.isBlank()) {
+                traceContext.put(name, value.trim());
+            }
+        }
+        if (traceContext.containsKey("traceparent")) {
+            exchange.setProperty(TRACE_CONTEXT, traceContext);
+        }
+        if (!settings.enabled()) {
+            return;
+        }
         String method = in.getHeader(Exchange.HTTP_METHOD, "", String.class);
         String url = mask(incomingUrl(in));
         exchange.setProperty(INBOUND, new Inbound(exchange.getExchangeId(), method, url, System.nanoTime()));
@@ -292,6 +312,9 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
     }
 
     private void finished(Exchange exchange) {
+        if (!settings.enabled()) {
+            return;
+        }
         callEnded(exchange);
         Inbound request = exchange.getProperty(INBOUND, Inbound.class);
         // Copies multicast and split make carry the property too: only the request itself is answered.
@@ -331,6 +354,14 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
             HttpEntity entity) {
         if (!request.containsHeader(CORRELATION_HEADER)) {
             request.setHeader(CORRELATION_HEADER, correlationId(exchange));
+        }
+        // The caller's trace context, unless the flow (or Camel's tracing) set its own.
+        if (!request.containsHeader("traceparent")
+                && exchange.getProperty(TRACE_CONTEXT) instanceof Map<?, ?> traceContext) {
+            traceContext.forEach((name, value) -> request.setHeader((String) name, (String) value));
+        }
+        if (!settings.enabled()) {
+            return;
         }
         HttpEntity readable = entity;
         // A streamed body can be read once (the client's wrapper still calls it repeatable): read it into
@@ -380,6 +411,9 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
     @Override
     public void onResponseReceived(Object source, Exchange exchange, HttpHost host, HttpResponse response,
             HttpEntity entity, long elapsed) {
+        if (!settings.enabled()) {
+            return;
+        }
         Call call = exchange.getProperty(CALL, Call.class);
         exchange.removeProperty(CALL);
         String id = call != null ? call.id() : "?";
@@ -449,13 +483,22 @@ public class HttpExchangeLog extends EventNotifierSupport implements HttpActivit
         if (exchange.getFromRouteId() != null) {
             fields.put("echo.route", exchange.getFromRouteId());
         }
-        fields.put("echo.correlation_id", exchange.getProperty(CORRELATION_ID, String.class));
+        fields.put(CORRELATION_FIELD, exchange.getProperty(CORRELATION_ID, String.class));
+        String traceId = exchange.getProperty(TRACE_ID, String.class);
+        if (traceId != null) {
+            fields.put("trace.id", traceId);
+        }
         return fields;
     }
 
     private void write(Entry entry) {
         LoggingEventBuilder event = entry.level() == Level.WARN ? log.atWarn() : log.atInfo();
-        entry.fields().forEach(event::addKeyValue);
+        // A field the MDC already holds (the correlation id, inside a flow step) is written once.
+        entry.fields().forEach((key, value) -> {
+            if (value == null || !String.valueOf(value).equals(MDC.get(key))) {
+                event.addKeyValue(key, value);
+            }
+        });
         event.log(entry.message());
         try {
             sink.accept(entry);

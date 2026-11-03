@@ -157,19 +157,22 @@ build_app() { # name, version, out, image-name
 
   echo "==> Exporting $name $version (Camel $CAMEL_VERSION, Spring Boot runtime)"
   # Export finds components from the routes; these it cannot see: the validator that checks
-  # request bodies against the spec (Client Request Validation), Swagger UI, and the http component
-  # and platform-http the HTTP log is written against.
+  # request bodies against the spec (Client Request Validation), Swagger UI, the http component
+  # and platform-http the HTTP log is written against, and the metrics and tracing every image has
+  # (docs/observability.md; versions come from the Spring Boot and Camel BOMs).
+  local observability="camel:micrometer,io.micrometer:micrometer-registry-prometheus,camel:opentelemetry2"
+  observability+=",io.opentelemetry:opentelemetry-sdk-extension-autoconfigure,io.opentelemetry:opentelemetry-exporter-otlp"
   (cd "$src" && camel export ./* --runtime=spring-boot \
-    --dep="camel:openapi-validator,org.webjars:swagger-ui:$SWAGGER_UI_VERSION,camel:http,camel:platform-http" \
+    --dep="camel:openapi-validator,org.webjars:swagger-ui:$SWAGGER_UI_VERSION,camel:http,camel:platform-http,$observability" \
     --quarkus-version="$QUARKUS_VERSION" --gav="com.ey.echo.flows:$name:$version" --directory="$app")
 
-  # EY ECHO's HTTP log (requests in and out, echo.http-log.* settings) goes in every app, as source
-  # (given to export, Camel JBang would compile it as routes).
+  # EY ECHO's HTTP log (requests in and out, echo.http-log.* settings) and its tracing and log context
+  # go in every app, as source (given to export, Camel JBang would compile them as routes).
   mkdir -p "$app/src/main/java/com/ey/echo/runtime"
   cp "$TEMPLATE"/java/com/ey/echo/runtime/*.java "$app/src/main/java/com/ey/echo/runtime/"
-  # Outside the app's package, so Spring Boot finds it as an auto-configuration.
+  # Outside the app's package, so Spring Boot finds them as auto-configurations.
   mkdir -p "$app/src/main/resources/META-INF/spring"
-  echo com.ey.echo.runtime.HttpExchangeLogConfiguration \
+  printf '%s\n' com.ey.echo.runtime.HttpExchangeLogConfiguration com.ey.echo.runtime.ObservabilityConfiguration \
     >> "$app/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"
 
   echo "==> Building the app"

@@ -180,9 +180,11 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <!-- Spring Boot wiring for flow images only (needs camel-spring-boot); Run attaches the log itself. -->
+          <!-- Spring Boot wiring, tracing and metrics for flow images only (need camel-spring-boot and
+               OpenTelemetry); Run attaches the log itself. -->
           <excludes>
             <exclude>com/ey/echo/runtime/HttpExchangeLogConfiguration.java</exclude>
+            <exclude>com/ey/echo/runtime/ObservabilityConfiguration.java</exclude>
           </excludes>
         </configuration>
       </plugin>
