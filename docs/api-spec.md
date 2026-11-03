@@ -139,7 +139,7 @@ itself keeps only what is designed, so the service always follows the spec's cur
   keeps it) and treats the old spec's operations it lacks as deleted. Interface Specs from Samples and Copy
   From Another Flow do the same with the spec they bring. Discard treats every operation on screen
   as deleted, so no route made for them is left behind (one somebody worked on is asked about).
-- **Samples are kept as examples.** Interface Specs from Samples (and Import From Jira) saves each sample as
+- **Samples are kept as examples.** Interface Specs from Samples (and Import Request/Response from Jira) saves each sample as
   the named example (`examples.sample`) of its body, which Apicurio lists (it does not list a bare
   `example`), and keeps it as the `example` of the data type it makes. Picking such a data type
   for a body or response without an example of its own, e.g. one under Responses, adds the
@@ -250,9 +250,10 @@ schema." A renamed field shows as missing under its old name. The list is checke
 DataMapper changes the mapping, and clears once nothing is left to review
 (`datamapper/specMappings.ts`, `mappingCheck.ts`).
 
-### Import From Jira
+### Import Request/Response from Jira
 
-When the install has a Jira (`echo.jira`, below), the Interface bar has **Import From Jira**. It
+The Interface bar has **Import Request/Response from Jira** (AI sparkle, left of Interface Specs from
+Samples). It
 asks for a story's link (or its key, `PAY-142`), reads the story's description and comments, and
 finds the example payloads, calls and query parameters written in them: JSON in code blocks or in
 the text, `POST /accounts/{accountId}/payments`, `GET https://api.acme.com/v1/payments?status=OPEN`,
@@ -306,7 +307,7 @@ echo:
   `username` empty: ECHO sends it as a Bearer token (REST API 2). With a username, the token is sent
   as its password with Basic auth instead.
 
-Import From Jira is hidden until `base-url` and `token` are set. A link to another site is refused,
+Import Request/Response from Jira is greyed out (its tooltip says why) until `base-url` and `token` are set. A link to another site is refused,
 so the token is only ever sent to the configured Jira; it is never logged or sent to the browser.
 
 #### Setting up the AI engine
@@ -364,7 +365,7 @@ screenshot of each screen per theme (see [branding.md](branding.md#themes)).
 2. **Response validation.** Camel can check the flow's responses against the spec too
    (`clientResponseValidation`); there is no checkbox for it.
 3. **Build checks.** Validation should report an invalid spec, and Publish should refuse one.
-4. **More AI engines.** Import From Jira speaks the OpenAI protocol only; native Claude or GitHub
+4. **More AI engines.** Import Request/Response from Jira speaks the OpenAI protocol only; native Claude or GitHub
    Copilot engines would each be one class behind `AiProvider` (decision 0016).
 
 ## A path in one flow only

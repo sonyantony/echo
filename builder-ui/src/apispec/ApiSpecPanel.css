@@ -98,7 +98,7 @@
   list-style: disc;
 }
 
-/* Interface > Import From Jira (JiraImportModal). */
+/* Interface > Import Request/Response from Jira (JiraImportModal). */
 .echo-jira-import__reading {
   display: flex;
   align-items: center;
@@ -167,4 +167,16 @@
 /* Interface Specs from Samples: what Add to this spec does, one plain line. */
 .echo-samples-spec__add-note {
   margin: 0;
+}
+
+/* The AI sparkle before Import Request/Response from Jira: blue while the button can be used, the
+   button's own grey when it is greyed out. */
+.echo-api-spec__bar .echo-sparkle-icon {
+  color: #1d6fe0;
+  display: block;
+  margin-block: -0.3em;
+}
+.echo-api-spec__bar .pf-m-aria-disabled .echo-sparkle-icon,
+.echo-api-spec__bar :disabled .echo-sparkle-icon {
+  color: inherit;
 }

@@ -109,7 +109,7 @@ function toImported(card: Card): ImportedOperation {
 const operationName = (card: Card) => `${card.method} ${splitPath(card.path).path}`;
 
 /**
- * Interface > Import From Jira: reads a story, shows the operations and example payloads ECHO
+ * Interface > Import Request/Response from Jira: reads a story, shows the operations and example payloads ECHO
  * found in it for the user to check (and pick between, when there are several), adds them to the
  * spec on screen, and lists the paths and data types it made. Nothing is saved until Save.
  */
@@ -133,7 +133,7 @@ export function JiraImportModal({ aiEngine, currentJson, onApply, onUndo, onClos
     return (
       <Modal isOpen variant="small" onClose={onClose} aria-labelledby="jira-import-title">
         <ModalHeader
-          title="Import From Jira"
+          title="Import Request/Response from Jira"
           labelId="jira-import-title"
           description={`ECHO reads the story and its comments, finds the example payloads, calls and query parameters in them, and shows you what it found before adding anything.${aiEngine ? ` The story's text is sent to the AI engine (${aiEngine}) to pair the examples.` : ''}`}
         />

@@ -1,4 +1,4 @@
-// A fake Jira Cloud for the e2e tests (Import From Jira): one story, PAY-142, with its examples in
+// A fake Jira Cloud for the e2e tests (Import Request/Response from Jira): one story, PAY-142, with its examples in
 // the description and a corrected response in a comment. It also plays the AI engine (the OpenAI
 // protocol at /v1/chat/completions), pairing PAY-142's examples. Run by playwright.config.ts.
 import { createServer } from 'node:http';
