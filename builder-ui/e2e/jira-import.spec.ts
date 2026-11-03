@@ -1,20 +1,20 @@
 import { expect, test } from '@playwright/test';
 import { createFlow, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
-// Interface > Import From Jira against the fake Jira and AI engine of e2e/fake-jira.mjs: the story's
+// Interface > Import Request/Response from Jira against the fake Jira and AI engine of e2e/fake-jira.mjs: the story's
 // examples, paired by the engine (a newer response in a comment picked over the description's), are
 // shown for checking, added to the spec with routes, and listed; Save keeps them.
 
 const shots = process.env.ECHO_E2E_SCREENSHOTS;
 
-test('Import From Jira makes paths, data types and routes from a story', async ({ page }) => {
+test('Import Request/Response from Jira makes paths, data types and routes from a story', async ({ page }) => {
   await login(page);
   const name = uniqueName('jira');
   await createFlow(page, name);
   const flowId = page.url().replace(/.*\/flows\/(\d+).*/, '$1');
   await interfaceMenu(page, /^Design/);
 
-  await page.getByRole('button', { name: 'Import From Jira' }).click();
+  await page.getByRole('button', { name: 'Import Request/Response from Jira' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText(/sent to the AI engine \(e2e-model at 127.0.0.1\)/)).toBeVisible();
   await dialog.getByLabel(/Story link/).fill('http://127.0.0.1:8199/browse/PAY-142');

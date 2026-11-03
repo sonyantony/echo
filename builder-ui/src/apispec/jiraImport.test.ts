@@ -11,7 +11,7 @@ const current = JSON.stringify({
   components: { schemas: { PostAccountsIdPaymentsRequest: { type: 'object' } } },
 });
 
-describe('Import From Jira', () => {
+describe('Import Request/Response from Jira', () => {
   it('adds operations and data types to the spec, keeping what it has', () => {
     const result = addOperations(current, [
       { method: 'POST', path: '/accounts/{id}/payments', request: { amount: 10, reference: null }, response: { paymentId: 'p-1' } },

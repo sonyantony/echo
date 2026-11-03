@@ -41,6 +41,7 @@ import {
 import { JiraImportModal } from './JiraImportModal';
 import { SamplesSpecModal, type SamplesSpec } from './SamplesSpecModal';
 import { SpecNameModal } from './SpecNameModal';
+import { SparkleIcon } from './SparkleIcon';
 import { sampleExamples, specFromSamples } from './specFromSamples';
 import { addOperations, operationKeys, pathInSpec, type ImportResult } from './jiraImport';
 import './ApiSpecPanel.css';
@@ -519,10 +520,10 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
     }
   };
 
-  /** The spec as it was before Import From Jira added to it, for its Undo. */
+  /** The spec as it was before Import Request/Response from Jira added to it, for its Undo. */
   const beforeImport = useRef<{ json: string; latest: string | undefined; dirty: boolean } | undefined>(undefined);
 
-  /** Puts json on screen, unsaved, in place of what is there (Import From Jira and its Undo). */
+  /** Puts json on screen, unsaved, in place of what is there (Import Request/Response from Jira and its Undo). */
   const showUnsaved = (json: string) => {
     latest.current = json;
     named.current = undefined;
@@ -533,7 +534,7 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
   };
 
   /**
-   * Import From Jira: the spec with the confirmed operations added goes on screen, unsaved. The new
+   * Import Request/Response from Jira: the spec with the confirmed operations added goes on screen, unsaved. The new
    * operations get routes, and a new path another flow has is asked about, as when typed in.
    */
   const applyImport = (result: ImportResult) => {
@@ -655,6 +656,17 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
           <Radio id="echo-spec-yaml" name="echo-spec-format" label="Yaml" isChecked={format === 'yaml'} onChange={() => setFormat('yaml')} />
           <Radio id="echo-spec-json" name="echo-spec-format" label="Json" isChecked={format === 'json'} onChange={() => setFormat('json')} />
         </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<SparkleIcon />}
+          onClick={() => setDialog({ kind: 'jira' })}
+          isDisabled={saving}
+          isAriaDisabled={!saving && !settings.data?.jiraImport}
+          title={settings.data?.jiraImport ? undefined : 'Jira is not set up: add echo.jira base-url and token to the config'}
+        >
+          Import Request/Response from Jira
+        </Button>
         <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'samples' })} isDisabled={saving}>
           Interface Specs from Samples
         </Button>
@@ -673,11 +685,6 @@ export const ApiSpecPanel = forwardRef<ApiSpecPanelHandle, Props>(function ApiSp
         <Button variant="secondary" size="sm" onClick={() => (dirty ? setDialog({ kind: 'discard' }) : discard())} isDisabled={saving}>
           Discard
         </Button>
-        {settings.data?.jiraImport && (
-          <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'jira' })} isDisabled={saving}>
-            Import From Jira
-          </Button>
-        )}
         {status && (
           <span
             className={`echo-api-spec__status echo-api-spec__status--${status.variant}`}

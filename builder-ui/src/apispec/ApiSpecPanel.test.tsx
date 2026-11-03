@@ -209,7 +209,7 @@ describe('Openapi panel', () => {
     expect(removed.map((op: { operationId: string }) => op.operationId)).toEqual(['getOld']);
   });
 
-  it('Import From Jira adds operations with routes, unsaved, and Undo takes them out again', async () => {
+  it('Import Request/Response from Jira adds operations with routes, unsaved, and Undo takes them out again', async () => {
     mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0, jiraImport: true } },
       'GET /api/flows/1': { status: 200, body: flow(null) },
@@ -233,7 +233,7 @@ describe('Openapi panel', () => {
         <ApiSpecPanel flowId={1} flowName="payments" onOperationsChanged={onOperationsChanged} onDirtyChange={onDirtyChange} />
       </QueryClientProvider>,
     );
-    await userEvent.click(await screen.findByRole('button', { name: 'Import From Jira' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Import Request/Response from Jira' }));
     await userEvent.type(screen.getByLabelText(/Story link/), 'PAY-142');
     await userEvent.click(screen.getByRole('button', { name: 'Read Story' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Add To Spec' }));
@@ -283,7 +283,7 @@ describe('Openapi panel', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
-  it('offers Import From Jira only when Jira is set up', async () => {
+  it('greys out Import Request/Response from Jira, left of Interface Specs from Samples, when Jira is not set up', async () => {
     mockFetch({
       'GET /api/editor/settings': { status: 200, body: { autosaveSeconds: 0 } },
       'GET /api/flows/1': { status: 200, body: flow(null) },
@@ -291,7 +291,12 @@ describe('Openapi panel', () => {
     renderPanel();
     await screen.findByTitle('OpenAPI editor');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument());
-    expect(screen.queryByRole('button', { name: 'Import From Jira' })).not.toBeInTheDocument();
+    const jira = screen.getByRole('button', { name: 'Import Request/Response from Jira' });
+    expect(jira).toHaveAttribute('aria-disabled', 'true');
+    expect(jira).toHaveAttribute('title', expect.stringContaining('Jira is not set up'));
+    expect(jira.nextElementSibling).toHaveTextContent('Interface Specs from Samples');
+    await userEvent.click(jira);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('refuses an uploaded spec with paths other flows have', async () => {

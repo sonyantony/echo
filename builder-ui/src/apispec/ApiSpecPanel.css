@@ -98,7 +98,7 @@
   list-style: disc;
 }
 
-/* Interface > Import From Jira (JiraImportModal). */
+/* Interface > Import Request/Response from Jira (JiraImportModal). */
 .echo-jira-import__reading {
   display: flex;
   align-items: center;

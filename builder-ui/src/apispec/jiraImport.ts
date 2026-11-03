@@ -1,5 +1,5 @@
 /**
- * Interface > Import From Jira: adds the operations the user confirmed (made from a story's
+ * Interface > Import Request/Response from Jira: adds the operations the user confirmed (made from a story's
  * example payloads) to the spec on screen, keeping everything it has. Each operation's schemas are
  * made as New From Samples makes them (specFromSamples.ts), under names the spec does not have yet.
  */

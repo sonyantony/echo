@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createFlow, fileMenu, interfaceItem, interfaceMenu, login, uniqueName } from './helpers';
 
-// Interface Specs from Samples (and Import From Jira, which builds bodies the same way) keeps each sample
+// Interface Specs from Samples (and Import Request/Response from Jira, which builds bodies the same way) keeps each sample
 // payload as the named example of its body, so Apicurio lists it instead of "No examples
 // defined", and Swagger UI shows it. Request validation is not affected by it. The operation it
 // makes gets its route at once, as one added in the editor does.
