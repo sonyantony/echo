@@ -1,0 +1,17 @@
+<section id="internals" data-transition="fade" style="background:#2E2E38;color:#F2F2EE;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="width:64px;height:8px;background:#FFE600"></div>
+<h2 style="font-size:56px;font-weight:600;line-height:1.15">Technical Details: Internals</h2>
+</div>
+<table style="font-size:28px;color:#F2F2EE;font-family:'IBM Plex Sans', Arial, sans-serif">
+<tr><th style="width:28%;color:#B4B4BC;font-weight:500;padding:18px 16px">Area</th><th style="width:72%;color:#B4B4BC;font-weight:500">Technology</th></tr>
+<tr><td><b>Builder front end</b></td><td>React and PatternFly, with Kaoto (flow designer) and Apicurio (OpenAPI designer) embedded</td></tr>
+<tr><td><b>Builder back end</b></td><td>Java 21 and Spring Boot, with an OpenAI-compatible AI engine for the Jira import</td></tr>
+<tr><td><b>Runtime</b></td><td>Apache Camel and Spring Boot, with Prometheus and OpenTelemetry</td></tr>
+<tr><td><b>Build and deploy</b></td><td>Docker images and Kubernetes manifests, with Playwright for automated UI tests</td></tr>
+<tr><td><b>Flows</b></td><td>Every flow is plain text in the Camel YAML DSL (Domain-Specific Language)</td></tr>
+</table>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;font-weight:600;letter-spacing:2px;color:#F2F2EE">ECHO</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;font-size:24px;text-align:right;color:#B4B4BC">9</p>
+<aside>Everything is built on well-known open-source parts: React, PatternFly, Kaoto and Apicurio in the Builder, Apache Camel and Spring Boot at runtime. Because every flow is plain-text Camel YAML, it can be reviewed, diffed and versioned like any other code.</aside>
+</section>

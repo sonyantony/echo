@@ -1,0 +1,17 @@
+{
+  "v": 4,
+  "createdOnFiles": {"v": 1, "at": "2026-11-03T22:22:00Z"},
+  "lists": "css",
+  "title": "ECHO Presentation v2",
+  "order": ["platform", "using", "anatomy", "demo", "features", "devops", "ingress", "devops-parts", "internals"],
+  "sections": {
+    "intro": {"description": "What ECHO is and who uses it", "start": "platform"},
+    "how": {"description": "How a flow is developed, then the live demo", "start": "anatomy"},
+    "tech": {"description": "Built-in features and the technical details", "start": "features"}
+  },
+  "faces": {
+    "ibm-plex-sans": {"family": "IBM Plex Sans", "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"},
+    "ibm-plex-mono": {"family": "IBM Plex Mono", "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"}
+  },
+  "designSystems": []
+}

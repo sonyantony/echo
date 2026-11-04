@@ -1,0 +1,32 @@
+<section id="anatomy" data-transition="fade" style="background:#E2E1DC;color:#2E2E38;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:64px">
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="width:64px;height:8px;background:#FFE600"></div>
+<h2 style="font-size:56px;font-weight:600;line-height:1.15">Typical Steps of a Flow’s Development</h2>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:40px">
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px 0 0 0;border-top:4px solid #2E2E38">
+<p style="font-size:28px;font-weight:600">a</p>
+<p style="font-size:26px;line-height:1.4">Create a user story with sample northside requests and responses (defines the request and response payloads, plus query parameters)</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px 0 0 0;border-top:4px solid #2E2E38">
+<p style="font-size:28px;font-weight:600">b</p>
+<p style="font-size:26px;line-height:1.4">Identify the downstream calls to make (one or many)</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px 0 0 0;border-top:4px solid #9A9AA3">
+<p style="font-size:28px;font-weight:600">c <span style="color:#5C5D66">(Optional)</span></p>
+<p style="font-size:26px;line-height:1.4">Check whether the downstream calls can run in parallel to save execution time, or whether they depend on each other</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px 0 0 0;border-top:4px solid #2E2E38">
+<p style="font-size:28px;font-weight:600">d</p>
+<p style="font-size:26px;line-height:1.4">Map data from the northside request to each downstream call</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px 0 0 0;border-top:4px solid #2E2E38">
+<p style="font-size:28px;font-weight:600">e</p>
+<p style="font-size:26px;line-height:1.4">Map data from each downstream call to the final response</p>
+</div>
+</div>
+<p style="font-size:28px;line-height:1.4;padding:8px 0 8px 24px;border-left:6px solid #FFE600">f. These steps are not limited to HTTP-based REST calls</p>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;font-weight:600;letter-spacing:2px;color:#2E2E38">ECHO</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;font-size:24px;text-align:right;color:#5C5D66">3</p>
+<aside>Every flow follows the same steps. Start with a user story that has sample northside requests and responses, decide which downstream calls are needed and whether they can run in parallel, then map the data in both directions. The same pattern isn’t limited to HTTP REST calls.</aside>
+</section>
