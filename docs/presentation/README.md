@@ -13,6 +13,7 @@ The source of the "ECHO Presentation v2" deck and its diagrams. The live, editab
 | `diagrams/ingress-routing.py` | Writes `ingress-routing.svg`; paths, pod counts and switch position are at the top | Master |
 | `diagrams/*.png` | 2× renders of the SVGs, for PowerPoint or email | Made by `render.js` |
 | `ECHO-Presentation-v2.pdf` | All slides, one page each | Made by `render-pdf.js` |
+| `ECHO-Presentation-v2.html` | The whole deck in one file: open it in a browser to present | Made by `build-html.js` |
 
 Slide order: Platform, Using ECHO, Typical Steps, Demo, Built-in Features,
 DevOps Pipeline (diagram), Request Routing Using Ingress (diagram), the four parts, Internals.
@@ -31,12 +32,17 @@ cp build-deploy-flow-slide.png ../deck/images/build-deploy-flow.png
 
 cd ..
 node render-pdf.js                                          # writes ECHO-Presentation-v2.pdf
+node build-html.js                                          # writes ECHO-Presentation-v2.html
 ```
 
 `build-deploy-flow.svg` is the pipeline diagram with its own heading, for use outside the deck;
 `build-deploy-flow-slide.svg` is the same without the heading, as used on the slide.
 
-The PDF here is rendered offline from the slide files and can differ slightly from the live deck.
+In the HTML deck, use the arrow keys or click to move between slides, N for speaker notes and F for full screen;
+`#4` at the end of the address opens slide 4. Images are inside the file; the IBM Plex fonts load from Google Fonts, so
+without internet it falls back to Arial.
+
+The PDF and HTML here are made offline from the slide files and can differ slightly from the live deck.
 For PowerPoint, use Export in the live deck (PowerPoint layouts may shift, so the slide files stay the master).
 
 ## Changing the live deck from these files
