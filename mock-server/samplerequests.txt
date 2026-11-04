@@ -1,0 +1,305 @@
+GET /Inventory/v1/Resource/node?id=AVDLAZRH4P001
+{
+  "rack": null,
+  "nodeDef": "ADVA FSP 150-GE114Pro 1G NID (4P)",
+  "description": "FSP 150CC-GE114Pro, I-Temp, with integrated AC PSU...",
+  "name": "AVDLAZRH4P001",
+  "type": "NE::ADVA FSP 150-GE114Pro 1G NID (4P)",
+  "provisionStatus": "In Service",
+  "functionalStatus": "Not Specified",
+  "locationIdentifier": {
+    "internalIdentifier": "2639123",
+    "entityType": "Location",
+    "id": "AVDLAZRH"
+  },
+  "identifier": {
+    "internalIdentifier": "3164712",
+    "entityType": "Node",
+    "id": "AVDLAZRH4P001"
+  },
+  "extensionAttributes": {
+    "item": [
+      {"name": "PSEUDO_ENABLED", "value": "Yes"},
+      {"name": "LOGICAL_STATUS", "value": "Planned"},
+      {"name": "EQUIPMENT_CODE", "value": "4P"},
+      {"name": "NETWORK_NAME", "value": "AVDLAZRH4P001"},
+      {"name": "ROLECODE", "value": "NID"},
+      {"name": "ISNID", "value": "Yes"}
+    ]
+  }
+}
+
+
+Response : [
+  {
+    "id": "a1168a08-ec8a-4ac6-83ae-79b5c2609084",
+    "name": "AVDLAZRH4P001",
+    "href": "https://a403ea31db64240f8a23055590046d28-d0b4c8262dd985c2.elb.us-east-1.amazonaws.com/blueplanet-inventory-tmf-api/resourceInventoryManagement/Device/a1168a08-ec8a-4ac6-83ae-79b5c2609084",
+    "@baseType": "PhysicalResource",
+    "@type": "Device",
+    "startDate": "2026-01-29T21:48:55.000Z",
+    "resourceSpecification": {
+      "id": "10263005193",
+      "name": "ADVA FSP 150-GE114Pro 1G NID (4P)",
+      "@type": "Device",
+      "isBundle": false
+    },
+    "place": {
+      "id": "3b1ac549-898d-43fa-a8fb-40c3642ec132",
+      "name": "AVDLAZRH",
+      "role": "Location",
+      "href": "https://a403ea31db64240f8a23055590046d28-d0b4c8262dd985c2.elb.us-east-1.amazonaws.com/blueplanet-inventory-tmf-api/resourceInventoryManagement/Location/3b1ac549-898d-43fa-a8fb-40c3642ec132"
+    },
+    "relatedParty": [
+      {
+        "id": "256264613132841968",
+        "name": "objectId",
+        "href": "./device/fetchExisting/256264613132841968/108",
+        "@type": "108",
+        "@referredType": "inventory"
+      }
+    ],
+    "resourceCharacteristic": [
+      {
+        "name": "adoptionUUID",
+        "value": "DEVICE-3164712-AVDLAZRH",
+        "@type": "string"
+      },
+      {
+        "name": "createdBy",
+        "value": "AFFSUPERTST",
+        "@type": "string"
+      },
+      {
+        "name": "createdDate",
+        "value": "1769723335000",
+        "@type": "string"
+      },
+      {
+        "name": "dedicatedDevice",
+        "value": "No",
+        "@type": "string"
+      },
+      {
+        "name": "defaultShelftype",
+        "value": "0",
+        "@type": "string"
+      },
+      {
+        "name": "deviceName",
+        "value": "AVDLAZRH4P001",
+        "@type": "string"
+      },
+      {
+        "name": "equipmentCode",
+        "value": "4P",
+        "@type": "string"
+      },
+      {
+        "name": "inventoryName",
+        "value": "AVDLAZRHADVAA4PNID001",
+        "@type": "string"
+      },
+      {
+        "name": "isGNE",
+        "value": "No",
+        "@type": "string"
+      },
+      {
+        "name": "isHybridPE",
+        "value": "No",
+        "@type": "string"
+      },
+      {
+        "name": "isNID",
+        "value": "Yes",
+        "@type": "string"
+      },
+      {
+        "name": "lastModifiedDate",
+        "value": "1775246915000",
+        "@type": "string"
+      },
+      {
+        "name": "legacyCompany",
+        "value": "TW TELECOM",
+        "@type": "string"
+      },
+      {
+        "name": "legacyInventorySystem",
+        "value": "ASRI",
+        "@type": "string"
+      },
+      {
+        "name": "legacyObjectId",
+        "value": "3164712",
+        "@type": "string"
+      },
+      {
+        "name": "legacyRoleCode",
+        "value": "NID",
+        "@type": "string"
+      },
+      {
+        "name": "legacyTypeCode",
+        "value": "A4P",
+        "@type": "string"
+      },
+      {
+        "name": "locationName",
+        "value": "AVDLAZRH",
+        "@type": "string"
+      },
+      {
+        "name": "migrationCycle",
+        "value": "Cycle-18",
+        "@type": "string"
+      },
+      {
+        "name": "migrationSource",
+        "value": "bulk_load",
+        "@type": "string"
+      },
+      {
+        "name": "modelNumber",
+        "value": "N/A",
+        "@type": "string"
+      },
+      {
+        "name": "modifiedBy",
+        "value": "AFFSUPERTST",
+        "@type": "string"
+      },
+      {
+        "name": "name",
+        "value": "AVDLAZRH4P001",
+        "@type": "string"
+      },
+      {
+        "name": "networkName",
+        "value": "AVDLAZRH4P001",
+        "@type": "string"
+      },
+      {
+        "name": "objClass",
+        "value": "LIVE",
+        "@type": "string"
+      },
+      {
+        "name": "onNet",
+        "value": "No",
+        "@type": "string"
+      },
+      {
+        "name": "operationalState",
+        "value": "Not Specified",
+        "@type": "string"
+      },
+      {
+        "name": "portNumber",
+        "value": "1",
+        "@type": "string"
+      },
+      {
+        "name": "pseudo_Enabled",
+        "value": "Yes",
+        "@type": "string"
+      },
+      {
+        "name": "role",
+        "value": "[]",
+        "@type": "string"
+      },
+      {
+        "name": "roleCode",
+        "value": "NID - Network Interface Device",
+        "@type": "string"
+      },
+      {
+        "name": "status",
+        "value": "In Service",
+        "@type": "string"
+      },
+      {
+        "name": "typeCode",
+        "value": "A4P - Adva FSP 150-GE114Pro",
+        "@type": "string"
+      },
+      {
+        "name": "x25",
+        "value": "No",
+        "@type": "string"
+      }
+    ],
+    "resourceRelationship": [
+      {
+        "type": "Shelf",
+        "resource": {
+          "id": "63993923-c1c4-42b6-9c66-3e1c32837760",
+          "href": "https://a403ea31db64240f8a23055590046d28-d0b4c8262dd985c2.elb.us-east-1.amazonaws.com/blueplanet-inventory-tmf-api/resourceInventoryManagement/Shelf/63993923-c1c4-42b6-9c66-3e1c32837760"
+        },
+        "resourceRelationshipCharacteristic": [
+          {
+            "name": "name",
+            "value": "AVDLAZRH4P001_001-10-105-10549",
+            "@type": "string"
+          },
+          {
+            "name": "relatedObjectType",
+            "value": "Shelf",
+            "@type": "string"
+          },
+          {
+            "name": "objectId",
+            "value": "256264613133515356",
+            "@type": "string"
+          },
+          {
+            "name": "relationshipType",
+            "value": "HAS",
+            "@type": "string"
+          },
+          {
+            "name": "specType",
+            "value": "FSP 150CC-GE114Pro/AC (4P)",
+            "@type": "string"
+          }
+        ]
+      },
+      {
+        "type": "ShelfPosition:HAS:OUT",
+        "resource": {
+          "id": "ae8e4b19-afd3-4dc7-b929-cbf042b41626",
+          "href": "https://a403ea31db64240f8a23055590046d28-d0b4c8262dd985c2.elb.us-east-1.amazonaws.com/blueplanet-inventory-tmf-api/resourceInventoryManagement/ShelfPosition/ae8e4b19-afd3-4dc7-b929-cbf042b41626"
+        },
+        "resourceRelationshipCharacteristic": [
+          {
+            "name": "name",
+            "value": "ADVA FSP 150-GE114Pro 1G NID (4P) - Shelf Position-01",
+            "@type": "string"
+          },
+          {
+            "name": "relatedObjectType",
+            "value": "ShelfPosition",
+            "@type": "string"
+          },
+          {
+            "name": "objectId",
+            "value": "256264613132301650",
+            "@type": "string"
+          },
+          {
+            "name": "relationshipType",
+            "value": "HAS",
+            "@type": "string"
+          },
+          {
+            "name": "specType",
+            "value": "ADVA FSP 150-GE114Pro 1G NID (4P) - Shelf Position",
+            "@type": "string"
+          }
+        ]
+      }
+    ]
+  }
+]
