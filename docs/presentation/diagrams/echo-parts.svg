@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1664 430" width="1664" height="430" role="img" aria-label="The five parts of ECHO">
+<defs><style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap');
+.s{font-family:'IBM Plex Sans',Arial,sans-serif}.m{font-family:'IBM Plex Mono',Consolas,monospace}
+</style>
+<marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#C4C4CD"/></marker>
+</defs>
+<rect width="1664" height="430" fill="#2E2E38"/>
+<rect x="5" y="6" width="290" height="418" rx="6" fill="#3A3A46" stroke="#747480"/>
+<rect x="5" y="6" width="290" height="5" fill="#6E6E7A"/>
+<text x="29" y="48" class="m" fill="#C4C4CD" font-size="20">a</text>
+<circle cx="88.0" cy="110" r="14" fill="#C4C4CD"/>
+<path d="M60.0 166 Q60.0 130 88.0 128 Q116.0 130 116.0 166 Z" fill="#C4C4CD"/>
+<rect x="128.0" y="78" width="108" height="72" rx="4" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/>
+<rect x="140.0" y="90" width="18" height="12" rx="2" fill="#FFE600"/><rect x="172.0" y="108" width="18" height="12" rx="2" fill="#C4C4CD"/><rect x="204.0" y="126" width="18" height="12" rx="2" fill="#C4C4CD"/>
+<path d="M158.0 96 H164.0 V114 H172.0 M190.0 114 H196.0 V132 H204.0" fill="none" stroke="#C4C4CD" stroke-width="1.5"/>
+<rect x="174.0" y="150" width="14" height="12" fill="#747480"/><rect x="160.0" y="162" width="42" height="5" fill="#747480"/>
+<line x1="50.0" y1="168" x2="250.0" y2="168" stroke="#747480" stroke-width="2"/>
+<text x="29" y="232" class="s" fill="#F2F2EE" font-size="27" font-weight="600">Builder Frontend</text>
+<text x="29" y="272" class="s" fill="#D6D6DC" font-size="20">Runs in the user&#8217;s</text>
+<text x="29" y="301" class="s" fill="#D6D6DC" font-size="20">browser: flows are</text>
+<text x="29" y="330" class="s" fill="#D6D6DC" font-size="20">designed, tested and</text>
+<text x="29" y="359" class="s" fill="#D6D6DC" font-size="20">published here.</text>
+<line x1="303" y1="124" x2="338" y2="124" stroke="#C4C4CD" stroke-width="2" marker-end="url(#ag)"/>
+<rect x="346" y="6" width="290" height="418" rx="6" fill="#3A3A46" stroke="#747480"/>
+<rect x="346" y="6" width="290" height="5" fill="#6E6E7A"/>
+<text x="370" y="48" class="m" fill="#C4C4CD" font-size="20">b</text>
+<rect x="431.0" y="80" width="120" height="22" rx="3" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/>
+<circle cx="447.0" cy="91" r="3.5" fill="#FFE600"/><line x1="463.0" y1="91" x2="535.0" y2="91" stroke="#747480" stroke-width="2"/>
+<rect x="431.0" y="108" width="120" height="22" rx="3" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/>
+<circle cx="447.0" cy="119" r="3.5" fill="#C4C4CD"/><line x1="463.0" y1="119" x2="535.0" y2="119" stroke="#747480" stroke-width="2"/>
+<rect x="431.0" y="136" width="120" height="22" rx="3" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/>
+<circle cx="447.0" cy="147" r="3.5" fill="#C4C4CD"/><line x1="463.0" y1="147" x2="535.0" y2="147" stroke="#747480" stroke-width="2"/>
+<text x="370" y="232" class="s" fill="#F2F2EE" font-size="27" font-weight="600">Builder Backend</text>
+<text x="370" y="272" class="s" fill="#D6D6DC" font-size="20">A Docker image running</text>
+<text x="370" y="301" class="s" fill="#D6D6DC" font-size="20">Java 21 that serves the</text>
+<text x="370" y="330" class="s" fill="#D6D6DC" font-size="20">front end. Not part of</text>
+<text x="370" y="359" class="s" fill="#D6D6DC" font-size="20">the daily build and</text>
+<text x="370" y="388" class="s" fill="#D6D6DC" font-size="20">deployment.</text>
+<line x1="644" y1="124" x2="679" y2="124" stroke="#C4C4CD" stroke-width="2" marker-end="url(#ag)"/>
+<rect x="687" y="6" width="290" height="418" rx="6" fill="#3A3A46" stroke="#747480"/>
+<rect x="687" y="6" width="290" height="5" fill="#F2F2EE"/>
+<text x="711" y="48" class="m" fill="#C4C4CD" font-size="20">c</text>
+<path d="M776.0 88 L804.0 118 L776.0 148" fill="none" stroke="#C4C4CD" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M814.0 88 L842.0 118 L814.0 148" fill="none" stroke="#C4C4CD" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M852.0 88 L880.0 118 L852.0 148" fill="none" stroke="#FFE600" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="711" y="232" class="s" fill="#F2F2EE" font-size="27" font-weight="600">Pipeline</text>
+<text x="711" y="272" class="s" fill="#D6D6DC" font-size="20">The scripts needed to</text>
+<text x="711" y="301" class="s" fill="#D6D6DC" font-size="20">build the runtime flows</text>
+<text x="711" y="330" class="s" fill="#D6D6DC" font-size="20">are provided.</text>
+<line x1="985" y1="124" x2="1020" y2="124" stroke="#C4C4CD" stroke-width="2" marker-end="url(#ag)"/>
+<rect x="1028" y="6" width="290" height="418" rx="6" fill="#3A3A46" stroke="#747480"/>
+<rect x="1028" y="6" width="290" height="5" fill="#F2F2EE"/>
+<text x="1052" y="48" class="m" fill="#C4C4CD" font-size="20">d</text>
+<circle cx="1213.0" cy="84" r="6" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/><line x1="1219.0" y1="84" x2="1243.0" y2="84" stroke="#C4C4CD" stroke-width="2"/>
+<circle cx="1213.0" cy="118" r="6" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/><line x1="1219.0" y1="118" x2="1243.0" y2="118" stroke="#C4C4CD" stroke-width="2"/>
+<circle cx="1213.0" cy="152" r="6" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/><line x1="1219.0" y1="152" x2="1243.0" y2="152" stroke="#C4C4CD" stroke-width="2"/>
+<line x1="1093.0" y1="118" x2="1123.0" y2="118" stroke="#C4C4CD" stroke-width="2"/>
+<line x1="1123.0" y1="118" x2="1207.0" y2="87" stroke="#FFE600" stroke-width="6" stroke-linecap="round"/>
+<circle cx="1123.0" cy="118" r="9" fill="#FFE600"/>
+<text x="1052" y="232" class="s" fill="#F2F2EE" font-size="27" font-weight="600">Kubernetes Ingress</text>
+<text x="1052" y="272" class="s" fill="#D6D6DC" font-size="20">Configuration files</text>
+<line x1="1326" y1="124" x2="1361" y2="124" stroke="#C4C4CD" stroke-width="2" marker-end="url(#ag)"/>
+<rect x="1369" y="6" width="290" height="418" rx="6" fill="#3A3A46" stroke="#747480"/>
+<rect x="1369" y="6" width="290" height="5" fill="#F2F2EE"/>
+<text x="1393" y="48" class="m" fill="#C4C4CD" font-size="20">e</text>
+<rect x="1448.0" y="96" width="40" height="44" rx="3" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/><rect x="1448.0" y="96" width="5" height="44" fill="#FFE600"/>
+<rect x="1494.0" y="96" width="40" height="44" rx="3" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/><rect x="1494.0" y="96" width="5" height="44" fill="#FFE600"/>
+<rect x="1540.0" y="96" width="40" height="44" rx="3" fill="#2E2E38" stroke="#C4C4CD" stroke-width="2"/><rect x="1540.0" y="96" width="5" height="44" fill="#FFE600"/>
+<text x="1393" y="232" class="s" fill="#F2F2EE" font-size="27" font-weight="600">ECHO Runtime</text>
+<text x="1393" y="272" class="s" fill="#D6D6DC" font-size="20">Docker images running</text>
+<text x="1393" y="301" class="s" fill="#D6D6DC" font-size="20">Java 21 that contain the</text>
+<text x="1393" y="330" class="s" fill="#D6D6DC" font-size="20">flows. Bundle mode: all</text>
+<text x="1393" y="359" class="s" fill="#D6D6DC" font-size="20">flows in one image;</text>
+<text x="1393" y="388" class="s" fill="#D6D6DC" font-size="20">per-flow: one per flow.</text>
+</svg>

@@ -11,12 +11,13 @@ The source of the "ECHO Presentation v2" deck and its diagrams. The live, editab
 | `deck/images.json` | Maps each `/_blob/<id>` in the slides to its file in `deck/images/` | |
 | `diagrams/*.svg` | Diagrams as vector files (open in a browser, Inkscape, Illustrator, Figma, Visio) | Master |
 | `diagrams/ingress-routing.py` | Writes `ingress-routing.svg`; paths, pod counts and switch position are at the top | Master |
+| `diagrams/echo-parts.py` | Writes `echo-parts.svg`, the five parts of ECHO on slide 8 | Master |
 | `diagrams/*.png` | 2× renders of the SVGs, for PowerPoint or email | Made by `render.js` |
 | `ECHO-Presentation-v2.pdf` | All slides, one page each | Made by `render-pdf.js` |
 | `ECHO-Presentation-v2.html` | The whole deck in one file: open it in a browser to present | Made by `build-html.js` |
 
 Slide order: Platform, Using ECHO, Typical Steps, Demo, Built-in Features,
-DevOps Pipeline (diagram), Request Routing Using Ingress (diagram), the four parts, Internals.
+DevOps Pipeline (diagram), Request Routing Using Ingress (diagram), the five parts (diagram), Internals.
 
 ## Making the outputs again
 
@@ -27,8 +28,10 @@ cd docs/presentation/diagrams
 python3 ingress-routing.py                                  # after changing the Ingress diagram
 node render.js ingress-routing.svg ingress-routing.png
 node render.js build-deploy-flow-slide.svg build-deploy-flow-slide.png
+python3 echo-parts.py && node render.js echo-parts.svg echo-parts.png
 cp ingress-routing.png ../deck/images/ingress-routing.png
 cp build-deploy-flow-slide.png ../deck/images/build-deploy-flow.png
+cp echo-parts.png ../deck/images/echo-parts.png
 
 cd ..
 node render-pdf.js                                          # writes ECHO-Presentation-v2.pdf
