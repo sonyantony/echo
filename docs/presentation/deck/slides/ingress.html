@@ -1,0 +1,11 @@
+<section id="ingress" data-transition="fade" style="background:#2e2e38">
+  <p id="e1-5c4pug" style="position:absolute; bottom:64px; left:128px; width:400px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; letter-spacing:2px; color:#f2f2ee">ECHO</p>
+  <p id="e2-5c4pug" style="position:absolute; right:128px; bottom:64px; width:200px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; text-align:right; color:#b4b4bc">7</p>
+  <div id="p4c52514bf46br0-979a6be9" style="position:absolute; top:128px; left:128px; width:1664px; height:93px; display:flex; flex-direction:column; gap:24px">
+    <div style="width:64px; height:8px; display:flex; flex-direction:column; background:#ffe600">
+    </div>
+    <h2 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:56px; font-weight:600; line-height:1.15; color:#f2f2ee">Request Routing Using Ingress</h2>
+  </div>
+  <img src="/_blob/3458e33689d187398a4221ec1ed12739" alt="A Kubernetes cluster whose Ingress works like a switch, set to its top position: /Inventory/v1/Resource/devices goes to 2 pods, /Inventory/v1/Resource/cards to 3, /Inventory/v1/Resource/ports to 1, and /anything/other/than/above to 2 Legacy Code pods." id="p4c52514bf46br1-979a6be9" style="position:absolute; top:258.6px; left:50%; width:1664px; height:664px; object-fit:contain; transform:translateX(-50%)">
+  <aside>Inside the cluster the Ingress acts like a switch. Each request is sent by its path: the ECHO flows each have their own path and one to three pods, and everything else still goes to the legacy application. ECHO only adds rules for its own paths, so the legacy code keeps working unchanged next to it.</aside>
+</section>

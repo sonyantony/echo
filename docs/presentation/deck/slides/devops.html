@@ -1,0 +1,10 @@
+<section id="devops" data-transition="fade" style="background:#2E2E38;color:#F2F2EE;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:36px">
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="width:64px;height:8px;background:#FFE600"></div>
+<h2 style="font-size:56px;font-weight:600;line-height:1.15">Technical Details: The DevOps Pipeline</h2>
+</div>
+<img src="/_blob/f18e99d5da904cfc73d78ccd3f201f01" alt="Build and deploy flow: the flow designer works in the Builder backend, which publishes to the Git flows repository; the Jenkins pipeline picks it up, builds the image and pushes it to JFrog Artifactory; the pipeline then pulls the image and deploys to dev1, test4 and production, pulling each environment's config and secrets from the configuration repository." style="width:1664px;height:690px;object-fit:contain">
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;font-weight:600;letter-spacing:2px;color:#F2F2EE">ECHO</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;font-size:24px;text-align:right;color:#B4B4BC">6</p>
+<aside>A designer builds the flow in the browser and the Builder publishes it to Git. The pipeline picks it up, builds one image and pushes it to JFrog. It then pulls that same image into dev1, test4 and production, and at each step pulls that environment's settings and secrets from the configuration repository. The image itself holds no environment values.</aside>
+</section>
