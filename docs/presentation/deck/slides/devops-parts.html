@@ -1,27 +1,6 @@
 <section id="devops-parts" data-transition="fade" style="background:#2E2E38;color:#F2F2EE;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:36px;justify-content:center">
-<p style="font-size:28px;color:#B4B4BC">The ECHO platform has four parts:</p>
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:40px">
-<div style="display:flex;flex-direction:column;gap:12px;padding:20px 0 0 0;border-top:4px solid #6E6E7A">
-<p style="font-size:24px;font-weight:600;color:#B4B4BC">a</p>
-<h3 style="font-size:32px;font-weight:600;line-height:1.2">ECHO Builder</h3>
-<p style="font-size:24px;line-height:1.4;color:#D6D6DC">A Docker image running Java 21, including the web-based front end. It is not part of the daily build and deployment.</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:12px;padding:20px 0 0 0;border-top:4px solid #F2F2EE">
-<p style="font-size:24px;font-weight:600;color:#B4B4BC">b</p>
-<h3 style="font-size:32px;font-weight:600;line-height:1.2">Pipeline</h3>
-<p style="font-size:24px;line-height:1.4;color:#D6D6DC">The scripts needed to build the runtime flows are provided</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:12px;padding:20px 0 0 0;border-top:4px solid #F2F2EE">
-<p style="font-size:24px;font-weight:600;color:#B4B4BC">c</p>
-<h3 style="font-size:32px;font-weight:600;line-height:1.2">Kubernetes Ingress</h3>
-<p style="font-size:24px;line-height:1.4;color:#D6D6DC">Configuration files</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:12px;padding:20px 0 0 0;border-top:4px solid #F2F2EE">
-<p style="font-size:24px;font-weight:600;color:#B4B4BC">d</p>
-<h3 style="font-size:32px;font-weight:600;line-height:1.2">ECHO Runtime</h3>
-<p style="font-size:24px;line-height:1.4;color:#D6D6DC">Docker images running Java 21 that contain the flows. In bundle mode all flows go into one image; in per-flow mode each flow gets its own image.</p>
-</div>
-</div>
+<p style="font-size:28px;color:#B4B4BC">The ECHO platform has five parts:</p>
+<img src="/_blob/d71dc073e8c8f65588f8444c941e3f29" alt="The five parts of ECHO, left to right: a Builder Frontend, a person at a monitor, runs in the browser where flows are designed, tested and published; b Builder Backend, a Java 21 Docker image that serves the front end and is not part of the daily build; c Pipeline, the scripts that build the runtime flows; d Kubernetes Ingress, configuration files; e ECHO Runtime, Java 21 Docker images that contain the flows, all in one image in bundle mode or one per flow." style="width:1664px;height:430px;object-fit:contain">
 <div style="display:flex;flex-direction:column">
 <p style="font-size:28px;line-height:1.4;padding:16px 0;border-top:1px solid #4B4B57">Can be deployed on standalone servers, but ECHO includes features designed for Kubernetes</p>
 <p style="font-size:28px;line-height:1.4;padding:16px 0;border-top:1px solid #4B4B57">Can run side by side with legacy deployments, using Kubernetes Ingress routing</p>
@@ -29,5 +8,5 @@
 </div>
 <p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;font-weight:600;letter-spacing:2px;color:#F2F2EE">ECHO</p>
 <p style="position:absolute;right:128px;bottom:64px;width:200px;font-size:24px;text-align:right;color:#B4B4BC">8</p>
-<aside>Four parts. The Builder is where flows are designed and isn’t part of the daily build. The pipeline scripts, the Kubernetes Ingress files and the Runtime images are what go to production. Ingress routing means ECHO flows can sit alongside existing legacy services.</aside>
+<aside>Five parts. The Builder, a browser front end and a Java back end, is where flows are designed and isn’t part of the daily build. The pipeline scripts, the Kubernetes Ingress files and the Runtime images are what go to production. Ingress routing means ECHO flows can sit alongside existing legacy services.</aside>
 </section>
