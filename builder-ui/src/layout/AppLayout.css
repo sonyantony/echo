@@ -39,3 +39,17 @@
     display: none !important;
   }
 }
+
+/* The page fills the window under the masthead, edge to edge: PatternFly's floating card left a
+   strip of background at the sides and the bottom but none at the top. */
+.pf-v6-c-page:has(> .echo-masthead) {
+  --pf-v6-c-page__main-container--MarginInlineStart: 0;
+  --pf-v6-c-page__main-container--MarginInlineEnd: 0;
+  --pf-v6-c-page__main-container--BorderRadius: 0;
+  --pf-v6-c-page__main-container--BorderBlockStartWidth: 0px;
+  --pf-v6-c-page__main-container--BorderBlockEndWidth: 0px;
+  --pf-v6-c-page__main-container--BorderInlineStartWidth: 0px;
+  --pf-v6-c-page__main-container--BorderInlineEndWidth: 0px;
+  --pf-v6-c-page__main-container--MaxHeight: 100%;
+  --pf-v6-c-page__main-container--AlignSelf: stretch;
+}

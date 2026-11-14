@@ -114,7 +114,11 @@
 }
 [data-echo-theme] .echo-kaoto-host .custom-node__label__text {
   color: var(--echo-node-label);
-  background-color: transparent;
+  /* The canvas colour behind a step's name, so the connector to the next step does not run
+     through the letters. */
+  background-color: var(--echo-node-label-background, var(--echo-canvas));
+  box-shadow: 0 0 0 3px var(--echo-node-label-background, var(--echo-canvas));
+  border-radius: 2px;
 }
 [data-echo-theme] .echo-kaoto-host .custom-group__container {
   background-color: var(--echo-group);
@@ -141,6 +145,7 @@
   --echo-node-border: var(--echo-diagram-node-border);
   --echo-node-shadow: none;
   --echo-node-label: var(--echo-diagram-node-label);
+  --echo-node-label-background: transparent;
   --echo-edge: var(--echo-diagram-edge);
   --echo-group: transparent;
   --echo-group-border: var(--echo-diagram-node-border);
