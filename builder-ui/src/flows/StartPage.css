@@ -1,13 +1,16 @@
-/* The start page: one card in the middle of the page. */
-.echo-start {
+/* The start page: one card in the middle of the page, on the page's background colour. */
+.echo-start.pf-v6-c-page__main-section {
   display: flex;
   align-items: center;
   justify-content: center;
+  --pf-v6-c-page__main-section--BackgroundColor: var(--echo-background);
 }
 .echo-start__card {
   margin-inline: auto;
   width: min(520px, calc(100% - 32px));
   background: var(--echo-surface);
   border: 1px solid var(--echo-border);
-  border-radius: var(--pf-t--global--border--radius--medium);
+  border-radius: var(--pf-t--global--border--radius--large);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--echo-shadow) 8%, transparent);
+  padding-block: var(--pf-t--global--spacer--md);
 }

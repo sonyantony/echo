@@ -16,6 +16,32 @@
 :root[data-echo-theme] body {
   font-family: var(--echo-font);
   letter-spacing: -0.005em;
+  /* Kaoto's IBM Carbon reset sets the page's line height to 1, which packs wrapped lines of
+     text (hints, dialog texts, empty pages) on top of each other. */
+  line-height: var(--pf-t--global--font--line-height--body, 1.5);
+  /* Carbon makes the body shorter than the window (room for its own header); with a dialog open
+     the page was cut off there and a strip of another colour showed along the bottom. */
+  height: 100vh;
+}
+/* Carbon also gives every h4 its own large size; a message's title is body text in bold. */
+[data-echo-theme] .pf-v6-c-alert__title {
+  font-size: var(--pf-t--global--font--size--body--default);
+  line-height: var(--pf-t--global--font--line-height--body, 1.5);
+}
+[data-echo-theme] .pf-v6-c-alert__icon {
+  /* Level with the first line of the title. */
+  margin-block-start: 2px;
+}
+
+/* A text box in use: one ring in the brand colour around the box, instead of the browser's own
+   black outline drawn inside PatternFly's border. */
+[data-echo-theme] .pf-v6-c-form-control > :is(input, textarea, select):focus-visible {
+  outline: none;
+}
+[data-echo-theme] .pf-v6-c-form-control:focus-within {
+  --pf-v6-c-form-control--before--BorderColor: var(--echo-ink);
+  --pf-v6-c-form-control--after--BorderColor: var(--echo-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--echo-brand) 45%, transparent);
 }
 [data-echo-theme] a,
 [data-echo-theme] a:visited,
@@ -69,4 +95,11 @@
 .echo-flow-id {
   color: var(--echo-text-subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+/* Printing lets the page grow to its content (layout/AppLayout.css). */
+@media print {
+  :root[data-echo-theme] body {
+    height: auto;
+  }
 }

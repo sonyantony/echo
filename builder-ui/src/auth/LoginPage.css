@@ -10,6 +10,7 @@
   width: 100%;
   max-width: 400px;
   overflow: hidden;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--echo-shadow) 8%, transparent);
 }
 .echo-login__header {
   padding: 20px 24px;
@@ -18,4 +19,8 @@
 }
 .echo-login__title {
   padding-top: 24px;
+}
+/* The button follows the fields at the form's own spacing. */
+.echo-login__card .pf-v6-c-form__group.pf-m-action {
+  margin-block-start: 0;
 }

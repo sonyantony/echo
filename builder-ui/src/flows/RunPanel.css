@@ -13,6 +13,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-block: 4px;
+}
+/* The methods in a column of their own, so the addresses line up. */
+.echo-run-panel__endpoint > .pf-v6-c-label {
+  flex: none;
+  min-width: 84px;
+  justify-content: center;
 }
 .echo-run-panel__hint,
 .echo-run-panel__subtle {
@@ -21,6 +28,7 @@
 }
 .echo-run-panel__docs {
   margin-top: 6px;
+  font-size: var(--pf-t--global--font--size--body--default);
 }
 .echo-run-panel__hint {
   margin-top: 4px;
