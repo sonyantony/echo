@@ -55,8 +55,8 @@ after changing a spec (`docker compose restart`).
    don't change the URL. Then set what the API needs, such as
    `Authorization: Bearer {{api.token}}`. Secrets stay as placeholders and never go into Git.
 
-A route ECHO makes for a new operation of the flow's spec already has this shape: Set Variable
-steps for the operation's parameters, Remove Headers `*`, and a REST OpenApi step inside a
+A route ECHO makes for a new operation of the flow's spec already has this shape: a Set Variables
+step with the operation's parameters, Remove Headers `*`, and a REST OpenApi step inside a
 multicast. A Set Headers step "SetAuthorizationHeaders" before the multicast sets
 `Authorization: Bearer {{api.token}}` (the same name whichever API is called; routes made before 2026-11-03 keep `{{<id>.token}}`), and one just before the call sets a header per variable
 (`id` from `${variable.id}`) plus `Accept`, followed (for POST, PUT and PATCH) by a DataMapper
@@ -81,6 +81,15 @@ The step is saved as:
       host: "{{blueplanet.base-url}}"
 ```
 
+## Enrich
+
+An **Enrich** step can call an approved API too. Above Kaoto's Expression field ECHO shows **Call**:
+**Approved API** (drop-downs for API, Tag and Operation Id, which write the expression
+`rest-openapi:<spec>#<operationId>`, with `?host={{<id>.base-url}}` when the spec names no server) or
+**URI typed by hand** (Kaoto's Expression field as it is). A step whose expression already calls an
+approved API opens on its operation. Like the Tag drop-down, the controls are ECHO's own in Kaoto's
+form and only the expression is saved.
+
 ## What the Builder checks
 
 Validate (and so Run and Publish) rejects:
@@ -100,5 +109,6 @@ flow keeps the spec version it was published with, until it is published again.
 ## Limits
 
 - Camel's `requestValidationEnabled` only checks that a body is present and is JSON, and that
-  required parameters are set. It doesn't check the body against the schema.
+  required parameters are set. It doesn't check the body against the schema. Routes ECHO makes
+  (since 2026-11-03) have it on in their REST OpenApi step; a step added by hand has it off until set.
 - A spec that uses a path parameter without declaring it sends the literal `{name}`. Fix the spec.

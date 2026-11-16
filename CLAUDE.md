@@ -46,7 +46,8 @@ app and built into an image by the buyer's pipeline).
 - Version 1 is a demo prototype: prefer simple over production-hardened, but keep the seams
   (auth, Git provider, CI, secrets, database) swappable. No cloud SDKs, no provider-specific
   Git APIs, no hard-wired CI or IdP.
-- Work on the `Version2` branch line; PRs target `Version2`.
+- Work on the `release/1.0.0` branch; PRs target `release/1.0.0` (`Version2` was the working branch until 2026-10-28).
+- What is built, by area, with the doc for each: `docs/features.md`; the list of all docs: `docs/README.md`.
 
 ## Layout
 
@@ -56,6 +57,8 @@ app and built into an image by the buyer's pipeline).
 | `builder-ui/` | React 19 + TypeScript, Vite, PatternFly 6, Kaoto 2.13 embedded; pnpm |
 | `samples/` | Golden flows used by tests at every level (`flows/orders`) |
 | `runtime-template/` | Versions and runtime defaults every flow image is built with |
+| `config/` | `application.example.yaml` (copy to the git-ignored `application.yaml`), `apis/` (approved downstream API specs and `approved-apis.yaml`, kept in Git) |
+| `mock-server/` | Node mock of a downstream API from its OpenAPI spec, with a call log at `/__ui` (demo aid; the Blue Planet spec on port 4020) |
 | `pipeline/` | `build-flow.sh` (export → jar → Jib image; `--mode bundle` (default, all flows in one image, `BundleCheck.java` fails on clashes) or `per-flow`), `K8sManifests.java` + `k8s.properties` (Kubernetes manifests per app), sample `Jenkinsfile`, smoke test |
 
 ## Pinned versions (change together)

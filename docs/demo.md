@@ -1,4 +1,4 @@
-# EY ECHO Version 1 demo
+# EY ECHO demo
 
 This walkthrough goes from an empty Builder to a running flow image. The flow is the golden
 `orders` flow in `samples/flows/orders/`. It receives `POST /orders`, maps the request with
@@ -33,8 +33,10 @@ java -jar target/echo-builder-backend-*.jar --echo.git.url=file:///tmp/echo-flow
 ## 2. Create the flow
 
 1. After logging in you land on the start page. Choose **New Flow**, name it `orders` and add a description.
-2. The editor opens with no routes (they come from the flow's Interface, one per operation, or
-   from the canvas's **New**). Build the route on the canvas: a `platform-http` consumer on `/orders`, a **Kaoto DataMapper** step, an `http`
+2. The new flow opens on **Interface Specs > Design**, because API-first flows start from their
+   OpenAPI spec and get a route per operation from it ([api-spec.md](api-spec.md)). The orders flow
+   is drawn by hand instead: choose **Flow > Design** to open the canvas, which has no routes yet, and
+   use the canvas's **New**. Build the route: a `platform-http` consumer on `/orders`, a **Kaoto DataMapper** step, an `http`
    call to `{{fulfilment.url}}`, and a second DataMapper step for the response.
 3. In each DataMapper step, attach the JSON schemas from `samples/flows/orders/`
    (`order-request` → `fulfilment-request`, `fulfilment-response` → `order-response`), then
@@ -45,21 +47,24 @@ java -jar target/echo-builder-backend-*.jar --echo.git.url=file:///tmp/echo-flow
    with `echo.editor.autosave-seconds` in `config/application.yaml` (or the environment variable
    `ECHO_EDITOR_AUTOSAVESECONDS`) and restart the container; no rebuild needed.
 
-To skip the drawing, zip the `samples/flows/orders/` folder and choose **Upload flow** on the
-Flows page, or load the files through the API (`PUT /api/flows/{id}/files/{path}`), as
+To skip the drawing, zip the `samples/flows/orders/` folder and choose **Upload Flow** on the
+start page (or in the File menu, or **Upload flow** on the Flows page), or load the files through the API (`PUT /api/flows/{id}/files/{path}`), as
 `demo.spec.ts` does.
 
-The editor's controls sit on the same line as Kaoto's tabs: **File** (New Flow, Open Flow Template, Open
-Flow, Manage Flows, Upload Flow, Save, Save As, Save As Template), **Interface** (the flow's Openapi spec; API-first flows start here),
-**Flow Design** (opens the canvas; its menu has Download <flow> and Download <flow> As Image), Rest,
-DataMapper, **Run** (Run <flow>, Run <flow> With...), **Advanced** (Java Beans) and About, with History at the right. Validate and Publish are buttons on
-the Flow Design toolbar.
+The editor's controls sit on one line, the tab line: **File** (New Flow, Open Flow Template, Open
+Flow, Manage Flows, Upload Flow, Save, Save As, Save As Template, Publish Flow), **Interface Specs** (the flow's
+OpenAPI spec: Design, Upload, Copy From Another Flow, Interface Specs from Samples and the downloads),
+**Flow** (Design opens the canvas; Add Route For Operation, History, Download <flow> and Download <flow> As Image),
+**Datamappers** (the flow's DataMapper steps by name; click one to open it), **Run** (Run <flow>, Run <flow> With...),
+**Advanced** (Java Beans) and **About**. At the right end are the **Publish Flow** button, the Draft or
+Published label, the save state ("Unsaved changes" or "Autosaved at ...") and "Flow: <name>".
+The canvas toolbar has Download Flow, Download As Image, **Validate** and the Client Request
+Validation and Enable CORS checkboxes; the canvas controls include **Fit Route** and **Maximize**.
 **Ctrl+S** saves and **Ctrl+O** opens Open Flow Template (Cmd on a Mac).
 **Open Flow** goes to the Flows list (asking first about unsaved changes) to pick another flow.
 **Manage Flows** opens the same list, titled Manage Flows, to delete, rename or open flows.
-On narrow screens History moves into the **⋮** menu.
 
-**Download <flow>** (in the Flow Design menu, or Download in a flow's menu on the Flows page) saves the flow folder,
+**Download <flow>** (in the Flow menu, or Download in a flow's menu on the Flows page) saves the flow folder,
 every file of the flow, to your computer as `<name>.zip`; **Upload Flow** (in the editor's File menu) opens such a zip again as a new draft. An upload never
 overwrites an existing flow: give it a new name if the name is taken.
 
@@ -70,12 +75,12 @@ page or in the editor's File menu) starts a new draft from one of those template
 replacing an existing draft or template. Pipelines build only `flows/`, so templates never become
 images.
 
-**Download <flow> As Image** (also in the Flow Design menu) saves a picture of the whole flow as `<name>.png`, as it is on the
+**Download <flow> As Image** (also in the Flow menu) saves a picture of the whole flow as `<name>.png`, as it is on the
 canvas (unsaved edits included).
 
 ## 3. Validate
 
-Choose **Validate** on the Flow Design toolbar. The Builder loads the flow with Camel and checks that it stays within
+Choose **Validate** on the canvas toolbar (Flow > Design). The Builder loads the flow with Camel and checks that it stays within
 the Version 1 scope (HTTP and JSON components, allowed expression languages, and existing
 DataMapper files). Each step with a problem gets a red circle at its top right counting them; click it to
 see them (**Clear** in that box hides them until the next Validate). A red "N problems" button next to Validate lists the problems no step shows (another file, or no
@@ -157,5 +162,12 @@ curl -s -X POST localhost:8080/orders -H 'Content-Type: application/json' \
 
 Stop the Builder container first, or run the flow on another port with
 `-e SERVER_PORT=8091`, because both use port 8080 (and the Builder keeps 8081 to 8090 for Run). Set `-e FULFILMENT_URL=...` to point the
-flow at a real service. The flow logs JSON (ECS), and its health endpoint is
-`/actuator/health`.
+flow at a real service. The flow logs JSON (ECS), including every request and response
+([http-log.md](http-log.md)); its health endpoint is `/actuator/health` and its metrics are at
+`/actuator/prometheus` ([observability.md](observability.md)).
+
+## 7. Kubernetes
+
+Each build also writes Kubernetes manifests next to the image, in `build/<app>/k8s/`: a Deployment,
+a Service, an Ingress (or HTTPRoute) for only the flows' paths, and a ConfigMap made from the flows'
+`{{placeholders}}`. See `pipeline/README.md` and decisions 0017 and 0018.

@@ -51,15 +51,15 @@ echo:
     #     allowed-operations: []               # operationIds allowed whatever their tags
 
   jira:
-    # Interface > Import From Jira reads example payloads from user stories with one shared,
-    # read-only account (see docs/api-spec.md). Leave base-url empty to hide it.
+    # Interface Specs > Import from Jira using AI reads example payloads from user stories with one
+    # shared, read-only account (see docs/api-spec.md). With base-url or token empty it is greyed out.
     base-url: ""                           # e.g. https://acme.atlassian.net
     deployment: cloud                      # cloud | data-center
     username: echo-bot@acme.com            # Cloud: the account's email. Data Center: leave empty
     token: ${ECHO_JIRA_TOKEN:}             # Cloud: API token. Data Center: personal access token
 
   ai:
-    # The AI engine Import From Jira asks which example in a story is which. The story's text is
+    # The AI engine Import from Jira using AI asks which example in a story is which. The story's text is
     # sent to it: use one your company has approved. none: ECHO's own guess, no AI.
     provider: none                         # none | openai-compatible
     openai-compatible:
