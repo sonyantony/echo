@@ -19,7 +19,7 @@ walkthrough from an empty Builder to a running flow image.
 
 Outside this folder: `README.md` (quick start), `CLAUDE.md` (layout, commands, pinned versions,
 conventions), `pipeline/README.md` (building images and Kubernetes manifests),
-`runtime-template/README.md`, `samples/README.md` and `config/application.example.yaml` (the
+`runtime-template/README.md`, `samples/README.md`, `mock-server/README.md` (the mock downstream API for demos) and `config/application.example.yaml` (the
 install's settings, with comments).
 
 ## Where each setting is explained

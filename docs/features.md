@@ -94,7 +94,7 @@ system or secrets store.
 | What | Where |
 |---|---|
 | Golden flows used by tests at every level (`orders`, `greetings`) and a mock fulfilment service | `samples/README.md` |
-| A mock of a downstream API made from its OpenAPI spec, with a live call log at `/__ui` (run for the Blue Planet spec on port 4020) | `mock-server/` |
+| A mock of a downstream API made from its OpenAPI spec, with a live call log at `/__ui` (run for the Blue Planet spec on port 4020) | `mock-server/README.md` |
 | The ECHO presentation and its diagrams | [presentation/README.md](presentation/README.md) |
 
 ## Not built
