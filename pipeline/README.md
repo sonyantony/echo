@@ -28,7 +28,7 @@ secrets. `templates/` is never built, nor is a flow disabled on the Builder's Op
 Bundled flows run in one app on one port, so before exporting, the build lists every clash and
 stops:
 
-- two flows on the same **Base Path** (the spec's server URL in Openapi Design; none counts as `/`)
+- two flows on the same **Base Path** (the spec's server URL, Base Path in Interface Specs; none counts as `/`)
   or the same `platform-http` path (each flow with a spec also serves Swagger UI at `<Base Path>/docs`,
   so two flows without a Base Path clash on `/docs`);
 - the same `direct:` endpoint: contract-first operations go to `direct:<operationId>`, so

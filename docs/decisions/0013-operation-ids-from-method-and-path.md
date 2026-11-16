@@ -82,15 +82,15 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   already listens on platform-http and calls it, which keeps request validation, Swagger UI and
   the clash checks working. An operation that has a route already (or a disabled one) gets none.
 - **The route is a scaffold** (added 2026-10-28, Francise: "make the user do only the least
-  amount of work"). A Set Variable for each path, query and header parameter of the operation
-  (`${header.<name>}`, where the generated REST service puts it), Remove Headers `*` (so the
+  amount of work"). A Set Variables step with a variable for each path, query and header parameter of the operation
+  (`${header.<name>}`, where the generated REST service puts it; one Set Variable step per parameter before 2026-11-03), Remove Headers `*` (so the
   incoming request's headers don't change the downstream URL), a Set Headers step described
   "SetAuthorizationHeaders" (`Authorization: Bearer {{api.token}}`, the same name whichever API is called; routes made
   before 2026-11-03 with a single approved API have `{{<api id>.token}}`), a multicast (parallel, joined by the
   `joinWithComma` StringAggregationStrategy bean, which is added to the flow if missing) with one
   pipeline: a Set Headers step described "SetMethodParameters" (`Accept: application/json` and a
   header per variable, `${variable.<name>}`, as REST OpenApi takes parameters from same-named
-  headers), a REST OpenApi step, Convert Body To String and Set Body `"result": ${body}`. After the
+  headers), a REST OpenApi step (with `requestValidationEnabled: true` since 2026-11-03), Convert Body To String and Set Body `"result": ${body}`. After the
   multicast, Set Body `{${body}}` (so the replies of further branches merge into one JSON object),
   Remove Headers `*` again and a Set Headers step described "SetResponseHeaders": Content-Type
   `application/json` and CamelHttpResponseCode `200`, so a status a downstream call left behind is
@@ -102,7 +102,7 @@ about the route when a method is deleted. The tab line item Openapi is now calle
   at the operation it calls: the downstream API is not the flow's own spec. When the install
   approves exactly one API (`echo.apis`), its spec is filled in. Host is `{{api.base-url}}` whichever API is
   called (since 2026-11-03; before, `{{<id>.base-url}}` only when the one approved API's spec named no server). Validate reports a REST OpenApi step that names neither spec nor
-  operation. A parameter added or removed in Interface later adds or removes its Set Variable while
+  operation. A parameter added or removed in Interface later adds or removes its variable while
   the route is still the scaffold ECHO made (and its SetMethodParameters row). Each Set Headers
   step starts with a header because Camel refuses one without (added 2026-10-28, Francise).
 - **Deleted: ask only when there is work to lose.** A route still as ECHO made it (the scaffold,

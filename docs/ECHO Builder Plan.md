@@ -4,6 +4,26 @@ Version 1 is a demo prototype. This plan favours simplicity over production hard
 
 Sources: `Initial Requirements.md` (including "Version 1 decisions") and the project's recorded decisions as of 2026-10-14.
 
+> **Status, 2026-11-16.** This is the plan Version 1 was built from, kept as written. All milestones
+> (M0 to M10) are done, and much has been built since; [features.md](features.md) lists what exists
+> today, with the document for each area. Where this plan and the product now differ:
+>
+> - **Stack:** the UI is React 19 and PatternFly 6 with Kaoto 2.13; Camel is 4.22.1 and Spring Boot
+>   3.5 (pinned versions are in `CLAUDE.md`).
+> - **Branches:** work moved from `Version1` to `Version2`, and on 2026-10-28 to `release/1.0.0`.
+> - **Section 7, "out of scope":** the OpenAPI editor (Interface Specs), Swagger UI on the runtime and
+>   request validation are built (decisions 0008 and 0010, [api-spec.md](api-spec.md)). Still not
+>   built: pull-request-based publishing, choosing the target repository, SSO, an external secret
+>   store and PostgreSQL.
+> - **Publishing:** Git is one of two publish targets (S3 is the other, decision 0003), behind
+>   `FlowPublisher` rather than the `GitPublisher` named below.
+> - **Flow folder:** side files sit flat next to `<flow>.camel.yaml` (no `mappings/` or `schemas/`
+>   folders), and the folder also holds the flow's OpenAPI spec.
+> - **New flows** start with no routes and open on Interface Specs; routes are made from the spec's
+>   operations (decision 0013), not from a `platform-http` template.
+> - **Runtime:** images also carry the HTTP log, Prometheus metrics and OpenTelemetry tracing, and
+>   the pipeline writes Kubernetes manifests (decisions 0017, 0018, 0020, 0021).
+
 ---
 
 ## 1. Technology stack

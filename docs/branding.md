@@ -27,7 +27,7 @@ token (`--echo-brand`, `--echo-on-brand` ...; see `builder-ui/src/branding/apply
 ## Themes
 
 `theme` restyles the Builder and its embedded editors together: Kaoto (canvas, step cards,
-connectors, route header, tabs, forms, catalog) and the Openapi Design editor (pages, dialogs,
+connectors, route header, tabs, forms, catalog) and the Interface Specs editor (pages, dialogs,
 code editor; dark under graphite too), so the editors match the rest of the Builder
 instead of looking like stock Kaoto. Every theme uses the Inter typeface and draws its accents in
 `colors.primary`, so a buyer's own colours carry through. Links and selected toggles use
@@ -50,7 +50,7 @@ the step cards light.
 builder-ui/src/theme/
   themes.css            the themes: every colour, and the only file with colour values
   kaoto-mapping.css     PatternFly 6 (ECHO's screens, Kaoto) and Kaoto's canvas -> tokens
-  apicurio-mapping.css  Apicurio (Openapi Design editor) -> tokens
+  apicurio-mapping.css  Apicurio (Interface Specs editor) -> tokens
   echo.css              ECHO's shared look (Inter, corners, links, tags); no colours
 ```
 
@@ -75,7 +75,7 @@ to `DARK_THEMES` if it is dark, which switches PatternFly to its dark palette).
 
 Checks: `src/theme/themes.test.ts` fails if a theme misses a token, a mapping uses a token no
 theme defines, or a colour value appears outside `themes.css`. The `themes` e2e test opens the
-main screens in every theme, Kaoto's canvas and the Openapi Design editor's pages and dialogs
+main screens in every theme, Kaoto's canvas and the Interface Specs editor's pages and dialogs
 included, fails on text that cannot be read against its background, and attaches a screenshot of
 each screen per theme to the Playwright report. Run it after upgrading Kaoto or Apicurio.
 

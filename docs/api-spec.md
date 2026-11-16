@@ -1,4 +1,4 @@
-# Openapi Design: a flow's OpenAPI spec
+# Interface Specs: a flow's OpenAPI spec
 
 Version 2 makes flows contract-first: each flow can carry an OpenAPI spec describing the REST API
 it offers. This page covers the editor and what the spec does when the flow runs (REST service,
@@ -47,7 +47,7 @@ Apicurio's list on the left is plain items (`apispec/overviewNav.ts`): **Info**,
 **Paths**, **Data Types**, **Responses** (with their counts) and **Source** (the whole spec's source,
 Upload on its toolbar). None of them folds open; each shows its content in the right pane. Paths, Data
 Types and Responses show Apicurio's own list there (Add, right-click Rename / Clone / Delete), and an
-entry picked from it opens in its place. Until something is picked the right pane is empty (Interface >
+entry picked from it opens in its place. Until something is picked the right pane is empty (Interface Specs >
 Design opens it that way). Apicurio's search box, which only filtered the left lists, is hidden. Info
 holds Version, Description and Base Path. Contact, License and Security are hidden, though a spec that
 has them keeps them and Source shows them; Vendor Extensions is hidden on every page, the same way.
@@ -65,12 +65,13 @@ add button goes. Without one the operations are served from the root.
   `customer.yaml`). File > Save and Ctrl+S save the spec too, from any view; autosave follows
   `echo.editor.autosave-seconds`. A spec not named yet is autosaved as `<flow>-api.yaml` once it
   has a path, since its operations have routes on the canvas already (Rename changes the name).
-- **Save As** always asks for the name.
 - **Discard** (after asking, if there are unsaved edits) starts again from a blank spec without
   a name. The saved spec stays in the flow until something is saved over it.
 
-While Openapi Design is open, the breadcrumb reads **Openapi / &lt;file name&gt;**, or
-**Openapi / &lt;new&gt;** before the spec has a name.
+**Rename** gives the spec file another name. There is no breadcrumb line: the flow's name, its
+Draft or Published label and the save state are at the right end of the tab line.
+
+A flow made with **New Flow** opens here, on Interface Specs > Design.
 
 ### Where the spec is stored
 
@@ -101,7 +102,7 @@ itself keeps only what is designed, so the service always follows the spec's cur
   adds a route for each one picked, so nobody types an id.
 - **Routes follow the methods edited in Interface.** A method added there gets its route on the
   canvas at once (`direct:<operationId>` and a scaffold, as Add Route For Operation makes it: a
-  Set Variable per parameter, Remove Headers `*`, Set Headers "SetAuthorizationHeaders", a
+  Set Variables step with a variable per parameter, Remove Headers `*`, Set Headers "SetAuthorizationHeaders", a
   multicast with one pipeline: Set Headers, for POST, PUT and PATCH a Kaoto DataMapper for the
   request, and a REST OpenApi step whose operation the user picks, and a JSON reply, a Kaoto
   DataMapper for it, a second Remove Headers `*` and Set Headers "SetResponseHeaders", which sets
@@ -135,7 +136,7 @@ itself keeps only what is designed, so the service always follows the spec's cur
   box takes a thing to do away for good (the step ids are kept in the flow's `.echo-done.json`); **Clear**
   takes Validate's problems on a step away until the next Validate. Routes made while these steps
   read **Attention** lose that label when opened. Parameters
-  added or removed later change its Set Variable steps while the route is still as ECHO made it. A
+  added or removed later change its Set Variables step while the route is still as ECHO made it. A
   method deleted there takes its route away without asking while the route is still as ECHO made
   it (so undoing an add leaves nothing behind); a route somebody worked on is kept unless the user
   picks **Remove Route** in the dialog that asks, and Undo in Interface brings it back as it was.
