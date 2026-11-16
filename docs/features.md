@@ -106,4 +106,3 @@ system or secrets store.
 - Protocols other than HTTP and formats other than JSON.
 - Response validation, Validate listing operations without a route, an invalid spec stopping
   Publish, and AI engines other than the OpenAI protocol ([api-spec.md](api-spec.md#not-built-yet)).
-- The "Workflow Development Setup" screen of [ECHO-frontend-plan.md](ECHO-frontend-plan.md).

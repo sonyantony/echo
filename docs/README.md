@@ -75,4 +75,3 @@ and why at the time; several carry dated additions as the feature grew.
 |---|---|
 | [Initial Requirements.md](Initial%20Requirements.md) | The requirements EY ECHO started from, with the Version 1 decisions |
 | [ECHO Builder Plan.md](ECHO%20Builder%20Plan.md) | The Version 1 build plan and milestones; a status note at its top says where the product now differs |
-| [ECHO-frontend-plan.md](ECHO-frontend-plan.md) | A plan for a "Workflow Development Setup" screen (Next.js). Not built; today's Builder covers part of it differently (Import from Jira using AI, approved APIs) |
