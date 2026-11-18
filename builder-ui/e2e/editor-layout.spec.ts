@@ -319,12 +319,13 @@ test('the Run menu, just before Advanced, holds Run <flow> and Run <flow> With..
   const validate = page.getByRole('button', { name: 'Validate', exact: true });
   const validateBox = (await validate.boundingBox())!;
   expect(validateBox.x).toBeGreaterThanOrEqual(clipboard.x + clipboard.width);
-  // Client Request Validation over Enable CORS, after Validate. Publish is on the tab line and in File, not here.
+  // Client Request Validation, then Enable CORS, on one line after Validate. Publish is on the tab line and in File, not here.
   const validation = (await page.getByRole('checkbox', { name: 'Client Request Validation' }).boundingBox())!;
   const cors = (await page.getByRole('checkbox', { name: 'Enable CORS' }).boundingBox())!;
   expect(validation.x).toBeGreaterThanOrEqual(validateBox.x + validateBox.width);
-  expect(Math.abs(cors.x - validation.x)).toBeLessThan(2);
-  expect(cors.y).toBeGreaterThanOrEqual(validation.y + validation.height);
+  expect(cors.x).toBeGreaterThan(validation.x + validation.width);
+  expect(Math.abs(cors.y - validation.y)).toBeLessThan(2);
+  expect(Math.abs(validation.y + validation.height / 2 - (validateBox.y + validateBox.height / 2))).toBeLessThan(4);
   await expect(page.locator('.echo-canvas-actions').getByRole('button', { name: /Publish/ })).toHaveCount(0);
   expect(Math.abs(validateBox.y + validateBox.height / 2 - (clipboard.y + clipboard.height / 2))).toBeLessThan(4);
   await validate.click();
