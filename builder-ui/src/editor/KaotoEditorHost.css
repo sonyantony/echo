@@ -118,18 +118,16 @@
   align-items: center;
   gap: 8px;
 }
-/* Client Request Validation and Enable CORS, stacked so they fit the toolbar's height. */
+/* Client Request Validation and Enable CORS, side by side at the toolbar's text size. */
 .echo-rest-settings {
   display: flex;
-  flex-direction: column;
-  gap: 0;
-  font-size: var(--pf-t--global--font--size--body--sm);
-  line-height: 1.2;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--lg);
+  margin-inline-start: var(--pf-t--global--spacer--sm);
   white-space: nowrap;
 }
-.echo-rest-settings .pf-v6-c-check__label {
-  font-size: inherit;
-  line-height: inherit;
+.echo-rest-settings .pf-v6-c-check {
+  align-items: center;
 }
 
 /* A Builder view shown in place of Kaoto's views, below its tab bar (e.g. the API spec). */

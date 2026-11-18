@@ -79,6 +79,12 @@
   --pf-v6-c-toggle-group__button--m-selected--before--BorderColor: var(--echo-selected);
 }
 
+/* Kaoto's views (Datamappers, About, Beans) are drawn on the panel colour, like the canvas, Interface
+   Specs and ECHO's own pages; only the tab line keeps the page's background colour. */
+[data-echo-theme] .echo-kaoto-host .shell__tab-content {
+  background-color: var(--echo-surface);
+}
+
 /* ---------- Kaoto's canvas ---------- */
 
 [data-echo-theme] .echo-kaoto-host {
