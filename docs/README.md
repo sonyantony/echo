@@ -15,6 +15,7 @@ walkthrough from an empty Builder to a running flow image.
 | [branding.md](branding.md) | Logo, colours and themes per install (`echo.branding`) |
 | [http-log.md](http-log.md) | The log of every HTTP request and response in flow images and Run |
 | [observability.md](observability.md) | Logs, Prometheus metrics and OpenTelemetry tracing of flow images |
+| [PROJECT_ECHO_SPEC.md](PROJECT_ECHO_SPEC.md) | The full rebuild specification: stack and versions, file tree, settings, database, every endpoint, each screen's behaviour, pipeline, tests and edge cases, in one file |
 | [presentation/](presentation/README.md) | The ECHO presentation and its diagrams |
 
 Outside this folder: `README.md` (quick start), `CLAUDE.md` (layout, commands, pinned versions,

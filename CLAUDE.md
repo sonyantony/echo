@@ -48,6 +48,8 @@ app and built into an image by the buyer's pipeline).
   Git APIs, no hard-wired CI or IdP.
 - Work on the `release/1.0.0` branch; PRs target `release/1.0.0` (`Version2` was the working branch until 2026-10-28).
 - What is built, by area, with the doc for each: `docs/features.md`; the list of all docs: `docs/README.md`.
+- The whole application described in one file, detailed enough to rebuild it: `docs/PROJECT_ECHO_SPEC.md`
+  (update the section a change touches).
 
 ## Layout
 
